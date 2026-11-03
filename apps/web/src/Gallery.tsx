@@ -1,4 +1,6 @@
+import { buildDay, type Item } from "@hoppin/core";
 import { useState } from "react";
+import { DayView } from "./components/DayView";
 import { Avatar } from "./components/ui/Avatar";
 import { Banner } from "./components/ui/Banner";
 import { Button } from "./components/ui/Button";
@@ -7,6 +9,21 @@ import { Chip } from "./components/ui/Chip";
 import { Sheet } from "./components/ui/Sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/Tabs";
 import { personColor } from "./lib/colors";
+
+const IST = "Asia/Kolkata";
+const at = (hhmm: string) => new Date(`2026-12-02T${hhmm}:00+05:30`).toISOString();
+function demo(over: Partial<Item> & Pick<Item, "id" | "title" | "startsAt">): Item {
+  return { tripId: "t", ownerId: "aman", kind: "activity", visibility: "shared", groupItem: true, endsAt: null, tz: IST, locationUrl: null, details: {}, version: 1, ...over };
+}
+const demoItems: Item[] = [
+  demo({ id: "1", title: "Breakfast at hotel", startsAt: at("08:00"), endsAt: at("09:00") }),
+  demo({ id: "2", title: "Old town walking tour", startsAt: at("10:00"), endsAt: at("12:30"), locationUrl: "https://maps.example/old-town" }),
+  demo({ id: "3", title: "Museum", startsAt: at("10:30"), groupItem: false, ownerId: "riya", locationUrl: "https://maps.example/museum" }),
+  demo({ id: "4", title: "Cafe crawl in the old market lanes", startsAt: at("11:30"), groupItem: false, ownerId: "neha" }),
+  demo({ id: "5", title: "Lunch (booked for 10)", startsAt: at("13:00"), endsAt: at("14:30") }),
+  demo({ id: "6", title: "Visit ABC place", startsAt: at("15:00"), groupItem: false, visibility: "private" }),
+];
+const demoPeople = { aman: { name: "Aman", color: personColor(3) }, riya: { name: "Riya", color: personColor(0) }, neha: { name: "Neha", color: personColor(1) } };
 
 /** Preview page for the design system (run `npm run dev -w apps/web`). Replaced by the real app in later issues. */
 export function Gallery() {
@@ -40,6 +57,15 @@ export function Gallery() {
             <Button variant="ghost">Cancel</Button>
           </div>
         </Card>
+        <DayView
+          date="2026-12-02"
+          tz={IST}
+          layout={buildDay(demoItems, "aman", "2026-12-02", IST)}
+          people={demoPeople}
+          viewerId="aman"
+          goingByItem={{ "3": ["riya"] }}
+          onJoin={() => {}}
+        />
         <Tabs defaultValue="days">
           <TabsList aria-label="Sections">
             <TabsTrigger value="days">Days</TabsTrigger>
