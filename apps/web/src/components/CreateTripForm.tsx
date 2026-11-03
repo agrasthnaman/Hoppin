@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
+import { inputClass } from "../lib/forms";
 import { Button } from "./ui/Button";
 
 export interface NewTrip {
@@ -12,13 +13,11 @@ export interface CreateTripFormProps {
   onCancel: () => void;
 }
 
-const inputClass = "min-h-11 w-full rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent";
-
 function Field({ label, error, children }: { label: string; error?: string; children: (id: string, describedBy?: string) => React.ReactNode }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-semibold">
         {label}
       </label>
       {children(id, error ? `${id}-error` : undefined)}
@@ -60,23 +59,34 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       <Field label="Trip name" error={errors.name}>
-        {(id, d) => <input id={id} aria-describedby={d} aria-invalid={errors.name ? true : undefined} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />}
+        {(id, d) => (
+          <input
+            id={id}
+            aria-describedby={d}
+            aria-invalid={errors.name ? true : undefined}
+            placeholder="Where to?"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputClass} font-display text-xl font-bold`}
+          />
+        )}
       </Field>
-      <Field label="Starts">
-        {(id) => <input id={id} type="date" value={start} onChange={(e) => setStart(e.target.value)} className={inputClass} />}
-      </Field>
-      <Field label="Ends" error={errors.end}>
-        {(id, d) => <input id={id} type="date" aria-describedby={d} aria-invalid={errors.end ? true : undefined} value={end} onChange={(e) => setEnd(e.target.value)} className={inputClass} />}
-      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Starts">{(id) => <input id={id} type="date" value={start} onChange={(e) => setStart(e.target.value)} className={inputClass} />}</Field>
+        <Field label="Ends" error={errors.end}>
+          {(id, d) => <input id={id} type="date" aria-describedby={d} aria-invalid={errors.end ? true : undefined} value={end} onChange={(e) => setEnd(e.target.value)} className={inputClass} />}
+        </Field>
+      </div>
+      <p className="-mt-3 text-xs text-muted">Dates are optional. You can start adding plans without them.</p>
       {failed && (
         <p role="alert" className="text-sm text-danger-fg">
           Couldn't create the trip. Check your connection and try again.
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>
+        <Button type="submit" disabled={saving} className="flex-1">
           Create trip
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>

@@ -1,5 +1,5 @@
 import { type Item, type MemberRef, type TripDocument } from "@hoppin/core";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { describe, expect, it, vi } from "vitest";
@@ -243,5 +243,46 @@ describe("ItemForm save errors", () => {
     render(<ItemForm initial={flight} tz={IST} onSubmit={() => Promise.reject(new Error("boom"))} onCancel={() => {}} />);
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't save. Please try again.");
+  });
+});
+
+describe("ItemForm: choosing what kind of plan it is", () => {
+  const setup = (props: Partial<React.ComponentProps<typeof ItemForm>> = {}) => {
+    const onSubmit = vi.fn();
+    render(<ItemForm tz={IST} onSubmit={onSubmit} onCancel={() => {}} {...props} />);
+    return { onSubmit };
+  };
+
+  it("offers the kinds as tappable options, with Activity chosen to start with", () => {
+    setup();
+    const group = screen.getByRole("radiogroup", { name: "Type" });
+    for (const label of ["Flight", "Stay", "Activity", "Transport", "Plan"]) expect(within(group).getByRole("radio", { name: label })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Activity" })).toBeChecked();
+  });
+
+  it("saves the chosen kind", async () => {
+    const { onSubmit } = setup();
+    await userEvent.click(screen.getByRole("radio", { name: "Flight" }));
+    await userEvent.type(screen.getByLabelText("Title"), "DEL to GOI");
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T10:00");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ kind: "flight", title: "DEL to GOI" }));
+  });
+
+  it("shows an existing plan's kind when editing", () => {
+    setup({ initial: flight });
+    expect(screen.getByRole("radio", { name: "Flight" })).toBeChecked();
+  });
+
+  it("each choice for who it is for explains itself", () => {
+    setup();
+    expect(screen.getByText("A fixed plan for everyone")).toBeInTheDocument();
+    expect(screen.getByText("Shows as a small chip people can tap")).toBeInTheDocument();
+    expect(screen.getByText("Only you can see it")).toBeInTheDocument();
+  });
+
+  it("says which time zone the times are in", () => {
+    setup();
+    expect(screen.getByText("Times are in Asia/Kolkata.")).toBeInTheDocument();
   });
 });

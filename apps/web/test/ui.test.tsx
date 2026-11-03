@@ -43,6 +43,15 @@ describe("Sheet", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("sits above the floating navigation bar, so its buttons are never covered", () => {
+    render(
+      <Sheet open onOpenChange={() => {}} title="Above the nav">
+        <button>Save</button>
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog", { name: "Above the nav" })).toHaveClass("z-[60]");
+  });
+
   it("renders nothing when closed", () => {
     render(
       <Sheet open={false} onOpenChange={() => {}} title="Hidden">

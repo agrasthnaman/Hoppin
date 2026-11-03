@@ -1,3 +1,4 @@
+import { inputClass } from "../lib/forms";
 import type { RedeemResult } from "@hoppin/core";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import type { MagicLinkRequest } from "../lib/auth-api";
@@ -36,7 +37,7 @@ function Field({ label, error, ...input }: { label: string; error?: string } & R
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+        className={inputClass}
       />
       {error && (
         <span id={`${id}-error`} className="text-sm text-danger-fg">

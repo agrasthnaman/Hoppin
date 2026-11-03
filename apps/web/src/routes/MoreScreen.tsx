@@ -1,3 +1,4 @@
+import { inputClass } from "../lib/forms";
 import { formatSyncedAgo } from "@hoppin/core";
 import { UserRound, Users } from "lucide-react";
 import { useState } from "react";
@@ -163,7 +164,7 @@ export function MoreScreen() {
                     autoComplete="off"
                     value={typedName}
                     onChange={(e) => setTypedName(e.target.value)}
-                    className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                    className={inputClass}
                   />
                 </div>
                 {tripError && <p role="alert" className="text-sm text-danger-fg">{tripError}</p>}

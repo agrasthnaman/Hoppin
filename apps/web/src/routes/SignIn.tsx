@@ -1,3 +1,4 @@
+import { inputClass } from "../lib/forms";
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useServices } from "../app/services";
@@ -70,7 +71,7 @@ export function SignIn() {
                   autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                  className={inputClass}
                 />
               </div>
             )}
@@ -84,7 +85,7 @@ export function SignIn() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                className={inputClass}
               />
             </div>
             {error &&

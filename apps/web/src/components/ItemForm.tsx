@@ -1,5 +1,7 @@
 import { instantToZonedInput, zonedTimeToInstant, type Item, type ItemKind, type ItemValues } from "@hoppin/core";
+import { BedDouble, Bus, Lock, MapPin, PartyPopper, Plane, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
+import { inputClass } from "../lib/forms";
 import { Button } from "./ui/Button";
 
 export type ItemFormValues = ItemValues;
@@ -15,28 +17,25 @@ export interface ItemFormProps {
 
 type Audience = "group" | "optional" | "private";
 
-const KINDS: { value: ItemKind; label: string }[] = [
-  { value: "flight", label: "Flight" },
-  { value: "stay", label: "Stay" },
-  { value: "activity", label: "Activity" },
-  { value: "transport", label: "Transport" },
-  { value: "plan", label: "Plan" },
+const KINDS: { value: ItemKind; label: string; icon: LucideIcon }[] = [
+  { value: "flight", label: "Flight", icon: Plane },
+  { value: "stay", label: "Stay", icon: BedDouble },
+  { value: "activity", label: "Activity", icon: Sparkles },
+  { value: "transport", label: "Transport", icon: Bus },
+  { value: "plan", label: "Plan", icon: MapPin },
 ];
 
-const AUDIENCES: { value: Audience; label: string; hint: string }[] = [
-  { value: "group", label: "Whole group", hint: "A fixed plan for everyone" },
-  { value: "optional", label: "Optional, anyone can join", hint: "Shows as a small chip people can tap" },
-  { value: "private", label: "Just me", hint: "Only you can see it" },
+const AUDIENCES: { value: Audience; label: string; hint: string; icon: LucideIcon }[] = [
+  { value: "group", label: "Whole group", hint: "A fixed plan for everyone", icon: Users },
+  { value: "optional", label: "Optional, anyone can join", hint: "Shows as a small chip people can tap", icon: PartyPopper },
+  { value: "private", label: "Just me", hint: "Only you can see it", icon: Lock },
 ];
-
-const inputClass =
-  "min-h-11 w-full rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent";
 
 function Field({ label, error, children }: { label: string; error?: string; children: (props: { id: string; describedBy?: string; invalid?: boolean }) => React.ReactNode }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-semibold">
         {label}
       </label>
       {children({ id, describedBy: error ? `${id}-error` : undefined, invalid: error ? true : undefined })}
@@ -102,55 +101,82 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       <Field label="Title" error={errors.title}>
-        {(p) => <input id={p.id} aria-invalid={p.invalid} aria-describedby={p.describedBy} value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />}
-      </Field>
-      <Field label="Type">
         {(p) => (
-          <select id={p.id} value={kind} onChange={(e) => setKind(e.target.value as ItemKind)} className={inputClass}>
-            {KINDS.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
+          <input
+            id={p.id}
+            aria-invalid={p.invalid}
+            aria-describedby={p.describedBy}
+            placeholder="What's the plan?"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={`${inputClass} font-display text-lg font-bold`}
+          />
         )}
       </Field>
-      <p className="text-xs text-muted">Times are in {zone}.</p>
-      <Field label="Starts" error={errors.starts}>
-        {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={starts} onChange={(e) => setStarts(e.target.value)} className={inputClass} />}
-      </Field>
-      <Field label="Ends" error={errors.ends}>
-        {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={ends} onChange={(e) => setEnds(e.target.value)} className={inputClass} />}
-      </Field>
-      <Field label="Location link" error={errors.location}>
-        {(p) => <input id={p.id} type="url" inputMode="url" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />}
-      </Field>
-      <Field label="Notes">
-        {(p) => <textarea id={p.id} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} py-2`} />}
-      </Field>
+
+      <div className="flex flex-col gap-1.5">
+        <p id="kind-label" className="text-sm font-semibold">
+          Type
+        </p>
+        <div role="radiogroup" aria-label="Type" className="flex flex-wrap gap-2">
+          {KINDS.map(({ value, label, icon: Icon }) => (
+            <label
+              key={value}
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-raised px-4 text-sm font-semibold transition-colors has-[:checked]:bg-accent has-[:checked]:text-accent-fg has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
+            >
+              <input type="radio" name="kind" className="sr-only" checked={kind === value} onChange={() => setKind(value)} />
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Starts" error={errors.starts}>
+          {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={starts} onChange={(e) => setStarts(e.target.value)} className={inputClass} />}
+        </Field>
+        <Field label="Ends" error={errors.ends}>
+          {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={ends} onChange={(e) => setEnds(e.target.value)} className={inputClass} />}
+        </Field>
+      </div>
+      <p className="-mt-3 text-xs text-muted">Times are in {zone}.</p>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Who is it for?</legend>
-        {AUDIENCES.map((a) => (
-          <label key={a.value} className="flex min-h-11 items-start gap-3 rounded-card border border-line bg-surface p-3">
-            <input type="radio" name="audience" value={a.value} checked={audience === a.value} onChange={() => setAudience(a.value)} className="mt-1 accent-accent" />
+        <legend className="mb-1.5 text-sm font-semibold">Who is it for?</legend>
+        {AUDIENCES.map(({ value, label, hint, icon: Icon }) => (
+          <label
+            key={value}
+            className="flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl bg-raised p-3 transition-colors has-[:checked]:bg-accent-soft has-[:checked]:ring-2 has-[:checked]:ring-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
+          >
+            <input type="radio" name="audience" value={value} checked={audience === value} onChange={() => setAudience(value)} className="sr-only" />
+            <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface">
+              <Icon className="size-4" />
+            </span>
             <span>
-              <span className="block font-medium">{a.label}</span>
-              <span className="block text-sm text-muted">{a.hint}</span>
+              <span className="block font-semibold">{label}</span>
+              <span className="block text-sm text-muted">{hint}</span>
             </span>
           </label>
         ))}
       </fieldset>
+
+      <Field label="Location link" error={errors.location}>
+        {(p) => <input id={p.id} type="url" inputMode="url" placeholder="Paste a Maps link" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />}
+      </Field>
+      <Field label="Notes">
+        {(p) => <textarea id={p.id} rows={3} placeholder="Booking reference, what to bring…" value={notes} onChange={(e) => setNotes(e.target.value)} className={`${inputClass} py-3`} />}
+      </Field>
 
       {failed && (
         <p role="alert" className="text-sm text-danger-fg">
           {failed}
         </p>
       )}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>
+      <div className="sticky bottom-0 -mx-5 flex gap-2 bg-surface px-5 pb-1 pt-3">
+        <Button type="submit" disabled={saving} className="flex-1">
           Save
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
