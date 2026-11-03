@@ -1,3 +1,4 @@
+import { m } from "motion/react";
 import { CalendarDays, Plus, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -9,6 +10,7 @@ import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
 import { cn } from "../lib/cn";
+import { springSoft } from "../lib/motion";
 import { formatDateRange } from "../lib/dates";
 
 // Trip cards take turns with the palette's big colour block, the soft pop tint and a plain card.
@@ -63,11 +65,11 @@ export function TripsHome() {
       {trips === "error" && <p>Couldn't load your trips. Check your connection and try again.</p>}
       {Array.isArray(trips) && trips.length === 0 && <p className="text-muted">No trips yet. Create one, or ask the organizer to send you an invite link.</p>}
       {Array.isArray(trips) && trips.length > 0 && (
-        <ul className="flex flex-col gap-3">
+        <m.ul className="flex flex-col gap-3" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
           {trips.map((trip, i) => {
             const look = TRIP_LOOKS[i % TRIP_LOOKS.length]!;
             return (
-              <li key={trip.id}>
+              <m.li key={trip.id} variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: springSoft } }}>
                 <Link
                   to={`/trips/${trip.id}`}
                   className={cn("flex flex-col gap-2 rounded-card p-5 transition-transform active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent", look.card)}
@@ -78,10 +80,10 @@ export function TripsHome() {
                     {formatDateRange(trip.startDate, trip.endDate)}
                   </span>
                 </Link>
-              </li>
+              </m.li>
             );
           })}
-        </ul>
+        </m.ul>
       )}
       <div>
         <Button variant="ghost" onClick={() => void signOut()}>

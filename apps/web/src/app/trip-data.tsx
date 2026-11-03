@@ -23,7 +23,14 @@ export function tripGate(trip: TripData): ReactNode | null {
     case "ready":
       return null;
     case "loading":
-      return <p role="status">Loading your trip…</p>;
+      return (
+        <div role="status" aria-label="Loading your trip" className="flex flex-col gap-3">
+          <span className="sr-only">Loading your trip…</span>
+          {[0, 1, 2].map((i) => (
+            <div key={i} aria-hidden="true" className="h-24 animate-pulse rounded-card bg-raised" style={{ animationDelay: `${i * 120}ms` }} />
+          ))}
+        </div>
+      );
     case "removed":
       return <p>You no longer have access to this trip.</p>;
     case "unavailable":

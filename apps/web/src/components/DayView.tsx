@@ -1,7 +1,9 @@
 import { formatTime, formatTimeRange, UNANCHORED, type DayLayout, type Item } from "@hoppin/core";
+import { m } from "motion/react";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/cn";
+import { springSoft } from "../lib/motion";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
 import { Chip } from "./ui/Chip";
@@ -30,6 +32,9 @@ export interface DayViewProps {
   /** Lets the app turn a block's title into a link to its detail page. */
   renderBlockTitle?: (item: Item) => React.ReactNode;
 }
+
+const LIST = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } } };
+const ITEM = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: springSoft } };
 
 const UNKNOWN: Person = { name: "Someone", color: "#475569" };
 
@@ -80,33 +85,35 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
 
       {empty && <p className="text-muted">Nothing planned for this day yet.</p>}
 
+      <m.div key={date} className="flex flex-col gap-3" variants={LIST} initial="hidden" animate="show">
       {layout.blocks.map((block) => {
         const spotlight = block.id === highlightId;
         return (
-          <section key={block.id} aria-label={block.title}>
+          <m.section key={block.id} aria-label={block.title} variants={ITEM}>
             <div className={cn("rounded-card p-4", spotlight ? "bg-hero text-hero-fg" : "border border-line bg-surface shadow-card")}>
               <p className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</p>
               <p className="font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
               {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
             </div>
-          </section>
+          </m.section>
         );
       })}
 
       {layout.chips[UNANCHORED] && (
-        <section aria-label="Optional plans">
+        <m.section aria-label="Optional plans" variants={ITEM}>
           <p className="text-sm font-medium text-muted">Optional plans</p>
           {chipRow(layout.chips[UNANCHORED] ?? [])}
-        </section>
+        </m.section>
       )}
 
       {layout.privateLines.map((line) => (
-        <div key={line.id} className="flex flex-wrap items-center gap-x-3 rounded-card border border-dashed border-line p-3 text-muted">
+        <m.div key={line.id} variants={ITEM} className="flex flex-wrap items-center gap-x-3 rounded-card border border-dashed border-line p-3 text-muted">
           <span className="text-sm">{formatTime(line.startsAt, line.tz)}</span>
           <span>{line.title}</span>
           <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-xs">Only you</span>
-        </div>
+        </m.div>
       ))}
+      </m.div>
 
       <Sheet
         open={selected !== null}
@@ -131,7 +138,9 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
                   {going.map((id) => (
-                    <Avatar key={id} name={person(id).name} color={person(id).color} className="size-8 ring-2 ring-surface" />
+                    <m.span key={id} initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                      <Avatar name={person(id).name} color={person(id).color} className="size-8 ring-2 ring-surface" />
+                    </m.span>
                   ))}
                 </div>
                 <span className="text-sm text-muted">{going.length} going</span>

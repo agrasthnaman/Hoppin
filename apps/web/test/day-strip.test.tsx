@@ -20,11 +20,11 @@ describe("DayStrip", () => {
     expect(links[2]).toHaveAttribute("href", "/?date=2026-12-03");
   });
 
-  it("marks the selected day for screen readers and styles it with the pop colour", () => {
+  it("marks the selected day for screen readers and gives it the sliding pop-colour pill", () => {
     setup();
     const selected = screen.getByRole("link", { name: "Thursday 3 December" });
     expect(selected).toHaveAttribute("aria-current", "date");
-    expect(selected).toHaveClass("bg-accent");
+    expect(selected.querySelector(".bg-accent")).not.toBeNull(); // the sliding pill behind it
     expect(screen.getByRole("link", { name: "Friday 4 December" })).not.toHaveAttribute("aria-current");
   });
 
