@@ -91,6 +91,12 @@ describe("DayView", () => {
     expect(screen.getByText("Nothing planned for this day yet.")).toBeInTheDocument();
   });
 
+  it("spotlights one plan with the big colour block, and the rest stay plain", () => {
+    setup({ highlightId: tour.id });
+    expect(screen.getByRole("region", { name: "Old town tour" }).firstElementChild).toHaveClass("bg-hero");
+    expect(screen.getByRole("region", { name: "Lunch" }).firstElementChild).not.toHaveClass("bg-hero");
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = setup();
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();

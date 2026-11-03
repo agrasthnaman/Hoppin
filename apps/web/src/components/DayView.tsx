@@ -1,9 +1,9 @@
 import { formatTime, formatTimeRange, UNANCHORED, type DayLayout, type Item } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
+import { cn } from "../lib/cn";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
-import { Card } from "./ui/Card";
 import { Chip } from "./ui/Chip";
 import { Sheet } from "./ui/Sheet";
 
@@ -23,6 +23,10 @@ export interface DayViewProps {
   /** User ids who said "I'm in", by item id. */
   goingByItem: Record<string, string[]>;
   onJoin: (itemId: string) => void;
+  /** The plan to spotlight with the big colour block (the one happening now, or next up). */
+  highlightId?: string | null;
+  /** Shown at the right of the day heading (for example an "Add plan" button). */
+  headerAction?: React.ReactNode;
   /** Lets the app turn a block's title into a link to its detail page. */
   renderBlockTitle?: (item: Item) => React.ReactNode;
 }
@@ -33,14 +37,15 @@ function timeLabel(item: Item): string {
   return formatTimeRange(item.startsAt, item.endsAt, item.tz);
 }
 
-function dateLabel(date: string): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(
-    new Date(`${date}T12:00:00Z`),
-  );
+/** "Wednesday" and "4 November", shown as a small line above a big one. */
+function dateParts(date: string): { weekday: string; rest: string } {
+  const at = new Date(`${date}T12:00:00Z`);
+  const fmt = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...o }).format(at);
+  return { weekday: fmt({ weekday: "long" }), rest: fmt({ day: "numeric", month: "long" }) };
 }
 
 /** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle }: DayViewProps) {
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
   const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
@@ -65,19 +70,28 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold">{dateLabel(date)}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display">
+          <span className="block text-sm font-semibold text-muted">{dateParts(date).weekday}</span>{" "}
+          <span className="block text-3xl font-extrabold leading-none">{dateParts(date).rest}</span>
+        </h2>
+        {headerAction}
+      </div>
 
       {empty && <p className="text-muted">Nothing planned for this day yet.</p>}
 
-      {layout.blocks.map((block) => (
-        <section key={block.id} aria-label={block.title}>
-          <Card className="border-l-4 border-l-accent">
-            <p className="text-sm text-muted">{timeLabel(block)}</p>
-            <p className="font-semibold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
-            {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
-          </Card>
-        </section>
-      ))}
+      {layout.blocks.map((block) => {
+        const spotlight = block.id === highlightId;
+        return (
+          <section key={block.id} aria-label={block.title}>
+            <div className={cn("rounded-card p-4", spotlight ? "bg-hero text-hero-fg" : "border border-line bg-surface shadow-card")}>
+              <p className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</p>
+              <p className="font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
+              {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
+            </div>
+          </section>
+        );
+      })}
 
       {layout.chips[UNANCHORED] && (
         <section aria-label="Optional plans">
@@ -107,7 +121,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 href={selected.locationUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 text-accent underline"
+                className="inline-flex items-center gap-2 text-link underline"
               >
                 <MapPin aria-hidden="true" className="size-4" />
                 Open location

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { DayView } from "./components/DayView";
 import { BookingDetail } from "./components/BookingDetail";
 import { JoinFlow } from "./routes/JoinFlow";
+import { AppearanceCard } from "./components/AppearanceCard";
 import { Avatar } from "./components/ui/Avatar";
 import { Banner } from "./components/ui/Banner";
 import { Button } from "./components/ui/Button";
@@ -29,7 +30,6 @@ const demoPeople = { aman: { name: "Aman", color: personColor(3) }, riya: { name
 
 /** Preview page for the design system (run `npm run dev -w apps/web`). Replaced by the real app in later issues. */
 export function Gallery() {
-  const [theme, setTheme] = useState<"light" | "dark">(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
   const [open, setOpen] = useState(false);
   if (new URLSearchParams(location.search).get("view") === "booking") {
     const flight = demo({
@@ -41,7 +41,7 @@ export function Gallery() {
       { id: "d2", tripId: "t", itemId: "f1", ownerId: "aman", scope: "personal" as const, storagePath: "t/aman/d2-passport.pdf", kind: "passport", fileName: "passport.pdf" },
     ];
     return (
-      <div data-theme={theme} className="min-h-dvh bg-bg p-4 text-fg">
+      <div className="min-h-dvh bg-bg p-4 text-fg">
         <div className="mx-auto max-w-md">
           <BookingDetail
             item={flight}
@@ -58,7 +58,7 @@ export function Gallery() {
   }
   if (new URLSearchParams(location.search).get("view") === "join") {
     return (
-      <div data-theme={theme} className="min-h-dvh bg-bg text-fg">
+      <div className="min-h-dvh bg-bg text-fg">
         <JoinFlow
           token={"a1".repeat(32)}
           signedInUserId={null}
@@ -71,14 +71,12 @@ export function Gallery() {
     );
   }
   return (
-    <div data-theme={theme} className="min-h-dvh bg-bg p-4 text-fg md:p-8">
+    <div className="min-h-dvh bg-bg p-4 text-fg md:p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Hoppin design system</h1>
-          <Button variant="secondary" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
-            {theme === "light" ? "Dark" : "Light"}
-          </Button>
         </div>
+        <AppearanceCard />
         <Banner kind="offline" text="You're offline. Showing your saved trip." />
         <Banner kind="stale" text="Last synced 2 days ago" />
         <Banner kind="conflict" text="Your edit to Lunch was overwritten by Riya." />

@@ -68,3 +68,15 @@ export function buildDay(items: Item[], viewerId: string, date: string, viewerTz
   }
   return { blocks, chips, privateLines };
 }
+
+/**
+ * The plan to spotlight on a day: the one happening now, or else the next to start. Multi-day stays are skipped
+ * (they would always win) unless they are all there is. A plan with no end time counts as an hour long.
+ * Returns null when everything is over.
+ */
+export function nextBlock(blocks: Item[], now: number): string | null {
+  const sorted = [...blocks].sort((a, b) => ms(a.startsAt) - ms(b.startsAt));
+  const candidates = sorted.some((b) => b.kind !== "stay") ? sorted.filter((b) => b.kind !== "stay") : sorted;
+  const upcoming = candidates.find((b) => (b.endsAt ? ms(b.endsAt) : ms(b.startsAt) + HOUR) >= now);
+  return upcoming?.id ?? null;
+}

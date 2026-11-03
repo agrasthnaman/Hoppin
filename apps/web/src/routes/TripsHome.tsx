@@ -8,7 +8,15 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
+import { cn } from "../lib/cn";
 import { formatDateRange } from "../lib/dates";
+
+// Trip cards take turns with the palette's big colour block, the soft pop tint and a plain card.
+const TRIP_LOOKS = [
+  { card: "bg-hero text-hero-fg", sub: "text-hero-muted" },
+  { card: "bg-accent-soft text-accent-soft-fg", sub: "text-accent-soft-fg" },
+  { card: "border border-line bg-surface text-fg shadow-card", sub: "text-muted" },
+];
 
 type Trips = { id: string; name: string; startDate?: string | null; endDate?: string | null }[];
 
@@ -35,7 +43,7 @@ export function TripsHome() {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Your trips</h1>
+        <h1 className="font-display text-4xl font-extrabold">Your trips</h1>
         <Button disabled={!online} onClick={() => setCreating(true)}>
           <Plus aria-hidden="true" className="size-4" />
           New trip
@@ -46,20 +54,24 @@ export function TripsHome() {
       {trips === "error" && <p>Couldn't load your trips. Check your connection and try again.</p>}
       {Array.isArray(trips) && trips.length === 0 && <p className="text-muted">No trips yet. Create one, or ask the organizer to send you an invite link.</p>}
       {Array.isArray(trips) && trips.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {trips.map((trip) => (
-            <li key={trip.id}>
-              <Card className="p-0">
-                <Link to={`/trips/${trip.id}`} className="flex flex-col gap-1 rounded-card p-4 focus-visible:outline-2 focus-visible:outline-accent">
-                  <span className="text-lg font-semibold">{trip.name}</span>
-                  <span className="flex items-center gap-1.5 text-sm text-muted">
+        <ul className="flex flex-col gap-3">
+          {trips.map((trip, i) => {
+            const look = TRIP_LOOKS[i % TRIP_LOOKS.length]!;
+            return (
+              <li key={trip.id}>
+                <Link
+                  to={`/trips/${trip.id}`}
+                  className={cn("flex flex-col gap-2 rounded-card p-5 transition-transform active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent", look.card)}
+                >
+                  <span className="font-display text-3xl font-extrabold leading-none">{trip.name}</span>
+                  <span className={cn("flex items-center gap-1.5 text-sm font-medium", look.sub)}>
                     <CalendarDays aria-hidden="true" className="size-4" />
                     {formatDateRange(trip.startDate, trip.endDate)}
                   </span>
                 </Link>
-              </Card>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
       <div>

@@ -6,6 +6,7 @@ import { createServices, ServicesProvider, type Services } from "./app/services"
 import { DemoBadge } from "./components/DemoBadge";
 import { createAppRoutes } from "./app/routes";
 import { createSupabaseClient } from "./lib/supabase";
+import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles/tokens.css";
 
 registerSW({ immediate: true }); // installs the service worker (production builds only)
@@ -22,10 +23,12 @@ async function start() {
   const router = createBrowserRouter(createAppRoutes());
   root.render(
     <StrictMode>
-      <ServicesProvider services={services}>
-        {demo && <DemoBadge />}
-        <RouterProvider router={router} />
-      </ServicesProvider>
+      <ThemeProvider>
+        <ServicesProvider services={services}>
+          {demo && <DemoBadge />}
+          <RouterProvider router={router} />
+        </ServicesProvider>
+      </ThemeProvider>
     </StrictMode>,
   );
 }

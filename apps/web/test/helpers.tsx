@@ -6,6 +6,7 @@ import { createAppRoutes } from "../src/app/routes";
 import { ServicesProvider, type Services } from "../src/app/services";
 import type { SessionClient } from "../src/app/session";
 import { openOfflineDb } from "../src/offline/db";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 export const NOW = Date.UTC(2026, 11, 2, 4, 0, 0); // 2 Dec 2026, 09:30 in Kolkata
 export const TZ = "Asia/Kolkata";
@@ -107,9 +108,11 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
 export function renderApp(path: string, services: Services) {
   const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] });
   const utils = render(
-    <ServicesProvider services={services}>
-      <RouterProvider router={router} />
-    </ServicesProvider>,
+    <ThemeProvider>
+      <ServicesProvider services={services}>
+        <RouterProvider router={router} />
+      </ServicesProvider>
+    </ThemeProvider>,
   );
   return { router, ...utils };
 }

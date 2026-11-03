@@ -48,10 +48,10 @@ describe("AppShell navigation", () => {
     expect(within(nav).getByRole("link", { name: "Days" })).not.toHaveAttribute("aria-current");
   });
 
-  it("is a bottom bar on phones and becomes a sidebar on wide screens", () => {
+  it("is a floating bar on phones and becomes a sidebar on wide screens", () => {
     setup();
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(nav).toHaveClass("fixed", "bottom-0");
+    expect(nav).toHaveClass("fixed", "bottom-3", "rounded-full"); // a floating pill on phones
     expect(nav).toHaveClass("md:static", "md:flex-col");
   });
 

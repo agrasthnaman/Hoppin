@@ -49,7 +49,7 @@ export function DocumentList({ documents, member, people, onOpen }: DocumentList
                 type="button"
                 aria-label={`Open ${doc.fileName}`}
                 onClick={() => void open(doc)}
-                className="min-h-11 rounded-full px-4 text-sm font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+                className="min-h-11 rounded-full px-4 text-sm font-semibold text-link hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Open
               </button>

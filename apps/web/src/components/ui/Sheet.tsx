@@ -17,11 +17,12 @@ export function Sheet({ open, onOpenChange, title, description, children }: Shee
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content
-          className="fixed inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-surface p-5 text-fg shadow-card
+          className="fixed inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-surface p-5 pt-3 text-fg shadow-card
             md:inset-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
         >
+          <div aria-hidden="true" className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line md:hidden" />
           <div className="mb-3 flex items-start justify-between gap-4">
-            <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
+            <Dialog.Title className="font-display text-xl font-bold">{title}</Dialog.Title>
             <Dialog.Close
               aria-label="Close"
               className="rounded-full p-2 hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
