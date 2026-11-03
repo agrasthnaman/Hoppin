@@ -47,7 +47,7 @@ Pick the lowest-numbered wave below that has an open issue whose dependencies ar
 - **One issue per person at a time**, and at most two open pull requests per person.
 - **Shared files cause conflicts.** `types.ts` (core types) and the database migrations are shared.
   - #5 owns `001_core.sql` and the first version of `types.ts`. Later issues add only to the end of those files.
-  - Migration numbers are reserved so nobody collides: 001 core (#5), 002 polls (#21), 003 share links (#25), 004 images (#8), 005 expenses (#20), 006 notifications (#24).
+  - Migration numbers are reserved so nobody collides: 001 core (#5), 002 polls (#21), 003 share links (#25), 004 images (#8), 005 expenses (#20), 006 notifications (#24), 007 invites and profiles (#6).
 - **Interfaces first.** If your issue produces something another issue uses, open a small pull request with just the signatures and tests first, so the next person can start sooner.
 - **Reviews:** someone other than the author reviews. Review requests are picked up before new issues.
 - **Found a gap?** Open a new issue in the right phase and label it. Don't expand your own issue.
