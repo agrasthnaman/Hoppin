@@ -14,6 +14,8 @@ function safeNext(next: string | null): string {
 export function SignIn() {
   const { auth } = useServices();
   const [params] = useSearchParams();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -21,17 +23,27 @@ export function SignIn() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (mode === "signup" && !name.trim()) {
+      setError("Enter your name");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError("Enter a valid email");
       return;
     }
     setError(null);
     setSending(true);
+    const redirectTo = `${window.location.origin}${safeNext(params.get("next"))}`;
     try {
-      await auth.signIn({ email: email.trim(), redirectTo: `${window.location.origin}${safeNext(params.get("next"))}` });
+      if (mode === "signup") await auth.sendMagicLink({ email: email.trim(), name: name.trim(), redirectTo });
+      else await auth.signIn({ email: email.trim(), redirectTo });
       setSentTo(email.trim());
     } catch {
-      setError("Couldn't send the link. If you're new here, ask the organizer for an invite link.");
+      setError(
+        mode === "signup"
+          ? "Couldn't send the link. Please try again."
+          : "Couldn't send the link. If you're new here, create an account below or ask the organizer for an invite link.",
+      );
     } finally {
       setSending(false);
     }
@@ -48,6 +60,20 @@ export function SignIn() {
           </div>
         ) : (
           <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+            {mode === "signup" && (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="signin-name" className="text-sm font-medium">
+                  Your name
+                </label>
+                <input
+                  id="signin-name"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                />
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <label htmlFor="signin-email" className="text-sm font-medium">
                 Email
@@ -64,7 +90,10 @@ export function SignIn() {
             {error &&
               (error.startsWith("Couldn't") ? <Banner kind="conflict" text={error} /> : <p className="text-sm text-danger-fg">{error}</p>)}
             <Button type="submit" disabled={sending}>
-              Email me a sign-in link
+              {mode === "signup" ? "Create account and email me a link" : "Email me a sign-in link"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(null); }}>
+              {mode === "signup" ? "I already have an account" : "New here? Create an account"}
             </Button>
           </form>
         )}

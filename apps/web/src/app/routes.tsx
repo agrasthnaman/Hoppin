@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from "react-router";
 import { DaysScreen } from "../routes/DaysScreen";
 import { ItemScreen } from "../routes/ItemScreen";
 import { JoinRoute } from "../routes/JoinRoute";
+import { MembersScreen } from "../routes/MembersScreen";
 import { MoreScreen } from "../routes/MoreScreen";
 import { RequireSession } from "../routes/RequireSession";
 import { SignIn } from "../routes/SignIn";
@@ -30,6 +31,7 @@ export function createAppRoutes(): RouteObject[] {
             { path: "days", element: <DaysScreen /> },
             { path: "items/:itemId", element: <ItemScreen /> },
             { path: "more", element: <MoreScreen /> },
+            { path: "members", element: <MembersScreen /> },
             { path: "today", ...lazyPage(() => import("../routes/Today")) },
             { path: "money", ...lazyPage(() => import("../routes/Money")) },
             { path: "docs", ...lazyPage(() => import("../routes/Docs")) },

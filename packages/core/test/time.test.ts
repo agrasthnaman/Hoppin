@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, dayRange, defaultDay, formatTime, instantToZonedInput, localDate, zonedTimeToInstant } from "../src/time";
+import { addDays, dayRange, defaultDay, formatTime, formatTimeRange, instantToZonedInput, localDate, zonedTimeToInstant } from "../src/time";
 
 describe("dayRange", () => {
   it("returns the instants a calendar day starts and ends in a time zone", () => {
@@ -72,5 +72,23 @@ describe("localDate and defaultDay", () => {
     expect(defaultDay({ startDate: null, endDate: null }, NOW, "UTC")).toBe("2026-12-03");
     expect(defaultDay({ startDate: "2026-12-10", endDate: null }, NOW, "UTC")).toBe("2026-12-10");
     expect(defaultDay({ startDate: null, endDate: "2026-12-01" }, NOW, "UTC")).toBe("2026-12-03");
+  });
+});
+
+describe("formatTimeRange", () => {
+  const range = (a: string, b: string | null, tz = "Asia/Kolkata") => formatTimeRange(a, b, tz);
+
+  it("shows just the clock times when it starts and ends on the same day", () => {
+    expect(range("2026-12-01T04:30:00.000Z", "2026-12-01T07:00:00.000Z")).toBe("10:00 – 12:30");
+    expect(range("2026-12-01T04:30:00.000Z", null)).toBe("10:00");
+  });
+
+  it("adds the end date when it ends on a later day, so a stay does not look like it ends before it starts", () => {
+    expect(range("2026-12-01T08:30:00.000Z", "2026-12-05T05:30:00.000Z")).toBe("14:00 – 5 Dec 11:00");
+  });
+
+  it("goes by the days in the given time zone", () => {
+    // 23:00 on 1 Dec in India ends 03:00 on 2 Dec in India: a different day there
+    expect(range("2026-12-01T17:30:00.000Z", "2026-12-01T21:30:00.000Z")).toBe("23:00 – 2 Dec 03:00");
   });
 });

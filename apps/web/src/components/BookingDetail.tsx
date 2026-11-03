@@ -1,4 +1,4 @@
-import { canEdit, formatTime, validateDocumentFile, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
+import { canEdit, formatTimeRange, validateDocumentFile, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import type { Person } from "./DayView";
@@ -34,7 +34,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
   const mayEdit = canEdit(item, member);
   const notes = typeof item.details.notes === "string" ? item.details.notes : "";
   const date = new Intl.DateTimeFormat("en-GB", { timeZone: item.tz, weekday: "long", day: "numeric", month: "long" }).format(new Date(item.startsAt));
-  const time = item.endsAt ? `${formatTime(item.startsAt, item.tz)} – ${formatTime(item.endsAt, item.tz)}` : formatTime(item.startsAt, item.tz);
+  const time = formatTimeRange(item.startsAt, item.endsAt, item.tz);
 
   async function pick(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;

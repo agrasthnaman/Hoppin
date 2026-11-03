@@ -71,3 +71,18 @@ export function defaultDay(trip: { startDate: string | null; endDate: string | n
   if (trip.startDate && trip.endDate && today > trip.endDate) return trip.startDate;
   return today;
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * "10:00 – 12:30" for something within one day, "14:00 – 5 Dec 11:00" when it ends on a later day (a stay),
+ * or just "10:00" with no end. Days are counted in the given time zone.
+ */
+export function formatTimeRange(startIso: string, endIso: string | null, tz: string): string {
+  const start = formatTime(startIso, tz);
+  if (!endIso) return start;
+  const startDay = instantToZonedInput(startIso, tz).slice(0, 10);
+  const endLocal = instantToZonedInput(endIso, tz);
+  if (endLocal.slice(0, 10) === startDay) return `${start} – ${formatTime(endIso, tz)}`;
+  return `${start} – ${Number(endLocal.slice(8, 10))} ${MONTHS[Number(endLocal.slice(5, 7)) - 1]} ${formatTime(endIso, tz)}`;
+}

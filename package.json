@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "test": "npm test --workspaces --if-present",
-    "typecheck": "tsc -p packages/core --noEmit && tsc -p supabase --noEmit && tsc -p apps/web --noEmit"
+    "typecheck": "tsc -p packages/core --noEmit && tsc -p supabase --noEmit && tsc -p apps/web --noEmit",
+    "demo": "npm run dev:demo -w apps/web",
+    "dev": "npm run dev -w apps/web"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.14",

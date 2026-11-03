@@ -3,12 +3,12 @@
 Updated 2026-11-04. Read this first if you are new. Then see [CONTRIBUTING.md](../CONTRIBUTING.md), [work-plan.md](work-plan.md), [design-brief.md](design-brief.md), [deploy.md](deploy.md) and the [design](superpowers/specs/2026-11-03-tripapp-design.md).
 
 ## What works today
-A signed-in member can: sign in by emailed link, join a trip from an invite link (and be approved or removed by the organizer), open their trips, see a day-by-day plan with group items and optional plans from friends, add plans, say "I'm in", open a booking, edit it, attach and open documents, and do all of this with no signal. Changes made offline are saved on the phone and sent when the connection returns; if two people changed the same thing, the later change wins, and the other is kept as a draft that can be applied again or discarded. Personal documents are stored encrypted on the phone, and a removed member's copy is wiped. The privacy rules are enforced in the database and verified against a real Supabase project.
+Run `npm run demo` to click through all of it on sample data. A signed-in person can: create an account or sign in by emailed link, create a trip (and become its organizer), join a trip from an invite link (and be approved or removed by the organizer), open their trips, see a day-by-day plan with group items and optional plans from friends, add plans, say "I'm in", open a booking, edit it, attach and open documents, and do all of this with no signal. Changes made offline are saved on the phone and sent when the connection returns; if two people changed the same thing, the later change wins, and the other is kept as a draft that can be applied again or discarded. Personal documents are stored encrypted on the phone, and a removed member's copy is wiped. The privacy rules are enforced in the database and verified against a real Supabase project.
 
 ## Issues
 | Done | Issue |
 |---|---|
-| yes | #3 scaffold, #4 design system, #5 schema and privacy rules, #6 invites, #7 app shell, #10 day view, #11 bookings and documents, #13 offline cache, #14 offline edits and conflicts, #37 data layer |
+| yes | #3 scaffold, #4 design system, #5 schema and privacy rules, #6 invites, #7 app shell, #9 trips list and create trip, #10 day view, #11 bookings and documents, #12 members screen, #13 offline cache, #14 offline edits and conflicts, #37 data layer |
 | partly | #1 accounts: dev project done, email service, prod project and hosting not done |
 | open | everything else on the [issues page](https://github.com/agrasthnaman/Hoppin/issues) |
 
@@ -19,7 +19,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 |---|---|---|
 | **Money** (good first lane) | #18 settlement logic, then #19 currency, then #20 expenses screen | #18 and #19 are new files (`packages/core/src/settlement.ts`, `apps/web/src/providers/rates.ts`). #20 adds a route and migration 005, so tell the others when you reach it. |
 | Polls and weather | #21 polls (migration 002), #22 weather | New files; each adds one line to the route table. |
-| Owner's lane (in progress, please avoid) | #9 trips list and create, #12 members screen, #15 Today view | These change the trip shell, the trips list and the route table. |
+| Owner's lane (in progress, please avoid) | #15 Today view, then #38 bookings and My documents screens | These change the trip shell and the route table. |
 | Waiting on accounts or keys | #8 images, #23 day map, #24 notifications, #28 deploy | Need keys from the owner (#2) or the email service (#1). |
 
 ## Files that cause merge conflicts (be careful)
@@ -31,7 +31,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 ## Get set up
 1. Node 22 or newer. `npm install` at the repo root. **If you are outside JFrog**: `package-lock.json` points at an internal registry, so `npm ci` will fail. Use `npm install --no-package-lock` and do not commit lockfile changes (a proper fix is pending).
 2. `npm test` (all packages) and `npm run typecheck`. These need no accounts.
-3. To run the app with real data: ask the owner for the dev project's URL and public key, then copy `apps/web/.env.example` to `apps/web/.env.local`. Without that, `npm run dev -w apps/web` and open `/gallery` to see the design system.
+3. Fastest way to see it: `npm run demo` (sample data, nothing else needed). To run the app with real data: ask the owner for the dev project's URL and public key, then copy `apps/web/.env.example` to `apps/web/.env.local`. Without that, `npm run dev -w apps/web` and open `/gallery` to see the design system.
 4. `npm run test:dev -w apps/web` runs against the real dev project and needs test users (see [deploy.md](deploy.md)); ask before running it.
 
 ## How we work

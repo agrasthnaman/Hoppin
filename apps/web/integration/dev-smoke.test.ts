@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ItemFormValues } from "../src/components/ItemForm";
+import { createServices } from "../src/app/services";
 import { createDocumentSource } from "../src/data/document-source";
 import { createTripSource } from "../src/data/trip-source";
 import { ConflictError, createItem, setRsvp, updateItem } from "../src/data/writes";
@@ -241,5 +242,35 @@ describe.skipIf(!run)("real Supabase project", () => {
     expect(await getLocalTrip(db, tripId)).toBeNull();
     const doc = { id: "x", tripId, itemId: null, ownerId: aliceId, scope: "shared" as const, storagePath: sharedDocPath, kind: "ticket", fileName: "tickets.pdf" };
     await expect(getDocumentUrl(bob, doc)).rejects.toThrow();
+  });
+
+  it("organizer tools through the real app services: create a trip, invite links, approval and edit rights", async () => {
+    const aliceApp = createServices(alice);
+    const bobApp = createServices(bob);
+    const trip2 = await aliceApp.actions.createTrip({ name: "Smoke Hampi", startDate: "2027-01-10", endDate: "2027-01-14" });
+    expect(await aliceApp.actions.listTrips()).toContainEqual(expect.objectContaining({ id: trip2, name: "Smoke Hampi", startDate: "2027-01-10", endDate: "2027-01-14" }));
+
+    const invite = await aliceApp.invites.createInvite(trip2);
+    expect((await aliceApp.actions.listInvites(trip2)).map((i) => i.id)).toContain(invite.id);
+    expect(await bobApp.actions.listInvites(trip2)).toEqual([]); // only the organizer can see invite links
+
+    expect(await bobApp.invites.redeemInvite(invite.token)).toEqual({ tripId: trip2, status: "pending" });
+    await aliceApp.invites.approveMember(trip2, bobId);
+
+    // Bob cannot edit Alice's plan until the organizer allows it
+    const plan = await createItem(alice, trip2, aliceId, values("Alice's plan"));
+    await expect(updateItem(bob, plan, values("Bob's edit"))).rejects.toBeInstanceOf(ConflictError);
+    await aliceApp.actions.setEditRights(trip2, bobId, true);
+    expect((await updateItem(bob, plan, values("Bob's edit"))).title).toBe("Bob's edit");
+    await aliceApp.actions.setEditRights(trip2, bobId, false);
+    const again = await createTripSource(bob).fetchSnapshot(trip2);
+    if (again.status !== "ok") throw new Error("expected access");
+    await expect(updateItem(bob, again.snapshot.items.find((i) => i.id === plan.id)!, values("Bob again"))).rejects.toBeInstanceOf(ConflictError);
+
+    // a member cannot grant rights, and a stopped link disappears
+    await expect(bobApp.actions.setEditRights(trip2, aliceId, true)).rejects.toThrow();
+    await aliceApp.invites.revokeInvite(invite.id);
+    expect(await aliceApp.actions.listInvites(trip2)).toEqual([]);
+    await expect(createInviteApi(bob).redeemInvite(invite.token)).rejects.toThrow(/invalid or expired/); // a stopped link no longer works for anyone
   });
 });

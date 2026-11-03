@@ -50,7 +50,8 @@ export function snapshot(over: Partial<TripSnapshot> = {}): TripSnapshot {
 type Session = { user: { id: string; email?: string } } | null;
 let n = 0;
 
-export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot | "no-access" | Error; trips?: { id: string; name: string }[] } = {}) {
+type TripRow = { id: string; name: string; startDate?: string | null; endDate?: string | null };
+export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot | "no-access" | Error; trips?: TripRow[]; invites?: { id: string; token: string; createdAt: string; expiresAt: string }[] } = {}) {
   let session: Session = opts.session === undefined ? { user: { id: "me", email: "aman@example.com" } } : opts.session;
   let listener: (e: string, s: Session) => void = () => {};
   const sessionClient: SessionClient = {
@@ -81,11 +82,11 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       }),
     },
     invites: {
-      createInvite: vi.fn(),
-      revokeInvite: vi.fn(),
+      createInvite: vi.fn(async () => ({ id: "inv-new", token: "b2".repeat(32) })),
+      revokeInvite: vi.fn(async () => {}),
       redeemInvite: vi.fn(async () => ({ tripId: "t1", status: "pending" as const })),
-      approveMember: vi.fn(),
-      removeMember: vi.fn(),
+      approveMember: vi.fn(async () => {}),
+      removeMember: vi.fn(async () => {}),
     },
     actions: {
       createItem: vi.fn(async () => {}),
@@ -93,7 +94,10 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       setRsvp: vi.fn(async () => {}),
       uploadDocument: vi.fn(async () => {}),
       documentUrl: vi.fn(async () => "https://signed.example/doc"),
-      listTrips: vi.fn(async () => opts.trips ?? [{ id: "t1", name: "Goa" }]),
+      listTrips: vi.fn(async () => opts.trips ?? [{ id: "t1", name: "Goa", startDate: "2026-12-01", endDate: "2026-12-05" }]),
+      createTrip: vi.fn(async () => "new-trip"),
+      listInvites: vi.fn(async () => opts.invites ?? []),
+      setEditRights: vi.fn(async () => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
   } satisfies Services;

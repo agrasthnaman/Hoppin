@@ -37,6 +37,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "test:dev": "vitest run --config vitest.integration.config.ts"
+    "test:dev": "vitest run --config vitest.integration.config.ts",
+    "dev:demo": "VITE_DEMO=true vite"
   }
 }
