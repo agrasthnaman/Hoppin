@@ -63,14 +63,14 @@ describe("trips home", () => {
   it("lists the person's trips as links", async () => {
     const { services } = fakeServices({ trips: [{ id: "t1", name: "Goa" }, { id: "t2", name: "Manali" }] });
     renderApp("/", services);
-    expect(await screen.findByRole("link", { name: "Goa" })).toHaveAttribute("href", "/trips/t1");
-    expect(screen.getByRole("link", { name: "Manali" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Goa/ })).toHaveAttribute("href", "/trips/t1");
+    expect(screen.getByRole("link", { name: /Manali/ })).toBeInTheDocument();
   });
 
   it("says what to do when there are no trips", async () => {
     const { services } = fakeServices({ trips: [] });
     renderApp("/", services);
-    expect(await screen.findByText(/Ask the organizer to send you an invite link/)).toBeInTheDocument();
+    expect(await screen.findByText(/ask the organizer to send you an invite link/)).toBeInTheDocument();
   });
 });
 

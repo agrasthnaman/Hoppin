@@ -4,4 +4,6 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** "true" runs the app on sample data (npm run demo). */
+  readonly VITE_DEMO?: string;
 }

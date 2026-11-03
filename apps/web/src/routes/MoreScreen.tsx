@@ -1,5 +1,7 @@
 import { formatSyncedAgo } from "@hoppin/core";
+import { Users } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
@@ -39,6 +41,12 @@ export function MoreScreen() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-bold">More</h2>
+      <Card className="p-0">
+        <Link to={`/trips/${trip.tripId}/members`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
+          <Users aria-hidden="true" className="size-5 text-muted" />
+          Members
+        </Link>
+      </Card>
       {gate ?? (
         <Card className="flex flex-col gap-3">
           <h3 className="font-semibold">Offline</h3>

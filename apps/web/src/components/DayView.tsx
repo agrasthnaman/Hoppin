@@ -1,4 +1,4 @@
-import { formatTime, UNANCHORED, type DayLayout, type Item } from "@hoppin/core";
+import { formatTime, formatTimeRange, UNANCHORED, type DayLayout, type Item } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "./ui/Avatar";
@@ -30,8 +30,7 @@ export interface DayViewProps {
 const UNKNOWN: Person = { name: "Someone", color: "#475569" };
 
 function timeLabel(item: Item): string {
-  const start = formatTime(item.startsAt, item.tz);
-  return item.endsAt ? `${start} – ${formatTime(item.endsAt, item.tz)}` : start;
+  return formatTimeRange(item.startsAt, item.endsAt, item.tz);
 }
 
 function dateLabel(date: string): string {

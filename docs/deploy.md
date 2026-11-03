@@ -9,7 +9,7 @@ No secrets belong in this file or in the repo. Keys live in `apps/web/.env.local
 - **Web app config:** `apps/web/.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is public by design; never put the `service_role` key in the app).
 
 ## Testing against the real dev project
-`npm run test:dev -w apps/web` runs the app's real data code (sign in, trips, invites, privacy, RSVPs, version conflicts, documents, offline sync, removal) against `hoppin-dev` with two throwaway users. Last run: 14 of 14 passed (2026-11-04), including the offline-change scenarios.
+`npm run test:dev -w apps/web` runs the app's real data code (sign in, trips, invites, privacy, RSVPs, version conflicts, documents, offline sync, removal) against `hoppin-dev` with two throwaway users. Last run: 15 of 15 passed (2026-11-04), including the offline-change scenarios and the organizer tools (create a trip, invite links, approval, edit rights).
 
 It needs two confirmed test users. Either:
 - create them directly in the dev database (confirmed email, a password, an `auth.identities` row) and pass `SMOKE_EMAIL_ALICE`, `SMOKE_EMAIL_BOB` and `SMOKE_PASSWORD` in the environment, or
