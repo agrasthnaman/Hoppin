@@ -4,6 +4,7 @@ A shared group-trip planner: one place for the itinerary, bookings, documents, e
 
 - Design: [docs/superpowers/specs/2026-11-03-tripapp-design.md](docs/superpowers/specs/2026-11-03-tripapp-design.md)
 - Build plan: [docs/superpowers/plans/2026-11-03-tripapp.md](docs/superpowers/plans/2026-11-03-tripapp.md)
+- Which issue to pick next: [docs/work-plan.md](docs/work-plan.md)
 - Work is split into phases (GitHub milestones) and issues. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Status: planning. No application code yet.
