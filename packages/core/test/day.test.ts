@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDay, UNANCHORED } from "../src/day";
+import { buildDay, nextBlock, UNANCHORED } from "../src/day";
 import type { Item } from "../src/types";
 
 const ME = "me";
@@ -134,5 +134,35 @@ describe("buildDay: private lines", () => {
     expect(day.blocks).toEqual([]);
     expect(Object.values(day.chips).flat()).toEqual([]);
     expect(buildDay([mine, theirs], FRIEND, "2026-12-01", IST).privateLines.map((p) => p.title)).toEqual(["Secret"]);
+  });
+});
+
+describe("nextBlock", () => {
+  const T = (hhmm: string) => new Date(`2026-12-01T${hhmm}:00+05:30`).getTime();
+  const b = (title: string, start: string, end: string | null, over: Partial<Item> = {}) =>
+    item({ title, startsAt: at(start), endsAt: end ? at(end) : null, ...over });
+
+  it("is the plan happening now, or else the next one to start", () => {
+    const tour = b("Tour", "10:00", "12:00");
+    const lunch = b("Lunch", "13:00", "14:00");
+    expect(nextBlock([lunch, tour], T("11:00"))).toBe(tour.id); // running now
+    expect(nextBlock([lunch, tour], T("12:30"))).toBe(lunch.id); // next up
+  });
+
+  it("is nothing once everything is over", () => {
+    expect(nextBlock([b("Tour", "10:00", "12:00")], T("18:00"))).toBeNull();
+  });
+
+  it("does not let a multi-day stay take the spotlight", () => {
+    const stay = item({ title: "Hotel", kind: "stay", startsAt: "2026-11-30T14:00:00+05:30", endsAt: "2026-12-03T11:00:00+05:30" });
+    const tour = b("Tour", "10:00", "12:00");
+    expect(nextBlock([stay, tour], T("09:00"))).toBe(tour.id);
+    expect(nextBlock([stay], T("09:00"))).toBe(stay.id); // unless it is all there is
+  });
+
+  it("treats a plan with no end time as one hour long", () => {
+    const walk = b("Walk", "10:00", null);
+    expect(nextBlock([walk], T("10:30"))).toBe(walk.id);
+    expect(nextBlock([walk], T("11:30"))).toBeNull();
   });
 });

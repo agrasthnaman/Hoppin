@@ -19,7 +19,7 @@ export function ItemScreen() {
   const { snapshot } = trip;
 
   const back = (
-    <Link to={`/trips/${trip.tripId}/days`} className="mb-3 inline-flex items-center gap-1 text-accent focus-visible:outline-2 focus-visible:outline-accent">
+    <Link to={`/trips/${trip.tripId}/days`} className="mb-3 inline-flex items-center gap-1 font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
       <ChevronLeft aria-hidden="true" className="size-4" />
       Back to days
     </Link>

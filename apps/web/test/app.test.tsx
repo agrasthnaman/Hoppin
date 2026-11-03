@@ -125,12 +125,22 @@ describe("days screen", () => {
     expect(await screen.findByRole("heading", { name: /Wednesday 2 December/ })).toBeInTheDocument();
   });
 
-  it("moves to the next and previous day", async () => {
+  it("moves between days with the day strip", async () => {
     const { services } = fakeServices();
+    const { router } = renderApp("/trips/t1/days?date=2026-12-02", services);
+    await userEvent.click(await screen.findByRole("link", { name: "Thursday 3 December" }));
+    expect(router.state.location.search).toBe("?date=2026-12-03");
+    expect(await screen.findByText("Lunch on day three")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Thursday 3 December" })).toHaveAttribute("aria-current", "date");
+    await userEvent.click(screen.getByRole("link", { name: "Wednesday 2 December" }));
+    expect(router.state.location.search).toBe("?date=2026-12-02");
+  });
+
+  it("a trip without dates still has previous and next day arrows", async () => {
+    const { services } = fakeServices({ snapshot: snapshot({ trip: { id: "t1", name: "Someday", startDate: null, endDate: null } }) });
     const { router } = renderApp("/trips/t1/days?date=2026-12-02", services);
     await userEvent.click(await screen.findByRole("link", { name: "Next day" }));
     expect(router.state.location.search).toBe("?date=2026-12-03");
-    expect(await screen.findByText("Lunch on day three")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: "Previous day" }));
     expect(router.state.location.search).toBe("?date=2026-12-02");
   });

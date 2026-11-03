@@ -81,7 +81,7 @@ export function MembersScreen() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-xl font-bold">Members</h2>
+      <h2 className="font-display text-2xl font-extrabold">Members</h2>
       {isOrganizer && off && <p className="text-sm text-muted">Connect to the internet to change members or invite links.</p>}
       {failed && <p role="alert" className="text-sm text-danger-fg">Couldn't do that. Check your connection and try again.</p>}
 

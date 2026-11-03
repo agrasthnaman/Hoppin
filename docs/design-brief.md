@@ -9,18 +9,28 @@ Read this before building or changing any screen. It is the shared look-and-feel
 4. **Motion with purpose.** Motion explains what changed. It is off or minimal when the device asks for reduced motion (issue #17).
 5. **Trust cues.** "Last synced", the offline banner and the "just me" marker are always visible where they matter.
 
-## Look
-- **Palette:** warm cream and white neutrals, one deep teal accent (`--accent`), warm status colours for info, stale and conflict banners.
-- **Dark theme:** deep teal-tinted greys with a bright teal accent.
-- **Person colours:** eight deep colours in `src/lib/colors.ts` (`personColor(index)`), each keeps white text at 4.5:1 or better. A member keeps the same colour on their avatar and chips everywhere.
-- **Shape:** large radii (cards `0.875rem`, buttons and chips fully round), soft shadows.
-- **Type:** Inter, falling back to the system font. Body 16px, small text no smaller than 12px.
-- **Icons:** Lucide.
+## Look: "soft pop"
+Bold and playful for a Gen Z audience, but clean and elegant, never cheap. The rules that keep it that way:
+- **Tinted areas, pop on small things.** Big areas are soft tints or neutrals. The pop colour (`bg-accent`) appears only on small, important things: the selected day, the main button, active states, badges. One spotlight block per screen at most (`bg-hero`: the plan happening now or next, the trip card).
+- **No heavy outlines.** Large soft corners (`rounded-card`, 26px; pills are fully round), one soft shadow style, hairline borders in the palette's own `line` colour. The only dashed outline is for private plans.
+- **Type:** Bricolage Grotesque (`font-display`) for titles, dates and big numbers; Inter for everything else. Both are bundled, so they work offline.
+- **Navigation:** a floating pill on phones, a dark sidebar on wide screens. Content is centred at a comfortable width.
+- **Dark mode is first class.** Every palette has a dark version designed on purpose, not inverted.
 
-## Tokens and theming
-- All colours live as CSS variables in `apps/web/src/styles/tokens.css` and are exposed to Tailwind as `bg-bg`, `bg-surface`, `bg-raised`, `text-fg`, `text-muted`, `border-line`, `bg-accent`, `text-accent-fg`, and the banner pairs.
-- **Never use raw hex colours in components** (the only exception is a member's person colour).
-- Light is the default. Dark follows the system setting unless `data-theme` is set. Put `data-theme="light"` or `"dark"` on the `<html>` element to force one, or on any wrapper to preview it.
+## Palettes (the user chooses: More > Appearance)
+Three palettes, each with light, dark and follow-the-phone modes. The choice is remembered on the device and applied before the first paint.
+| Palette | Feel | Pop | Big block |
+|---|---|---|---|
+| Rose & teal (default) | confident, elegant | rose | deep teal |
+| Lilac & lime | electric, modern | violet, lime highlight | lavender |
+| Tangerine & sky | sunny, playful | tangerine | sky blue |
+
+**Palettes are data**: `apps/web/src/theme/palettes.json`. After editing it run `npm run gen:theme -w apps/web`, which regenerates `src/styles/theme.generated.css` (a test fails if it is out of date). **A test checks the contrast of every colour pair in every palette and mode** (body text 7:1, other text 4.5:1). Add a pair to `test/theme-palettes.test.ts` when you introduce a new combination. To add a fourth palette, add an entry to the JSON, regenerate, and the tests tell you if it is readable.
+
+## Tokens: the rule for every page
+Use only the semantic classes, never a raw colour (the one exception is a member's personal avatar colour in `src/lib/colors.ts`):
+`bg-bg` page, `bg-surface` cards, `bg-raised` tinted areas, `text-fg` text, `text-muted` secondary text, `border-line`, `bg-accent` + `text-accent-fg` (pop), `bg-accent-soft` + `text-accent-soft-fg` (soft pop), `text-link` (links; `text-accent` is for fills only, it may not be readable as text), `bg-hero` + `text-hero-fg` + `text-hero-muted` (the spotlight block), `bg-highlight` + `text-highlight-fg` (small badges), `bg-nav`, and the status pairs `info`, `warn`, `danger`.
+**Every new screen must look right in all 3 palettes and both modes.** Check it in `npm run demo` (More > Appearance) before opening a pull request, and include phone and desktop screenshots.
 
 ## Components (`apps/web/src/components/ui/`)
 `Button` (primary, secondary, ghost), `Card`, `Avatar`, `Chip`, `Banner` (offline, stale, conflict), `Sheet` (bottom sheet on phones, dialog on desktop), `Tabs`. Built on Radix primitives for accessibility. Preview them with `npm run dev -w apps/web`.

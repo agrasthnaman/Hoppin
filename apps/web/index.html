@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#fdf3f1" />
+    <script>
+      // Apply the saved palette and light/dark choice before the first paint, so there is no flash of the wrong colours.
+      try {
+        var r = document.documentElement,
+          p = localStorage.getItem("hoppin.palette"),
+          m = localStorage.getItem("hoppin.mode");
+        if (["rose", "lilac", "tangerine"].indexOf(p) > -1) r.setAttribute("data-palette", p);
+        if (m === "light" || m === "dark") r.setAttribute("data-theme", m);
+      } catch (e) {}
+    </script>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Hoppin</title>

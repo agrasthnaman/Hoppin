@@ -51,7 +51,7 @@ export function SignIn() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
-      <h1 className="text-2xl font-bold">Sign in</h1>
+      <h1 className="font-display text-4xl font-extrabold">Sign in</h1>
       <Card>
         {sentTo ? (
           <div className="flex flex-col gap-2">

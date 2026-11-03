@@ -12,6 +12,9 @@ Run `npm run demo` to click through all of it on sample data. A signed-in person
 | partly | #1 accounts: dev project done, email service, prod project and hosting not done |
 | open | everything else on the [issues page](https://github.com/agrasthnaman/Hoppin/issues) |
 
+## Look and feel
+The app has a "soft pop" look with three palettes (Rose & teal, Lilac & lime, Tangerine & sky), each in light and dark, chosen in More > Appearance. **Read [design-brief.md](design-brief.md) before building any screen**: use only the semantic colour classes, and check your screen in all palettes and both modes in `npm run demo`.
+
 ## Where to start so nothing clashes
 Work happens in "lanes" that touch different files. Claim an issue (assign yourself) before starting.
 

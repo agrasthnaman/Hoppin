@@ -139,7 +139,7 @@ export function JoinFlow({ token, signedInUserId, redirectTo, sendMagicLink, red
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
-      <h1 className="text-2xl font-bold">Join the trip</h1>
+      <h1 className="font-display text-4xl font-extrabold">Join the trip</h1>
       <Card>{body}</Card>
     </main>
   );

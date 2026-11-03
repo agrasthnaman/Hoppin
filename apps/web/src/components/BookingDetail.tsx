@@ -63,10 +63,10 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
       <Card className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+            <p className="inline-flex rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent-soft-fg">
               {KIND_LABEL[item.kind]} · {audienceLabel(item)}
             </p>
-            <h2 className="text-xl font-bold">{item.title}</h2>
+            <h2 className="mt-2 font-display text-2xl font-extrabold">{item.title}</h2>
           </div>
           {mayEdit && !editing && (
             <Button variant="secondary" onClick={() => setEditing(true)}>
@@ -78,7 +78,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
         <p>{time}</p>
         {item.ownerId !== member.userId && <p className="text-sm text-muted">Added by {people[item.ownerId]?.name ?? "someone"}</p>}
         {item.locationUrl && (
-          <a href={item.locationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-accent underline">
+          <a href={item.locationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-link underline">
             <MapPin aria-hidden="true" className="size-4" />
             Open location
           </a>
@@ -101,7 +101,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
       )}
 
       <section aria-labelledby="docs-heading" className="flex flex-col gap-3">
-        <h3 id="docs-heading" className="text-lg font-semibold">
+        <h3 id="docs-heading" className="font-display text-xl font-bold">
           Documents
         </h3>
         <DocumentList documents={documents.filter((d) => d.itemId === item.id)} member={member} people={people} onOpen={onOpenDocument} />

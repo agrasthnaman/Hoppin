@@ -39,8 +39,8 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
       <nav
         aria-label="Main"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-20 flex justify-around border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]",
-          "md:static md:min-h-dvh md:w-56 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:border-r md:border-t-0 md:p-4",
+          "fixed inset-x-3 bottom-3 z-20 flex justify-around rounded-full bg-nav px-2 shadow-card",
+          "md:static md:inset-auto md:min-h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:rounded-none md:p-4 md:shadow-none",
         )}
       >
         {NAV.map(({ to, label, icon: Icon }) => (
@@ -49,10 +49,10 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
             to={`${basePath}/${to}`}
             className={({ isActive }) =>
               cn(
-                "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-2 text-xs font-medium text-muted",
-                "md:min-h-11 md:flex-none md:flex-row md:justify-start md:gap-3 md:rounded-full md:px-4 md:text-sm",
-                "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
-                isActive && "text-accent md:bg-accent-soft",
+                "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold text-nav-fg transition-colors",
+                "md:min-h-11 md:flex-none md:flex-row md:justify-start md:gap-3 md:px-4 md:text-sm",
+                "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nav-active",
+                isActive && "text-nav-active",
               )
             }
           >
@@ -63,8 +63,9 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
       </nav>
 
       <div className="min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-3xl">
         <header className="flex items-baseline justify-between gap-3 px-4 pb-2 pt-4 md:px-8">
-          <p className="truncate text-lg font-bold">{tripName}</p>
+          <p className="truncate font-display text-3xl font-extrabold">{tripName}</p>
           <p className="shrink-0 text-xs text-muted">{formatSyncedAgo(status.lastSyncedAt, status.now)}</p>
         </header>
         {banners.length > 0 && (
@@ -75,9 +76,10 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
           </div>
         )}
         {above && <div className="flex flex-col gap-2 px-4 pt-2 md:px-8">{above}</div>}
-        <main id="content" className="p-4 pb-24 md:p-8 md:pb-8">
+        <main id="content" className="p-4 pb-28 md:p-8 md:pb-8">
           <Outlet />
         </main>
+        </div>
       </div>
     </div>
   );

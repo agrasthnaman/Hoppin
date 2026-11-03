@@ -1,0 +1,66 @@
+{
+  "defaultPalette": "rose",
+  "palettes": [
+    {
+      "id": "rose",
+      "name": "Rose & teal",
+      "tagline": "Confident and elegant",
+      "light": {
+        "bg": "#fdf3f1", "surface": "#ffffff", "surface2": "#fbe3df", "ink": "#10242a", "muted": "#53696e", "line": "#f1d6d2",
+        "accent": "#ff3d6e", "accentFg": "#10050b", "accentSoft": "#fbdcd8", "accentSoftFg": "#8a1740", "link": "#c8164a",
+        "hero": "#0f3d44", "heroFg": "#ffffff", "heroMuted": "#a8dcd6",
+        "highlight": "#ffd1dc", "highlightFg": "#7d1235",
+        "nav": "#0f3d44", "navFg": "#a8cbc7", "navActive": "#ff7b9c"
+      },
+      "dark": {
+        "bg": "#0d1d21", "surface": "#14292e", "surface2": "#1c3a40", "ink": "#f4efee", "muted": "#9db4b8", "line": "#254850",
+        "accent": "#ff5c85", "accentFg": "#2a0612", "accentSoft": "#3a1d2a", "accentSoftFg": "#ffb3c6", "link": "#ff8aa8",
+        "hero": "#14595f", "heroFg": "#ffffff", "heroMuted": "#b5e3de",
+        "highlight": "#5a2236", "highlightFg": "#ffd1dc",
+        "nav": "#14292e", "navFg": "#9db4b8", "navActive": "#ff7b9c"
+      }
+    },
+    {
+      "id": "lilac",
+      "name": "Lilac & lime",
+      "tagline": "Electric and modern",
+      "light": {
+        "bg": "#f5f2ec", "surface": "#ffffff", "surface2": "#ebe5f7", "ink": "#16131f", "muted": "#5c566f", "line": "#e0d9ee",
+        "accent": "#6c4cff", "accentFg": "#ffffff", "accentSoft": "#e4dcff", "accentSoftFg": "#4a3a8a", "link": "#5a3ce6",
+        "hero": "#e4dcff", "heroFg": "#16131f", "heroMuted": "#4f4580",
+        "highlight": "#d7ff3f", "highlightFg": "#16131f",
+        "nav": "#16131f", "navFg": "#a59fbd", "navActive": "#d7ff3f"
+      },
+      "dark": {
+        "bg": "#12101a", "surface": "#1b1828", "surface2": "#262238", "ink": "#f3f0fa", "muted": "#a59fbd", "line": "#34304a",
+        "accent": "#8f78ff", "accentFg": "#120e2b", "accentSoft": "#2c2650", "accentSoftFg": "#cfc4ff", "link": "#b2a2ff",
+        "hero": "#3a2f7a", "heroFg": "#ffffff", "heroMuted": "#cfc4ff",
+        "highlight": "#d7ff3f", "highlightFg": "#16131f",
+        "nav": "#1b1828", "navFg": "#a59fbd", "navActive": "#d7ff3f"
+      }
+    },
+    {
+      "id": "tangerine",
+      "name": "Tangerine & sky",
+      "tagline": "Sunny and playful",
+      "light": {
+        "bg": "#fff9ef", "surface": "#ffffff", "surface2": "#ffeccf", "ink": "#1d1a16", "muted": "#6a5f4f", "line": "#f1e2c8",
+        "accent": "#ff6a3d", "accentFg": "#1d1a16", "accentSoft": "#ffe3cf", "accentSoftFg": "#8a3a12", "link": "#b8400f",
+        "hero": "#cfeaff", "heroFg": "#1d1a16", "heroMuted": "#1f5f93",
+        "highlight": "#ffe27a", "highlightFg": "#1d1a16",
+        "nav": "#1d1a16", "navFg": "#b8ad9c", "navActive": "#ff8a5c"
+      },
+      "dark": {
+        "bg": "#17130f", "surface": "#211c16", "surface2": "#2c251d", "ink": "#fbf3e8", "muted": "#b8ad9c", "line": "#3c3326",
+        "accent": "#ff7a50", "accentFg": "#1d1105", "accentSoft": "#44281a", "accentSoftFg": "#ffc9ad", "link": "#ff9a73",
+        "hero": "#1d4b73", "heroFg": "#ffffff", "heroMuted": "#bfe0ff",
+        "highlight": "#ffe27a", "highlightFg": "#1d1a16",
+        "nav": "#211c16", "navFg": "#b8ad9c", "navActive": "#ff8a5c"
+      }
+    }
+  ],
+  "status": {
+    "light": { "infoBg": "#e0f2fe", "infoFg": "#0c4a6e", "warnBg": "#fef3c7", "warnFg": "#78350f", "dangerBg": "#fee2e2", "dangerFg": "#7f1d1d" },
+    "dark": { "infoBg": "#0c2d44", "infoFg": "#bae6fd", "warnBg": "#3b2f0b", "warnFg": "#fde68a", "dangerBg": "#451a1a", "dangerFg": "#fecaca" }
+  }
+}
