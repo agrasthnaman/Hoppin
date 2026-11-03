@@ -3,3 +3,5 @@ export * from "./time";
 export * from "./types";
 export * from "./invite";
 export * from "./sync-status";
+export * from "./documents";
+export * from "./permissions";
