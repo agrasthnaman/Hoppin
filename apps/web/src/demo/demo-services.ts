@@ -107,6 +107,9 @@ export function createDemoServices(options: DemoOptions = {}): Services {
   const trips: DemoTrip[] = [goa, manali];
   const find = (tripId: string) => trips.find((t) => t.id === tripId);
   const meIn = (t: DemoTrip) => t.members.find((m) => m.userId === ME);
+  let myName = "Aman";
+  const soleOrganizer = (t: DemoTrip) =>
+    meIn(t)?.role === "organizer" && !t.members.some((m) => m.role === "organizer" && m.status === "approved" && m.userId !== ME);
 
   // ---- session (always signed in until "Sign out"; signing in needs no email)
   type Listener = (event: string, session: { user: { id: string; email: string } } | null) => void;
@@ -237,6 +240,47 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       async listInvites(tripId) {
         const now = Date.now();
         return guardOrganizer(tripId).invites.filter((i) => !i.revoked && Date.parse(i.expiresAt) > now).map(({ revoked: _r, ...i }) => i);
+      },
+      async getProfile() {
+        return { displayName: myName };
+      },
+      async updateDisplayName(name) {
+        myName = name;
+        for (const t of trips) for (const m of t.members) if (m.userId === ME) m.displayName = name;
+      },
+      async leaveTrip(tripId) {
+        const t = find(tripId);
+        const me = t && meIn(t);
+        if (!t || !me || me.status === "removed") throw new Error("you are not a member of this trip");
+        if (soleOrganizer(t)) throw new Error("You are the only organizer. Make someone else an organizer or delete the trip first.");
+        t.items = t.items.filter((i) => !(i.ownerId === ME && i.visibility === "private"));
+        t.documents = t.documents.filter((d) => !(d.ownerId === ME && d.scope === "personal"));
+        t.members = t.members.filter((m) => m.userId !== ME);
+      },
+      async setMemberRole(tripId, userId, role) {
+        const t = guardOrganizer(tripId);
+        const target = t.members.find((m) => m.userId === userId && m.status === "approved");
+        if (!target) throw new Error("only approved members can have their role changed");
+        if (role === "member" && !t.members.some((m) => m.role === "organizer" && m.status === "approved" && m.userId !== userId)) {
+          throw new Error("this is the only organizer: make someone else an organizer first");
+        }
+        target.role = role;
+      },
+      async deleteTrip(tripId) {
+        const t = guardOrganizer(tripId);
+        trips.splice(trips.indexOf(t), 1);
+      },
+      async deleteAccount() {
+        const blocked = trips.filter((t) => soleOrganizer(t) && t.members.some((m) => m.status === "approved" && m.userId !== ME));
+        if (blocked.length > 0) {
+          throw new Error(`You are the only organizer of ${blocked.map((t) => `"${t.name}"`).join(", ")}. Make someone else an organizer or delete the trip first.`);
+        }
+        for (const t of [...trips]) {
+          if (!meIn(t)) continue;
+          if (!t.members.some((m) => m.status === "approved" && m.userId !== ME)) trips.splice(trips.indexOf(t), 1);
+          else t.members = t.members.filter((m) => m.userId !== ME);
+        }
+        setSignedIn(false);
       },
       async setEditRights(tripId, userId, allowed) {
         const target = guardOrganizer(tripId).members.find((m) => m.userId === userId);

@@ -99,6 +99,12 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       createTrip: vi.fn(async () => "new-trip"),
       listInvites: vi.fn(async () => opts.invites ?? []),
       setEditRights: vi.fn(async () => {}),
+      getProfile: vi.fn(async () => ({ displayName: "Aman" })),
+      updateDisplayName: vi.fn(async () => {}),
+      leaveTrip: vi.fn(async () => {}),
+      setMemberRole: vi.fn(async () => {}),
+      deleteTrip: vi.fn(async () => {}),
+      deleteAccount: vi.fn(async () => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
   } satisfies Services;

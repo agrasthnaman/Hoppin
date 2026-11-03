@@ -273,4 +273,64 @@ describe.skipIf(!run)("real Supabase project", () => {
     expect(await aliceApp.actions.listInvites(trip2)).toEqual([]);
     await expect(createInviteApi(bob).redeemInvite(invite.token)).rejects.toThrow(/invalid or expired/); // a stopped link no longer works for anyone
   });
+
+  it("account basics through the real app services: name, co-organizer, leaving, deleting a trip and an account", async () => {
+    const aliceApp = createServices(alice);
+    const bobApp = createServices(bob);
+    const trip3 = await aliceApp.actions.createTrip({ name: "Smoke Account Trip", startDate: null, endDate: null });
+    const invite = await aliceApp.invites.createInvite(trip3);
+    await bobApp.invites.redeemInvite(invite.token);
+    await aliceApp.invites.approveMember(trip3, bobId);
+
+    // a new name shows up for the other members
+    await bobApp.actions.updateDisplayName("Bobby");
+    expect(await bobApp.actions.getProfile()).toEqual({ displayName: "Bobby" });
+    const seen = await createTripSource(alice).fetchSnapshot(trip3);
+    if (seen.status !== "ok") throw new Error("expected access");
+    expect(seen.snapshot.members.find((m) => m.userId === bobId)?.displayName).toBe("Bobby");
+
+    // a co-organizer can invite; a member again cannot
+    await aliceApp.actions.setMemberRole(trip3, bobId, "organizer");
+    await expect(bobApp.invites.createInvite(trip3)).resolves.toBeDefined();
+    await aliceApp.actions.setMemberRole(trip3, bobId, "member");
+    await expect(bobApp.invites.createInvite(trip3)).rejects.toThrow();
+    // the only organizer cannot step down
+    await expect(aliceApp.actions.setMemberRole(trip3, aliceId, "member")).rejects.toThrow(/only organizer/i);
+
+    // Bob adds a private plan, a group plan, a personal document and a shared document, then leaves
+    await createItem(bob, trip3, bobId, values("Bob private", { visibility: "private" }));
+    const groupPlan = await createItem(bob, trip3, bobId, values("Bob group plan"));
+    const personalDoc = await uploadDocument(bob, pdf("bob-passport"), { tripId: trip3, ownerId: bobId, itemId: null, scope: "personal", kind: "passport" });
+    const sharedDoc = await uploadDocument(bob, pdf("bob-tickets"), { tripId: trip3, ownerId: bobId, itemId: groupPlan.id, scope: "shared", kind: "ticket" });
+    await bobApp.actions.leaveTrip(trip3);
+    const afterLeave = await createTripSource(alice).fetchSnapshot(trip3);
+    if (afterLeave.status !== "ok") throw new Error("expected access");
+    expect(afterLeave.snapshot.members.map((m) => m.userId)).toEqual([aliceId]);
+    expect(afterLeave.snapshot.items.map((i) => i.title)).toEqual(["Bob group plan"]); // private plan gone, group plan stays
+    expect(afterLeave.snapshot.documents.map((d) => d.storagePath)).toEqual([sharedDoc.storagePath]); // personal document gone
+    expect(await createTripSource(bob).fetchSnapshot(trip3)).toEqual({ status: "no-access" });
+    expect(personalDoc.storagePath).toContain(bobId);
+
+    // the only organizer cannot delete the account while others are in a trip... (Bob is gone from trip3, so use trip2 below)
+    // Alice deletes the trip: every file goes too
+    await aliceApp.actions.deleteTrip(trip3);
+    expect((await aliceApp.actions.listTrips()).map((t) => t.id)).not.toContain(trip3);
+
+    // an account deletion is refused while the person is the only organizer of a trip with other people in it
+    const trip4 = await aliceApp.actions.createTrip({ name: "Smoke Blocker Trip", startDate: null, endDate: null });
+    const invite4 = await aliceApp.invites.createInvite(trip4);
+    await bobApp.invites.redeemInvite(invite4.token);
+    await aliceApp.invites.approveMember(trip4, bobId);
+    await expect(aliceApp.actions.deleteAccount()).rejects.toThrow(/only organizer of "Smoke Blocker Trip"/);
+    expect((await aliceApp.actions.listTrips()).map((t) => t.id)).toContain(trip4); // nothing was changed
+
+    // Bob (a member) deletes his account: he is gone, the trip carries on, his group plan is handed over
+    await createItem(bob, trip4, bobId, values("Bob booking"));
+    await bobApp.actions.deleteAccount();
+    const afterDelete = await createTripSource(alice).fetchSnapshot(trip4);
+    if (afterDelete.status !== "ok") throw new Error("expected access");
+    expect(afterDelete.snapshot.members.map((m) => m.userId)).toEqual([aliceId]);
+    expect(afterDelete.snapshot.items.find((i) => i.title === "Bob booking")?.ownerId).toBe(aliceId);
+    await expect(createInviteApi(bob).redeemInvite(invite4.token)).rejects.toThrow(); // his session no longer works
+  });
 });

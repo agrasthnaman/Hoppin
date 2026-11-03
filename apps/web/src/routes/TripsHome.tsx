@@ -1,4 +1,4 @@
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
@@ -44,10 +44,19 @@ export function TripsHome() {
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="font-display text-4xl font-extrabold">Your trips</h1>
-        <Button disabled={!online} onClick={() => setCreating(true)}>
-          <Plus aria-hidden="true" className="size-4" />
-          New trip
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/account"
+            aria-label="Account"
+            className="inline-flex size-11 items-center justify-center rounded-full bg-raised hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <UserRound aria-hidden="true" className="size-5" />
+          </Link>
+          <Button disabled={!online} onClick={() => setCreating(true)}>
+            <Plus aria-hidden="true" className="size-4" />
+            New trip
+          </Button>
+        </div>
       </div>
       {!online && <p className="text-sm text-muted">Connect to the internet to create a trip.</p>}
       {trips === null && <p role="status">Loading…</p>}

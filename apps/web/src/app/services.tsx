@@ -25,6 +25,17 @@ export interface Actions {
   listInvites(tripId: string): Promise<{ id: string; token: string; createdAt: string; expiresAt: string }[]>;
   /** Organizer only: lets a member edit other people's plans, or stops that. */
   setEditRights(tripId: string, userId: string, allowed: boolean): Promise<void>;
+  /** The signed-in person's name, as other members see it. */
+  getProfile(): Promise<{ displayName: string }>;
+  updateDisplayName(name: string): Promise<void>;
+  /** Leave a trip (or withdraw a request to join). The person's own personal files in it are deleted first. */
+  leaveTrip(tripId: string): Promise<void>;
+  /** Organizer only: make an approved member an organizer, or step an organizer back to member. */
+  setMemberRole(tripId: string, userId: string, role: "organizer" | "member"): Promise<void>;
+  /** Organizer only: deletes the trip for everyone, including all its files. */
+  deleteTrip(tripId: string): Promise<void>;
+  /** Deletes the signed-in person's account (refused if they are the only organizer of a trip with other people). */
+  deleteAccount(): Promise<void>;
 }
 
 export interface Services {
@@ -59,6 +70,24 @@ export function useServices(): Services {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createServices(client: any): Services {
   const auth = createAuthApi(client);
+  const signedInId = async (): Promise<string> => {
+    const { data } = await client.auth.getSession();
+    const id = data.session?.user.id;
+    if (!id) throw new Error("Not signed in");
+    return id;
+  };
+  /** Storage paths of the document records a query selects. */
+  const filePaths = async (where: (query: any) => any): Promise<string[]> => {
+    const { data, error } = await where(client.from("documents").select("storage_path"));
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as { storage_path: string }[]).map((d) => d.storage_path);
+  };
+  const removeFiles = async (paths: string[]): Promise<void> => {
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error } = await client.storage.from("trip-documents").remove(paths.slice(i, i + 100));
+      if (error) throw new Error(error.message);
+    }
+  };
   return {
     db: sharedOfflineDb(),
     tripSource: createTripSource(client),
@@ -99,6 +128,47 @@ export function createServices(client: any): Services {
         const { data, error } = await client.from("members").update({ can_edit_all: allowed }).eq("trip_id", tripId).eq("user_id", userId).select();
         if (error) throw new Error(error.message);
         if (!data || data.length === 0) throw new Error("Could not change edit rights");
+      },
+      getProfile: async () => {
+        const me = await signedInId();
+        const { data, error } = await client.from("profiles").select("display_name").eq("user_id", me).single();
+        if (error) throw new Error(error.message);
+        return { displayName: (data as { display_name: string }).display_name };
+      },
+      updateDisplayName: async (name) => {
+        const me = await signedInId();
+        const { data, error } = await client.from("profiles").update({ display_name: name }).eq("user_id", me).select();
+        if (error) throw new Error(error.message);
+        if (!data || data.length === 0) throw new Error("Could not save the name");
+      },
+      leaveTrip: async (tripId) => {
+        const me = await signedInId();
+        await removeFiles(await filePaths((q) => q.eq("trip_id", tripId).eq("owner_id", me).eq("scope", "personal")));
+        const { error } = await client.rpc("leave_trip", { p_trip: tripId });
+        if (error) throw new Error(error.message);
+      },
+      setMemberRole: async (tripId, userId, role) => {
+        const { error } = await client.rpc("set_member_role", { p_trip: tripId, p_user: userId, p_role: role });
+        if (error) throw new Error(error.message);
+      },
+      deleteTrip: async (tripId) => {
+        await removeFiles(await filePaths((q) => q.eq("trip_id", tripId)));
+        const { data, error } = await client.from("trips").delete().eq("id", tripId).select();
+        if (error) throw new Error(error.message);
+        if (!data || data.length === 0) throw new Error("Could not delete the trip");
+      },
+      deleteAccount: async () => {
+        const me = await signedInId();
+        // Refuse first, before any file is touched, so a refusal leaves nothing broken.
+        const { data: blocked, error: blockedError } = await client.rpc("my_account_blockers");
+        if (blockedError) throw new Error(blockedError.message);
+        const names = (blocked ?? []) as string[];
+        if (names.length > 0) {
+          throw new Error(`You are the only organizer of ${names.map((n) => `"${n}"`).join(", ")}. Make someone else an organizer or delete the trip first.`);
+        }
+        await removeFiles(await filePaths((q) => q.eq("owner_id", me).eq("scope", "personal")));
+        const { error } = await client.rpc("delete_my_account");
+        if (error) throw new Error(error.message);
       },
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
