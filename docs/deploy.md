@@ -21,7 +21,7 @@ It runs in plain Node, not the simulated browser (jsdom corrupts file uploads). 
 Paste the file into the project's SQL editor, or send it through the Management API `database/query` endpoint with an access token. Run migrations in filename order. Test them first against the in-memory database (`npm test -w supabase`).
 
 ## Known limits and to do
-- **Email:** Supabase's built-in email is limited to **2 messages per hour**, so a group cannot sign in with it. Before real use, set up custom SMTP (Resend) with a domain you own.
+- **Email:** Supabase's built-in email is limited to **2 messages per hour** (and the free plan cannot change the email design), so a group cannot sign in with it. Before real use, follow [email-setup.md](email-setup.md).
 - **Prod project, hosting (Cloudflare Pages), domain, Unsplash/Pexels keys, map-tile key, web push keys:** not set up yet (issues #1 and #2).
 - **Hosted builds** read `package-lock.json`, which currently points at an internal Artifactory registry, so a hosted build cannot install from it yet. Decide how to handle the lockfile before setting up hosting.
 - Backups: check what the Supabase plan includes before the first real trip; free projects may pause when unused.
