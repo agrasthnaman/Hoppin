@@ -108,7 +108,8 @@ export async function wipeTrip(db: OfflineDb, tripId: string): Promise<void> {
   announce(tripId);
 }
 
-/** Removes everything, including the device key. Call on sign out. */
+/** Removes everything, including the device key, and leaves an empty database ready to use. Call on sign out. */
 export async function clearAllLocalData(db: OfflineDb): Promise<void> {
   await db.delete();
+  await db.open();
 }

@@ -23,6 +23,8 @@ export interface DayViewProps {
   /** User ids who said "I'm in", by item id. */
   goingByItem: Record<string, string[]>;
   onJoin: (itemId: string) => void;
+  /** Lets the app turn a block's title into a link to its detail page. */
+  renderBlockTitle?: (item: Item) => React.ReactNode;
 }
 
 const UNKNOWN: Person = { name: "Someone", color: "#475569" };
@@ -39,7 +41,7 @@ function dateLabel(date: string): string {
 }
 
 /** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin }: DayViewProps) {
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
   const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
@@ -72,7 +74,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin }:
         <section key={block.id} aria-label={block.title}>
           <Card className="border-l-4 border-l-accent">
             <p className="text-sm text-muted">{timeLabel(block)}</p>
-            <p className="font-semibold">{block.title}</p>
+            <p className="font-semibold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
             {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
           </Card>
         </section>

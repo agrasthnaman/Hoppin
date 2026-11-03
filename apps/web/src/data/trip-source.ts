@@ -1,0 +1,53 @@
+import type { SnapshotResult, TripSource } from "@hoppin/core";
+import {
+  assembleSnapshot,
+  type DocumentRow,
+  type ItemRow,
+  type MemberRow,
+  type ProfileRow,
+  type RsvpRow,
+  type TripRow,
+} from "./mappers";
+
+type Failure = { message: string } | null;
+
+/** The slice of the Supabase query builder used for reading, so it can be faked in tests. */
+export interface ReadClient {
+  from(table: string): {
+    select(): {
+      eq(column: string, value: string): any;
+      in(column: string, values: string[]): any;
+    };
+  };
+}
+
+async function read<T>(query: PromiseLike<{ data: unknown; error: Failure }>): Promise<T[]> {
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []) as T[];
+}
+
+/**
+ * Loads one trip as the signed-in person sees it (the database rules decide what they may read).
+ * If the trip is not visible they have no access (never joined, or removed). Any failed query throws,
+ * so a half-loaded trip is never stored.
+ */
+export function createTripSource(client: ReadClient): TripSource {
+  return {
+    async fetchSnapshot(tripId: string): Promise<SnapshotResult> {
+      const [trip] = await read<TripRow>(client.from("trips").select().eq("id", tripId));
+      if (!trip) return { status: "no-access" };
+
+      const [members, items, documents] = await Promise.all([
+        read<MemberRow>(client.from("members").select().eq("trip_id", tripId)),
+        read<ItemRow>(client.from("items").select().eq("trip_id", tripId)),
+        read<DocumentRow>(client.from("documents").select().eq("trip_id", tripId)),
+      ]);
+      const [profiles, rsvps] = await Promise.all([
+        members.length ? read<ProfileRow>(client.from("profiles").select().in("user_id", members.map((m) => m.user_id))) : [],
+        items.length ? read<RsvpRow>(client.from("rsvps").select().in("item_id", items.map((i) => i.id))) : [],
+      ]);
+      return { status: "ok", snapshot: assembleSnapshot({ trip, members, profiles, items, rsvps, documents }) };
+    },
+  };
+}

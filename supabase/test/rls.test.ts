@@ -331,3 +331,25 @@ describe("change_log", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("deleting a trip", () => {
+  it("the organizer can delete a trip, and everything in it goes with it", async () => {
+    expect(await changed(id.organizer, "delete from trips where id = $1 returning 1", [id.trip])).toBe(1);
+    for (const table of ["items", "members", "documents", "change_log", "rsvps"]) {
+      const left = await db.query<{ n: number }>(`select count(*)::int as n from ${table} where ${table === "rsvps" ? "item_id in (select id from items)" : "trip_id = $1"}`, table === "rsvps" ? [] : [id.trip]);
+      expect(left.rows[0]?.n, table).toBe(0);
+    }
+    // the other trip is untouched
+    expect(await visibleIds(db, id.otherOrganizer, "trips")).toEqual([id.otherTrip]);
+  });
+
+  it("other members cannot delete a trip", async () => {
+    expect(await changed(id.alice, "delete from trips where id = $1 returning 1", [id.trip])).toBe(0);
+  });
+
+  it("deleting a single item is still logged", async () => {
+    await changed(id.alice, "delete from items where id = $1 returning 1", [id.aliceOptional]);
+    const log = await db.query<{ op: string }>("select op from change_log where item_id = $1 order by id", [id.aliceOptional]);
+    expect(log.rows.map((r) => r.op)).toEqual(["insert", "delete"]);
+  });
+});

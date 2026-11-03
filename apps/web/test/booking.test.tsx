@@ -232,3 +232,16 @@ describe("BookingDetail", () => {
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 });
+
+describe("ItemForm save errors", () => {
+  it("explains a clash with someone else's edit, and shows a generic message for other failures", async () => {
+    const conflict = Object.assign(new Error("Someone else changed this just now."), { name: "ConflictError" });
+    const { unmount } = render(<ItemForm initial={flight} tz={IST} onSubmit={() => Promise.reject(conflict)} onCancel={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Someone else changed this just now.");
+    unmount();
+    render(<ItemForm initial={flight} tz={IST} onSubmit={() => Promise.reject(new Error("boom"))} onCancel={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't save. Please try again.");
+  });
+});

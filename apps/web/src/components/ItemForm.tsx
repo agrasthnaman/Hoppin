@@ -73,7 +73,7 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -90,7 +90,7 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
     if (Object.keys(next).length > 0) return;
 
     setSaving(true);
-    setFailed(false);
+    setFailed(null);
     try {
       await onSubmit({
         kind,
@@ -103,8 +103,9 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
         groupItem: audience === "group",
         notes: notes.trim(),
       });
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      // A clash with someone else's edit has its own explanation; anything else is a generic retry.
+      setFailed(error instanceof Error && error.name === "ConflictError" ? error.message : "Couldn't save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -155,7 +156,7 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
 
       {failed && (
         <p role="alert" className="text-sm text-danger-fg">
-          Couldn't save. Please try again.
+          {failed}
         </p>
       )}
       <div className="flex gap-2">

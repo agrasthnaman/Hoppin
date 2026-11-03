@@ -1,18 +1,27 @@
 import { useParams } from "react-router";
+import { TripDataProvider } from "../app/trip-data";
+import { useServices } from "../app/services";
+import { useTrip } from "../app/useTrip";
+import { useUser } from "../app/user";
 import { AppShell } from "../components/AppShell";
 import { useNow } from "../hooks/useNow";
-import { useLocalSyncedAt } from "../hooks/useLocalSyncedAt";
 import { useOnline } from "../hooks/useOnline";
-import { sharedOfflineDb } from "../offline/db";
 
-/**
- * Connects the shell to the live connection state and to when this device last synced the trip.
- * The trip name is a placeholder until trips load from the data layer.
- */
+/** Loads and syncs one trip, shares it with the screens below, and frames them with navigation and sync status. */
 export function TripShell() {
   const { tripId = "" } = useParams();
+  const { userId } = useUser();
+  const services = useServices();
+  const trip = useTrip(services, tripId, userId);
   const online = useOnline();
   const now = useNow();
-  const { syncedAt } = useLocalSyncedAt(sharedOfflineDb(), tripId);
-  return <AppShell basePath={`/trips/${tripId}`} tripName="Your trip" status={{ online, lastSyncedAt: syncedAt, now }} />;
+  return (
+    <TripDataProvider value={{ ...trip, tripId, viewerId: userId }}>
+      <AppShell
+        basePath={`/trips/${tripId}`}
+        tripName={trip.snapshot?.trip.name ?? "Your trip"}
+        status={{ online, lastSyncedAt: trip.syncedAt, now }}
+      />
+    </TripDataProvider>
+  );
 }

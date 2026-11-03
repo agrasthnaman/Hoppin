@@ -60,3 +60,11 @@ describe("createAuthApi", () => {
     ).rejects.toThrow("rate limit");
   });
 });
+
+describe("createAuthApi.signIn", () => {
+  it("emails a sign-in link to existing accounts only", async () => {
+    const signInWithOtp = vi.fn().mockResolvedValue({ error: null });
+    await createAuthApi({ auth: { signInWithOtp } }).signIn({ email: "a@b.co", redirectTo: "https://hoppin.app/" });
+    expect(signInWithOtp).toHaveBeenCalledWith({ email: "a@b.co", options: { emailRedirectTo: "https://hoppin.app/", shouldCreateUser: false } });
+  });
+});
