@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
+import { registerSW } from "virtual:pwa-register";
 import { Gallery } from "./Gallery";
 import { TripShell } from "./routes/TripShell";
 import "./styles/tokens.css";
@@ -25,6 +26,8 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
+registerSW({ immediate: true }); // installs the service worker (production builds only)
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
