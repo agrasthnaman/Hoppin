@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#fdf3f1;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#10242a;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fdf3f1;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;">
+            <tr>
+              <td style="padding:0 8px 16px;font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#10242a;">Hoppin</td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;border-radius:28px;padding:32px 28px;">
+                <p style="margin:0 0 8px;font-size:24px;font-weight:800;letter-spacing:-0.4px;">Your sign-in link</p>
+                <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#53696e;">Tap the button to sign in. It works once and expires soon, so use it on the phone or computer where you want to open Hoppin.</p>
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:#ff3d6e;border-radius:99px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#10050b;text-decoration:none;">Sign in to Hoppin</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#53696e;">Button not working? Copy this link into your browser:<br /><span style="word-break:break-all;color:#c8164a;">{{ .ConfirmationURL }}</span></p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 8px;font-size:12px;line-height:1.5;color:#53696e;">If you didn't ask for this email, you can ignore it. Nobody can sign in without this link.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
