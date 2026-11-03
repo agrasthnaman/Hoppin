@@ -1,4 +1,4 @@
-export type MembershipStatus = "pending" | "approved" | "removed";
+import type { MembershipStatus } from "./types";
 
 export interface RedeemResult {
   tripId: string;

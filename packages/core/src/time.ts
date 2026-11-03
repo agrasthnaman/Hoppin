@@ -39,3 +39,22 @@ export function formatTime(iso: string, tz: string): string {
     new Date(iso),
   );
 }
+
+/**
+ * Turns a wall-clock time in a zone (`YYYY-MM-DDTHH:mm`, as a datetime-local field gives) into an ISO instant.
+ * A time that does not exist (skipped by a clock change) resolves to the moment just after the change.
+ */
+export function zonedTimeToInstant(local: string, tz: string): string {
+  const [date = "", time = "00:00"] = local.split("T");
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  const [hh, mm] = time.split(":").map(Number) as [number, number];
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const first = guess - offsetMs(guess, tz);
+  return new Date(guess - offsetMs(first, tz)).toISOString();
+}
+
+/** The reverse: an instant as `YYYY-MM-DDTHH:mm` wall-clock time in a zone, for a datetime-local field. */
+export function instantToZonedInput(iso: string, tz: string): string {
+  const t = new Date(iso).getTime();
+  return new Date(t + offsetMs(t, tz)).toISOString().slice(0, 16);
+}

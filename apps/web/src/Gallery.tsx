@@ -1,6 +1,7 @@
 import { buildDay, type Item } from "@hoppin/core";
 import { useState } from "react";
 import { DayView } from "./components/DayView";
+import { BookingDetail } from "./components/BookingDetail";
 import { JoinFlow } from "./routes/JoinFlow";
 import { Avatar } from "./components/ui/Avatar";
 import { Banner } from "./components/ui/Banner";
@@ -30,6 +31,31 @@ const demoPeople = { aman: { name: "Aman", color: personColor(3) }, riya: { name
 export function Gallery() {
   const [theme, setTheme] = useState<"light" | "dark">(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
   const [open, setOpen] = useState(false);
+  if (new URLSearchParams(location.search).get("view") === "booking") {
+    const flight = demo({
+      id: "f1", title: "DEL to GOI (IndiGo 6E 123)", kind: "flight", startsAt: at("10:00"), endsAt: at("12:30"),
+      locationUrl: "https://maps.example/airport", details: { notes: "Gate B12. Bags check in closes 45 min before." },
+    });
+    const docs = [
+      { id: "d1", tripId: "t", itemId: "f1", ownerId: "aman", scope: "shared" as const, storagePath: "t/aman/d1-ticket-all.pdf", kind: "ticket", fileName: "ticket-all.pdf" },
+      { id: "d2", tripId: "t", itemId: "f1", ownerId: "aman", scope: "personal" as const, storagePath: "t/aman/d2-passport.pdf", kind: "passport", fileName: "passport.pdf" },
+    ];
+    return (
+      <div data-theme={theme} className="min-h-dvh bg-bg p-4 text-fg">
+        <div className="mx-auto max-w-md">
+          <BookingDetail
+            item={flight}
+            member={{ userId: "aman", role: "member", status: "approved", canEditAll: false }}
+            documents={docs}
+            people={demoPeople}
+            onSave={async () => {}}
+            onUpload={async () => {}}
+            onOpenDocument={() => {}}
+          />
+        </div>
+      </div>
+    );
+  }
   if (new URLSearchParams(location.search).get("view") === "join") {
     return (
       <div data-theme={theme} className="min-h-dvh bg-bg text-fg">

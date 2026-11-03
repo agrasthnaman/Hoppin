@@ -21,3 +21,22 @@ begin
 end $$;
 
 grant usage on schema auth to authenticated, anon;
+
+-- Stand-in for Supabase Storage: buckets, objects (row-level security on) and storage.foldername().
+create schema if not exists storage;
+create table if not exists storage.buckets (id text primary key, name text not null, public boolean not null default false);
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null references storage.buckets (id),
+  name text not null,
+  owner uuid,
+  created_at timestamptz not null default now()
+);
+alter table storage.objects enable row level security;
+
+create or replace function storage.foldername(name text) returns text[]
+language sql immutable
+as $$ select (string_to_array(name, '/'))[1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)] $$;
+
+grant usage on schema storage to authenticated;
+grant select, insert, delete on storage.objects to authenticated;
