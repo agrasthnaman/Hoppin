@@ -4,3 +4,4 @@ node_modules/
 .superpowers/
 dist/
 .DS_Store
+.jfrog/
