@@ -9,6 +9,8 @@ export interface AppShellProps {
   basePath: string;
   tripName: string;
   status: SyncState;
+  /** Shown under the status banners, for example conflict notices. */
+  above?: React.ReactNode;
 }
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
@@ -23,7 +25,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  * Frame around every trip screen: sync status and banners on top, the page in the middle, main navigation
  * as a bottom bar on phones and a sidebar on wide screens.
  */
-export function AppShell({ basePath, tripName, status }: AppShellProps) {
+export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
   const banners = syncBanners(status);
   return (
     <div className="min-h-dvh bg-bg text-fg md:flex">
@@ -72,6 +74,7 @@ export function AppShell({ basePath, tripName, status }: AppShellProps) {
             ))}
           </div>
         )}
+        {above && <div className="flex flex-col gap-2 px-4 pt-2 md:px-8">{above}</div>}
         <main id="content" className="p-4 pb-24 md:p-8 md:pb-8">
           <Outlet />
         </main>

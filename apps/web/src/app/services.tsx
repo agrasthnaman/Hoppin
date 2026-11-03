@@ -12,7 +12,7 @@ import type { SessionClient } from "./session";
 
 /** Everything the screens do to the outside world. Real implementations use Supabase; tests pass fakes. */
 export interface Actions {
-  createItem(tripId: string, ownerId: string, values: ItemFormValues): Promise<void>;
+  createItem(tripId: string, ownerId: string, values: ItemFormValues, id?: string): Promise<void>;
   updateItem(item: Item, values: ItemFormValues): Promise<void>;
   setRsvp(itemId: string, userId: string, going: boolean): Promise<void>;
   uploadDocument(file: File, meta: { tripId: string; ownerId: string; itemId: string | null; scope: DocumentScope; kind: string }): Promise<void>;
@@ -61,7 +61,7 @@ export function createServices(client: any): Services {
     auth: { ...auth, signOut: async () => void (await client.auth.signOut()) },
     invites: createInviteApi(client),
     actions: {
-      createItem: async (tripId, ownerId, values) => void (await createItem(client, tripId, ownerId, values)),
+      createItem: async (tripId, ownerId, values, id) => void (await createItem(client, tripId, ownerId, values, id)),
       updateItem: async (item, values) => void (await updateItem(client, item, values)),
       setRsvp: (itemId, userId, going) => setRsvp(client, itemId, userId, going),
       uploadDocument: async (file, meta) => void (await uploadDocument(client, file, meta)),

@@ -17,6 +17,8 @@ export interface Item {
   locationUrl: string | null;
   details: Record<string, unknown>;
   version: number;
+  /** When the server last changed it (ISO). Present on items loaded from the server. */
+  updatedAt?: string;
 }
 
 export type MembershipStatus = "pending" | "approved" | "removed";
@@ -67,4 +69,17 @@ export interface TripSource {
 /** Where document bytes come from. */
 export interface DocumentSource {
   download(doc: TripDocument): Promise<{ data: ArrayBuffer; contentType: string }>;
+}
+
+/** The editable fields of an item, as one set of values (what the add and edit form works with). */
+export interface ItemValues {
+  kind: ItemKind;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+  tz: string;
+  locationUrl: string | null;
+  visibility: Visibility;
+  groupItem: boolean;
+  notes: string;
 }

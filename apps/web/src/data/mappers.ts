@@ -42,6 +42,7 @@ export interface ItemRow {
   location_url: string | null;
   details: Record<string, unknown> | null;
   version: number;
+  updated_at?: string;
 }
 export interface RsvpRow {
   item_id: string;
@@ -83,6 +84,7 @@ export function itemFromRow(row: ItemRow): Item {
     locationUrl: row.location_url,
     details: row.details ?? {},
     version: row.version,
+    ...(row.updated_at ? { updatedAt: iso(row.updated_at) } : {}),
   };
 }
 

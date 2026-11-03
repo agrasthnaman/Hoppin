@@ -1,6 +1,7 @@
 import { visibleDocuments, type DocumentSource, type TripDocument, type TripSnapshot, type TripSource } from "@hoppin/core";
 import { decryptBlob, encryptBlob, getDeviceKey } from "./crypto";
 import type { OfflineDb } from "./db";
+import { announceChange } from "./events";
 
 export interface OfflineDeps {
   db: OfflineDb;
@@ -12,11 +13,6 @@ export interface OfflineDeps {
 }
 
 export type SyncResult = { status: "synced"; syncedAt: number } | { status: "removed" };
-
-/** Tells screens that what is on the device changed, so "last synced" updates. */
-function announce(tripId: string) {
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("hoppin:synced", { detail: { tripId } }));
-}
 
 /**
  * Refreshes a trip from the server and stores it on the device. If the request fails, it throws and the
@@ -31,7 +27,7 @@ export async function syncTrip(deps: OfflineDeps, tripId: string): Promise<SyncR
   }
   const syncedAt = (deps.now ?? Date.now)();
   await deps.db.trips.put({ tripId, syncedAt, snapshot: result.snapshot });
-  announce(tripId);
+  announceChange(tripId);
   return { status: "synced", syncedAt };
 }
 
@@ -99,13 +95,16 @@ export async function getLocalDocument(db: OfflineDb, doc: TripDocument, key: Cr
   return new Blob([data], { type: record.contentType });
 }
 
-/** Removes one trip and its documents from this device. */
+/** Removes one trip, its documents and any changes still waiting from this device. */
 export async function wipeTrip(db: OfflineDb, tripId: string): Promise<void> {
-  await db.transaction("rw", db.trips, db.blobs, async () => {
+  await db.transaction("rw", [db.trips, db.blobs, db.outbox, db.drafts, db.notices], async () => {
     await db.trips.delete(tripId);
     await db.blobs.where("tripId").equals(tripId).delete();
+    await db.outbox.where("tripId").equals(tripId).delete();
+    await db.drafts.where("tripId").equals(tripId).delete();
+    await db.notices.where("tripId").equals(tripId).delete();
   });
-  announce(tripId);
+  announceChange(tripId);
 }
 
 /** Removes everything, including the device key, and leaves an empty database ready to use. Call on sign out. */

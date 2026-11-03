@@ -8,6 +8,7 @@ import { getDocumentUrl, uploadDocument } from "../src/lib/documents";
 import { createInviteApi } from "../src/lib/invite-api";
 import { getDeviceKey } from "../src/offline/crypto";
 import { openOfflineDb } from "../src/offline/db";
+import { flushOutbox, listDrafts, listNotices, listOutbox, queueCreate, queueItemEdit, queueRsvp, type Writer } from "../src/offline/outbox";
 import { cacheDocuments, getLocalDocument, getLocalTrip, syncTrip } from "../src/offline/sync";
 
 // Leaves a few throwaway rows in the dev project. Clean up with:
@@ -111,6 +112,80 @@ describe.skipIf(!run)("real Supabase project", () => {
     if (result.status !== "ok") throw new Error("expected access");
     expect(result.snapshot.rsvps).toEqual([{ itemId: sharedItemId, userId: bobId }]);
     await setRsvp(bob, sharedItemId, bobId, false);
+  });
+
+  describe("changes made offline", () => {
+    const writerFor = (client: SupabaseClient): Writer => ({
+      createItem: async (t, o, v, id) => void (await createItem(client, t, o, v, id)),
+      updateItem: async (i, v) => void (await updateItem(client, i, v)),
+      setRsvp: (i, u, g) => setRsvp(client, i, u, g),
+    });
+    const bobSide = (name: string) => {
+      const db = openOfflineDb(`smoke-${name}-${stamp}`);
+      return { db, source: createTripSource(bob), documents: createDocumentSource(bob), viewerId: bobId, writer: writerFor(bob) };
+    };
+    // Bob edited a minute ago while offline (a minute of margin for any clock difference with the server).
+    const aMinuteAgo = () => Date.now() - 60_000;
+
+    it("edits that do not clash go through, a clashing one becomes a draft with a notice, and a new plan and RSVP are sent", async () => {
+      const bobs = bobSide("outbox");
+      const mine = await createItem(bob, tripId, bobId, values("Bob's plan"));
+      await syncTrip(bobs, tripId);
+      const local = (await getLocalTrip(bobs.db, tripId))!.snapshot.items.find((i) => i.id === mine.id)!;
+      const q = { db: bobs.db, now: aMinuteAgo };
+
+      await queueItemEdit(q, { tripId, item: local, values: values("Bob title", { notes: "bob notes" }) });
+      const newPlanId = await queueCreate(q, { tripId, ownerId: bobId, values: values("Bob dinner") });
+      await queueRsvp(q, { tripId, itemId: sharedItemId, userId: bobId, going: true });
+
+      // meanwhile the organizer renames the same plan, online
+      const aliceView = await createTripSource(alice).fetchSnapshot(tripId);
+      if (aliceView.status !== "ok") throw new Error("expected access");
+      await updateItem(alice, aliceView.snapshot.items.find((i) => i.id === mine.id)!, values("Alice title"));
+
+      // Bob reconnects
+      const result = await flushOutbox(bobs, tripId);
+      expect(result).toMatchObject({ sent: 3, drafts: 1, notices: 1, deferred: false });
+
+      const after = await createTripSource(alice).fetchSnapshot(tripId);
+      if (after.status !== "ok") throw new Error("expected access");
+      const saved = after.snapshot.items.find((i) => i.id === mine.id)!;
+      expect(saved.title).toBe("Alice title"); // theirs stays
+      expect(saved.details.notes).toBe("bob notes"); // the edit that did not clash went through
+      expect(after.snapshot.items.find((i) => i.id === newPlanId)?.title).toBe("Bob dinner"); // saved under the id it was given offline
+      expect(after.snapshot.rsvps).toContainEqual({ itemId: sharedItemId, userId: bobId });
+
+      expect(await listOutbox(bobs.db, tripId)).toEqual([]);
+      expect((await listDrafts(bobs.db, tripId))[0]).toMatchObject({ kind: "update", field: "title", value: "Bob title" });
+      expect((await listNotices(bobs.db, tripId))[0]).toMatchObject({ kind: "lost", field: "title" });
+    });
+
+    it("an edit to a plan that was deleted meanwhile is kept as a draft, with a notice", async () => {
+      const bobs = bobSide("deleted");
+      const doomed = await createItem(bob, tripId, bobId, values("Doomed plan"));
+      await syncTrip(bobs, tripId);
+      const local = (await getLocalTrip(bobs.db, tripId))!.snapshot.items.find((i) => i.id === doomed.id)!;
+      await queueItemEdit({ db: bobs.db, now: aMinuteAgo }, { tripId, item: local, values: values("Renamed") });
+
+      const removed = await alice.from("items").delete().eq("id", doomed.id).select();
+      expect(removed.data).toHaveLength(1);
+
+      expect(await flushOutbox(bobs, tripId)).toMatchObject({ sent: 0, drafts: 1, notices: 1 });
+      expect((await listNotices(bobs.db, tripId))[0]).toMatchObject({ kind: "deleted", itemTitle: "Doomed plan" });
+      expect((await listDrafts(bobs.db, tripId))[0]).toMatchObject({ value: "Renamed" });
+    });
+
+    it("a change the server refuses becomes a draft instead of retrying forever", async () => {
+      const bobs = bobSide("refused");
+      const view = await createTripSource(bob).fetchSnapshot(tripId);
+      if (view.status !== "ok") throw new Error("expected access");
+      const alices = view.snapshot.items.find((i) => i.title === "Museum")!; // owned by Alice: Bob has no edit rights
+      await syncTrip(bobs, tripId);
+      await queueItemEdit({ db: bobs.db, now: aMinuteAgo }, { tripId, item: alices, values: values("Bob changes Alice's plan") });
+      expect(await flushOutbox(bobs, tripId)).toMatchObject({ sent: 0, drafts: 1, notices: 1, deferred: false });
+      expect((await listNotices(bobs.db, tripId))[0]).toMatchObject({ kind: "rejected" });
+      expect(await listOutbox(bobs.db, tripId)).toEqual([]);
+    });
   });
 
   it("saving checks the version: a stale copy is a conflict", async () => {
