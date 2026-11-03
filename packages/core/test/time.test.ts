@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, dayRange, formatTime, instantToZonedInput, zonedTimeToInstant } from "../src/time";
+import { addDays, dayRange, defaultDay, formatTime, instantToZonedInput, localDate, zonedTimeToInstant } from "../src/time";
 
 describe("dayRange", () => {
   it("returns the instants a calendar day starts and ends in a time zone", () => {
@@ -50,5 +50,27 @@ describe("zonedTimeToInstant and instantToZonedInput", () => {
       const input = `2026-03-08T${hhmm}`;
       expect(instantToZonedInput(zonedTimeToInstant(input, "America/New_York"), "America/New_York")).toBe(input);
     }
+  });
+});
+
+describe("localDate and defaultDay", () => {
+  const NOW = Date.UTC(2026, 11, 3, 20, 0, 0); // 3 Dec 20:00 UTC = 4 Dec 01:30 in Kolkata
+
+  it("gives the calendar date in a time zone", () => {
+    expect(localDate(NOW, "UTC")).toBe("2026-12-03");
+    expect(localDate(NOW, "Asia/Kolkata")).toBe("2026-12-04");
+  });
+
+  it("opens on today when it is within the trip, otherwise on the first day", () => {
+    const trip = { startDate: "2026-12-01", endDate: "2026-12-05" };
+    expect(defaultDay(trip, NOW, "UTC")).toBe("2026-12-03");
+    expect(defaultDay(trip, Date.UTC(2026, 10, 1), "UTC")).toBe("2026-12-01"); // before
+    expect(defaultDay(trip, Date.UTC(2027, 0, 1), "UTC")).toBe("2026-12-01"); // after
+  });
+
+  it("handles trips with missing dates", () => {
+    expect(defaultDay({ startDate: null, endDate: null }, NOW, "UTC")).toBe("2026-12-03");
+    expect(defaultDay({ startDate: "2026-12-10", endDate: null }, NOW, "UTC")).toBe("2026-12-10");
+    expect(defaultDay({ startDate: null, endDate: "2026-12-01" }, NOW, "UTC")).toBe("2026-12-03");
   });
 });

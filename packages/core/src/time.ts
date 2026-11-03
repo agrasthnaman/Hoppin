@@ -58,3 +58,16 @@ export function instantToZonedInput(iso: string, tz: string): string {
   const t = new Date(iso).getTime();
   return new Date(t + offsetMs(t, tz)).toISOString().slice(0, 16);
 }
+
+/** The calendar date (`YYYY-MM-DD`) of an instant in a time zone. */
+export function localDate(instant: number, tz: string): string {
+  return instantToZonedInput(new Date(instant).toISOString(), tz).slice(0, 10);
+}
+
+/** Which day a trip screen opens on: today if it is within the trip, otherwise the first day. */
+export function defaultDay(trip: { startDate: string | null; endDate: string | null }, now: number, tz: string): string {
+  const today = localDate(now, tz);
+  if (trip.startDate && today < trip.startDate) return trip.startDate;
+  if (trip.startDate && trip.endDate && today > trip.endDate) return trip.startDate;
+  return today;
+}

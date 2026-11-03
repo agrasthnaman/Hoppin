@@ -8,6 +8,9 @@ No secrets belong in this file or in the repo. Keys live in `apps/web/.env.local
 - **Auth settings:** site URL `http://localhost:5173`; allowed redirects `http://localhost:5173/**` and `http://localhost:4173/**`.
 - **Web app config:** `apps/web/.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the anon key is public by design; never put the `service_role` key in the app).
 
+## Testing against the real dev project
+`npm run test:dev -w apps/web` runs the app's real data code (sign up, trips, invites, privacy, documents, offline sync, removal) against `hoppin-dev` with two throwaway users. It needs `apps/web/.env.local` and "Confirm email" turned off in the dev project (Authentication > Providers > Email), so sign-up returns a session. It leaves a few `smoke-*@example.invalid` users and a trip behind; remove them with `delete from auth.users where email like 'smoke-%@example.invalid';` (the trip rows cascade). Turn "Confirm email" back on afterwards.
+
 ## Applying a new migration to a Supabase project
 Paste the file into the project's SQL editor, or send it through the Management API `database/query` endpoint with an access token. Run migrations in filename order. Test them first against the in-memory database (`npm test -w supabase`).
 
