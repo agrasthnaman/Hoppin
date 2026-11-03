@@ -1,6 +1,7 @@
 import { buildDay, type Item } from "@hoppin/core";
 import { useState } from "react";
 import { DayView } from "./components/DayView";
+import { JoinFlow } from "./routes/JoinFlow";
 import { Avatar } from "./components/ui/Avatar";
 import { Banner } from "./components/ui/Banner";
 import { Button } from "./components/ui/Button";
@@ -29,6 +30,20 @@ const demoPeople = { aman: { name: "Aman", color: personColor(3) }, riya: { name
 export function Gallery() {
   const [theme, setTheme] = useState<"light" | "dark">(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
   const [open, setOpen] = useState(false);
+  if (new URLSearchParams(location.search).get("view") === "join") {
+    return (
+      <div data-theme={theme} className="min-h-dvh bg-bg text-fg">
+        <JoinFlow
+          token={"a1".repeat(32)}
+          signedInUserId={null}
+          redirectTo={location.href}
+          sendMagicLink={async () => {}}
+          redeem={async () => ({ tripId: "t", status: "pending" })}
+          onContinue={() => {}}
+        />
+      </div>
+    );
+  }
   return (
     <div data-theme={theme} className="min-h-dvh bg-bg p-4 text-fg md:p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-4">

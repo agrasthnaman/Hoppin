@@ -1,6 +1,10 @@
 -- Test-only stand-in for what Supabase provides: the auth schema, auth.uid(), and the API roles.
 create schema if not exists auth;
-create table if not exists auth.users (id uuid primary key);
+create table if not exists auth.users (
+  id uuid primary key,
+  email text,
+  raw_user_meta_data jsonb not null default '{}'::jsonb
+);
 
 create or replace function auth.uid() returns uuid
 language sql stable
