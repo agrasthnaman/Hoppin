@@ -1,3 +1,4 @@
+import "fake-indexeddb/auto";
 import "@testing-library/jest-dom/vitest";
 import * as axeMatchers from "vitest-axe/matchers";
 import { afterEach, expect } from "vitest";

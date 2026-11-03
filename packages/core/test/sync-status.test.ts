@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSyncedAgo, STALE_AFTER_MS, syncBanners } from "../src/sync-status";
+import { formatSyncedAgo, STALE_AFTER_MS, staleness, syncBanners } from "../src/sync-status";
 
 const NOW = Date.UTC(2026, 11, 1, 12, 0, 0);
 const ago = (ms: number) => NOW - ms;
@@ -48,5 +48,13 @@ describe("syncBanners", () => {
   it("does not call a trip stale before it has ever synced", () => {
     expect(syncBanners({ online: true, lastSyncedAt: null, now: NOW })).toEqual([]);
     expect(syncBanners({ online: false, lastSyncedAt: null, now: NOW }).map((b) => b.kind)).toEqual(["offline"]);
+  });
+});
+
+describe("staleness", () => {
+  it("is fresh up to 24 hours and stale after, and stale when never synced", () => {
+    expect(staleness(ago(DAY), NOW)).toBe("fresh");
+    expect(staleness(ago(DAY + 1), NOW)).toBe("stale");
+    expect(staleness(null, NOW)).toBe("stale");
   });
 });

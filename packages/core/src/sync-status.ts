@@ -40,3 +40,8 @@ export function syncBanners({ online, lastSyncedAt, now }: SyncState): SyncBanne
   }
   return banners;
 }
+
+/** `stale` when the last sync is over 24 hours old, or there has been none. */
+export function staleness(lastSyncedAt: number | null, now: number): "fresh" | "stale" {
+  return lastSyncedAt !== null && now - lastSyncedAt <= STALE_AFTER_MS ? "fresh" : "stale";
+}

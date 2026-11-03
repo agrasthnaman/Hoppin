@@ -42,3 +42,29 @@ export interface TripDocument {
   kind: string;
   fileName: string;
 }
+
+/** A member as shown in the app: their rights plus the name from their profile. */
+export interface MemberInfo extends MemberRef {
+  displayName: string;
+}
+
+/** Everything the app keeps on the device for one trip, so it works with no signal. */
+export interface TripSnapshot {
+  trip: { id: string; name: string; startDate: string | null; endDate: string | null };
+  members: MemberInfo[];
+  items: Item[];
+  rsvps: { itemId: string; userId: string }[];
+  documents: TripDocument[];
+}
+
+export type SnapshotResult = { status: "ok"; snapshot: TripSnapshot } | { status: "no-access" };
+
+/** Where fresh trip data comes from (the Supabase data layer). `no-access` means the person was removed or the trip is gone. */
+export interface TripSource {
+  fetchSnapshot(tripId: string): Promise<SnapshotResult>;
+}
+
+/** Where document bytes come from. */
+export interface DocumentSource {
+  download(doc: TripDocument): Promise<{ data: ArrayBuffer; contentType: string }>;
+}
