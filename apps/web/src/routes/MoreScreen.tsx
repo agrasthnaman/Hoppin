@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
+import { DraftList } from "../components/DraftList";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 
@@ -54,6 +55,13 @@ export function MoreScreen() {
             </Button>
           </div>
           {result && <p role="status" className="text-sm">{result}</p>}
+        </Card>
+      )}
+      {!gate && (
+        <Card className="flex flex-col gap-3">
+          <h3 className="font-semibold">Unsent changes</h3>
+          <p className="text-sm text-muted">Changes that couldn't be applied, for example because someone else changed the same thing. Nothing here is lost until you discard it.</p>
+          <DraftList drafts={trip.drafts} onApply={trip.applyDraft} onDiscard={(id) => void trip.discardDraft(id)} />
         </Card>
       )}
       <div>

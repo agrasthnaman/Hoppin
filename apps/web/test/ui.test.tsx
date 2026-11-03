@@ -65,6 +65,13 @@ describe("Banner", () => {
   });
 });
 
+describe("Banner pending", () => {
+  it("is a polite status", () => {
+    render(<Banner kind="pending" text="2 changes waiting to send." />);
+    expect(screen.getByRole("status")).toHaveTextContent("2 changes waiting to send.");
+  });
+});
+
 describe("Avatar", () => {
   it("shows the first letter of the name", () => {
     render(<Avatar name="Riya Shah" color="#7c3aed" />);

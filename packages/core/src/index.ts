@@ -5,3 +5,5 @@ export * from "./invite";
 export * from "./sync-status";
 export * from "./documents";
 export * from "./permissions";
+export * from "./edits";
+export * from "./outbox";

@@ -54,8 +54,7 @@ export function ItemScreen() {
         documents={snapshot.documents}
         people={peopleFrom(snapshot.members)}
         onSave={async (values) => {
-          await actions.updateItem(item, values);
-          await trip.refresh();
+          await trip.editItem(item, values); // saved on this device first; sent as soon as there is a connection
         }}
         onUpload={async (file, scope) => {
           await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: item.id, scope, kind: "document" });

@@ -16,8 +16,8 @@ export class ConflictError extends Error {
   }
 }
 
-export async function createItem(client: WriteClient, tripId: string, ownerId: string, values: ItemFormValues): Promise<Item> {
-  const { data, error } = await client.from("items").insert(itemInsertRow(tripId, ownerId, values)).select().single();
+export async function createItem(client: WriteClient, tripId: string, ownerId: string, values: ItemFormValues, id?: string): Promise<Item> {
+  const { data, error } = await client.from("items").insert(itemInsertRow(tripId, ownerId, values, id)).select().single();
   if (error) throw new Error(error.message);
   return itemFromRow(data as ItemRow);
 }

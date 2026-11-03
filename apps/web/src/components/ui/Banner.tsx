@@ -1,15 +1,16 @@
-import { CloudOff, Clock, TriangleAlert } from "lucide-react";
+import { CloudOff, Clock, TriangleAlert, Upload } from "lucide-react";
 import { cn } from "../../lib/cn";
 
-export type BannerKind = "offline" | "stale" | "conflict";
+export type BannerKind = "offline" | "stale" | "conflict" | "pending";
 
 const styles: Record<BannerKind, string> = {
   offline: "bg-info-bg text-info-fg",
   stale: "bg-warn-bg text-warn-fg",
   conflict: "bg-danger-bg text-danger-fg",
+  pending: "bg-info-bg text-info-fg",
 };
 
-const icons = { offline: CloudOff, stale: Clock, conflict: TriangleAlert } as const;
+const icons = { offline: CloudOff, stale: Clock, conflict: TriangleAlert, pending: Upload } as const;
 
 export interface BannerProps {
   kind: BannerKind;

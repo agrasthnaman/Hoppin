@@ -154,3 +154,16 @@ describe("item write payloads", () => {
     expect(itemUpdatePatch(item, { ...values, notes: "" }).details).toEqual({ flightNo: "6E 123" });
   });
 });
+
+describe("item server time and chosen ids", () => {
+  it("keeps when the server last changed an item", () => {
+    expect(itemFromRow(row({ updated_at: "2026-12-01T10:00:00+00:00" })).updatedAt).toBe("2026-12-01T10:00:00.000Z");
+    expect(itemFromRow(row())).not.toHaveProperty("updatedAt");
+  });
+
+  it("a plan made offline is inserted with the id it was given", () => {
+    const values: ItemFormValues = { kind: "activity", title: "Dinner", startsAt: "2026-12-01T14:00:00.000Z", endsAt: null, tz: "Asia/Kolkata", locationUrl: null, visibility: "shared", groupItem: false, notes: "" };
+    expect(itemInsertRow("t1", "u1", values, "chosen-id").id).toBe("chosen-id");
+    expect(itemInsertRow("t1", "u1", values)).not.toHaveProperty("id");
+  });
+});

@@ -141,7 +141,8 @@ describe("days screen", () => {
     await userEvent.click(await screen.findByRole("button", { name: "R: Museum" }));
     const calls = fetchSnapshot.mock.calls.length;
     await userEvent.click(within(await screen.findByRole("dialog", { name: "Museum" })).getByRole("button", { name: "I'm in" }));
-    expect(services.actions.setRsvp).toHaveBeenCalledWith("i2", "me", true);
+    // the change is saved on the device first and sent a moment later
+    await waitFor(() => expect(services.actions.setRsvp).toHaveBeenCalledWith("i2", "me", true));
     await waitFor(() => expect(fetchSnapshot.mock.calls.length).toBeGreaterThan(calls));
   });
 
@@ -159,6 +160,7 @@ describe("days screen", () => {
         "t1",
         "me",
         expect.objectContaining({ title: "Beach dinner", startsAt: "2026-12-02T14:00:00.000Z", tz: "Asia/Kolkata" }),
+        expect.any(String),
       ),
     );
     await waitFor(() => expect(fetchSnapshot.mock.calls.length).toBeGreaterThan(calls));

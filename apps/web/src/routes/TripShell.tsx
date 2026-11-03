@@ -4,6 +4,7 @@ import { useServices } from "../app/services";
 import { useTrip } from "../app/useTrip";
 import { useUser } from "../app/user";
 import { AppShell } from "../components/AppShell";
+import { NoticeList } from "../components/NoticeList";
 import { useNow } from "../hooks/useNow";
 import { useOnline } from "../hooks/useOnline";
 
@@ -12,7 +13,11 @@ export function TripShell() {
   const { tripId = "" } = useParams();
   const { userId } = useUser();
   const services = useServices();
-  const trip = useTrip(services, tripId, userId);
+  const trip = useTrip(
+    { db: services.db, tripSource: services.tripSource, documentSource: services.documentSource, writer: services.actions },
+    tripId,
+    userId,
+  );
   const online = useOnline();
   const now = useNow();
   return (
@@ -20,7 +25,8 @@ export function TripShell() {
       <AppShell
         basePath={`/trips/${tripId}`}
         tripName={trip.snapshot?.trip.name ?? "Your trip"}
-        status={{ online, lastSyncedAt: trip.syncedAt, now }}
+        status={{ online, lastSyncedAt: trip.syncedAt, now, pending: trip.pendingCount }}
+        above={<NoticeList notices={trip.notices} onDismiss={(id) => void trip.dismissNotice(id)} />}
       />
     </TripDataProvider>
   );

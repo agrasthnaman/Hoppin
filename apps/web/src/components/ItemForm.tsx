@@ -1,18 +1,8 @@
-import { instantToZonedInput, zonedTimeToInstant, type Item, type ItemKind, type Visibility } from "@hoppin/core";
+import { instantToZonedInput, zonedTimeToInstant, type Item, type ItemKind, type ItemValues } from "@hoppin/core";
 import { useId, useState, type FormEvent } from "react";
 import { Button } from "./ui/Button";
 
-export interface ItemFormValues {
-  kind: ItemKind;
-  title: string;
-  startsAt: string;
-  endsAt: string | null;
-  tz: string;
-  locationUrl: string | null;
-  visibility: Visibility;
-  groupItem: boolean;
-  notes: string;
-}
+export type ItemFormValues = ItemValues;
 
 export interface ItemFormProps {
   /** An existing item when editing. */

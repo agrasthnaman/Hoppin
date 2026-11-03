@@ -58,3 +58,16 @@ describe("staleness", () => {
     expect(staleness(null, NOW)).toBe("stale");
   });
 });
+
+describe("syncBanners with waiting changes", () => {
+  it("says how many changes are waiting to be sent", () => {
+    const one = syncBanners({ online: true, lastSyncedAt: ago(MIN), now: NOW, pending: 1 });
+    expect(one).toEqual([{ kind: "pending", text: "1 change waiting to send." }]);
+    expect(syncBanners({ online: true, lastSyncedAt: ago(MIN), now: NOW, pending: 3 })[0]?.text).toBe("3 changes waiting to send.");
+  });
+
+  it("shows nothing extra when none are waiting, and keeps the order offline, stale, waiting", () => {
+    expect(syncBanners({ online: true, lastSyncedAt: ago(MIN), now: NOW, pending: 0 })).toEqual([]);
+    expect(syncBanners({ online: false, lastSyncedAt: ago(3 * DAY), now: NOW, pending: 2 }).map((b) => b.kind)).toEqual(["offline", "stale", "pending"]);
+  });
+});

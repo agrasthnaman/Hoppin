@@ -24,20 +24,23 @@ export interface SyncState {
   /** When the trip was last refreshed from the server (ms since epoch), or null if never. */
   lastSyncedAt: number | null;
   now: number;
+  /** Changes made on this device that are waiting to be sent. */
+  pending?: number;
 }
 
 export interface SyncBanner {
-  kind: "offline" | "stale";
+  kind: "offline" | "stale" | "pending";
   text: string;
 }
 
 /** Which trust banners to show: offline, and/or "may be out of date" when the last sync is over 24 hours old. */
-export function syncBanners({ online, lastSyncedAt, now }: SyncState): SyncBanner[] {
+export function syncBanners({ online, lastSyncedAt, now, pending = 0 }: SyncState): SyncBanner[] {
   const banners: SyncBanner[] = [];
   if (!online) banners.push({ kind: "offline", text: "You're offline. Showing your saved trip." });
   if (lastSyncedAt !== null && now - lastSyncedAt > STALE_AFTER_MS) {
     banners.push({ kind: "stale", text: `Last synced ${agoText(lastSyncedAt, now)}. Some details may be out of date.` });
   }
+  if (pending > 0) banners.push({ kind: "pending", text: `${pending} change${pending === 1 ? "" : "s"} waiting to send.` });
   return banners;
 }
 

@@ -6,9 +6,10 @@ function details(base: Record<string, unknown>, notes: string): Record<string, u
   return notes ? { ...rest, notes } : rest;
 }
 
-/** Row for a new item. The owner is always the signed-in person (the database enforces it too). */
-export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormValues) {
+/** Row for a new item. The owner is always the signed-in person (the database enforces it too). An id can be chosen up front (plans made offline). */
+export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormValues, id?: string) {
   return {
+    ...(id ? { id } : {}),
     trip_id: tripId,
     owner_id: ownerId,
     kind: values.kind,
