@@ -6,10 +6,11 @@ import { defineConfig } from "vitest/config";
 // (Authentication > Providers > Email > "Confirm email" off). See docs/deploy.md.
 export default defineConfig({
   test: {
-    environment: "jsdom",
-    setupFiles: ["./test/setup.ts"],
+    // Plain Node, not jsdom: jsdom's own File and FormData are not understood by Node's network layer, which corrupts uploads.
+    environment: "node",
+    setupFiles: ["./integration/setup.ts"],
     include: ["integration/**/*.test.ts"],
-    env: loadEnv("development", process.cwd(), "VITE_"),
+    env: { ...loadEnv("development", process.cwd(), ["VITE_", "SMOKE_"]) },
     testTimeout: 60_000,
     hookTimeout: 60_000,
     fileParallelism: false,

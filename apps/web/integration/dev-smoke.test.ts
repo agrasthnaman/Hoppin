@@ -20,11 +20,21 @@ const stamp = Date.now();
 const password = `Pw-${stamp}-x!`;
 const newClient = () => createClient(url!, anon!, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 
-async function signUp(client: SupabaseClient, label: string) {
+/**
+ * Two ways to get a signed-in user: sign in as a pre-made test user (SMOKE_PASSWORD plus SMOKE_EMAIL_ALICE and
+ * SMOKE_EMAIL_BOB in the environment), or sign up a new one (needs "Confirm email" off in the dev project).
+ */
+async function signInAs(client: SupabaseClient, label: "alice" | "bob") {
+  const premade = process.env[`SMOKE_EMAIL_${label.toUpperCase()}`];
+  if (premade) {
+    const { data, error } = await client.auth.signInWithPassword({ email: premade, password: process.env.SMOKE_PASSWORD ?? "" });
+    if (error || !data.user) throw new Error(`sign in failed: ${error?.message}`);
+    return data.user.id;
+  }
   const email = `smoke-${stamp}-${label}@example.invalid`;
   const { data, error } = await client.auth.signUp({ email, password, options: { data: { display_name: label } } });
   if (error) throw new Error(`signUp failed: ${error.message}`);
-  if (!data.session) throw new Error('No session after sign up: this test needs "Confirm email" off in the dev project.');
+  if (!data.session) throw new Error('No session after sign up: turn off "Confirm email" in the dev project, or pass pre-made users.');
   return data.user!.id;
 }
 
@@ -46,8 +56,8 @@ describe.skipIf(!run)("real Supabase project", () => {
   let personalDocPath = "";
 
   beforeAll(async () => {
-    aliceId = await signUp(alice, "alice");
-    bobId = await signUp(bob, "bob");
+    aliceId = await signInAs(alice, "alice");
+    bobId = await signInAs(bob, "bob");
   });
 
   afterAll(async () => {
