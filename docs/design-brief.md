@@ -32,6 +32,14 @@ Use only the semantic classes, never a raw colour (the one exception is a member
 `bg-bg` page, `bg-surface` cards, `bg-raised` tinted areas, `text-fg` text, `text-muted` secondary text, `border-line`, `bg-accent` + `text-accent-fg` (pop), `bg-accent-soft` + `text-accent-soft-fg` (soft pop), `text-link` (links; `text-accent` is for fills only, it may not be readable as text), `bg-hero` + `text-hero-fg` + `text-hero-muted` (the spotlight block), `bg-highlight` + `text-highlight-fg` (small badges), `bg-nav`, and the status pairs `info`, `warn`, `danger`.
 **Every new screen must look right in all 3 palettes and both modes.** Check it in `npm run demo` (More > Appearance) before opening a pull request, and include phone and desktop screenshots.
 
+## Motion
+Motion has a purpose: it explains what changed and makes touch feel responsive. It never blocks the user.
+- **Library:** Motion (MIT), loaded lazily after the first paint. Everything animated goes through `src/lib/motion.tsx` (`MotionRoot`, the `spring` and `springSoft` presets). **Use `m.*` components (`m.div`, `m.button`), never `motion.*`**: the root is in strict mode and a slip throws an error.
+- **Reduced motion:** `MotionRoot` honours the phone's "reduce motion" setting for every animation. Do not add animation that bypasses it (checked in a real browser).
+- **What moves:** sheets spring up and drag down to dismiss (phones) or fade and scale (desktop); pages ease in; lists stagger in; chips pop; the selected day pill slides between days; swiping the day area changes the day; banners expand and collapse. Keep new motion in this family: short, springy, never decorative loops.
+- **Gestures need a visible alternative** (the day strip for swiping, the close button for sheets).
+- **Tests:** animations finish instantly in tests (`MotionGlobalConfig.skipAnimations`), so test behaviour, not animation. Put decisions (is this a swipe? should the sheet close?) in pure functions (`src/lib/gestures.ts`) and test those.
+
 ## Components (`apps/web/src/components/ui/`)
 `Button` (primary, secondary, ghost), `Card`, `Avatar`, `Chip`, `Banner` (offline, stale, conflict), `Sheet` (bottom sheet on phones, dialog on desktop), `Tabs`. Built on Radix primitives for accessibility. Preview them with `npm run dev -w apps/web`.
 

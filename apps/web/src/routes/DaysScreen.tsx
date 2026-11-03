@@ -1,7 +1,8 @@
 import { addDays, buildDay, defaultDay, localDate, nextBlock } from "@hoppin/core";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { m } from "motion/react";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { goingFrom, peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
@@ -10,6 +11,7 @@ import { DayView } from "../components/DayView";
 import { ItemForm } from "../components/ItemForm";
 import { Button } from "../components/ui/Button";
 import { Sheet } from "../components/ui/Sheet";
+import { swipeDay, swipeDirection } from "../lib/gestures";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,6 +20,7 @@ export function DaysScreen() {
   const trip = useTripData();
   const { clock } = useServices();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
 
   const gate = tripGate(trip);
@@ -50,6 +53,20 @@ export function DaysScreen() {
         </div>
       )}
 
+      <m.div
+        className="min-h-[60dvh]" // the whole area is swipeable, even on a quiet day
+        drag="x"
+        dragDirectionLock
+        dragSnapToOrigin
+        dragMomentum={false}
+        dragElastic={0.15}
+        onDragEnd={(_, info) => {
+          // swipe left for the next day, right for the previous one (the day strip works too)
+          const direction = swipeDirection(info.offset.x, info.velocity.x, info.offset.y);
+          const target = direction && swipeDay(date, direction, snapshot.trip.startDate, snapshot.trip.endDate);
+          if (target) navigate({ search: `?date=${target}` });
+        }}
+      >
       <DayView
         date={date}
         tz={clock.timeZone}
@@ -71,6 +88,7 @@ export function DaysScreen() {
           </Link>
         )}
       />
+      </m.div>
 
       <Sheet open={adding} onOpenChange={setAdding} title="Add a plan">
         <ItemForm

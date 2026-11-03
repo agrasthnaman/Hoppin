@@ -1,4 +1,6 @@
+import { m } from "motion/react";
 import { cn } from "../../lib/cn";
+import { spring } from "../../lib/motion";
 
 export interface ChipProps {
   initial: string;
@@ -11,8 +13,12 @@ export interface ChipProps {
 /** Small avatar chip for a member's shared optional plan. Tap to open its details. */
 export function Chip({ initial, title, color, onOpen, className }: ChipProps) {
   return (
-    <button
+    <m.button
       type="button"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileTap={{ scale: 0.94 }}
+      transition={spring}
       onClick={onOpen}
       aria-label={`${initial}: ${title}`}
       className={cn(
@@ -29,6 +35,6 @@ export function Chip({ initial, title, color, onOpen, className }: ChipProps) {
         {initial}
       </span>
       <span className="truncate">{title}</span>
-    </button>
+    </m.button>
   );
 }

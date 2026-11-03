@@ -1,7 +1,9 @@
 import { formatSyncedAgo, syncBanners, type SyncState } from "@hoppin/core";
 import { CalendarCheck, CalendarDays, FileText, Menu, Wallet, type LucideIcon } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { AnimatePresence, m } from "motion/react";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { cn } from "../lib/cn";
+import { springSoft } from "../lib/motion";
 import { Banner } from "./ui/Banner";
 
 export interface AppShellProps {
@@ -27,6 +29,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  */
 export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
   const banners = syncBanners(status);
+  const location = useLocation();
   return (
     <div className="min-h-dvh bg-bg text-fg md:flex">
       <a
@@ -68,16 +71,26 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
           <p className="truncate font-display text-3xl font-extrabold">{tripName}</p>
           <p className="shrink-0 text-xs text-muted">{formatSyncedAgo(status.lastSyncedAt, status.now)}</p>
         </header>
-        {banners.length > 0 && (
-          <div className="flex flex-col gap-2 px-4 md:px-8">
+        <div className="flex flex-col px-4 md:px-8">
+          <AnimatePresence initial={false}>
             {banners.map((b) => (
-              <Banner key={b.kind} kind={b.kind} text={b.text} />
+              <m.div
+                key={b.kind}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <Banner kind={b.kind} text={b.text} className="mb-2" />
+              </m.div>
             ))}
-          </div>
-        )}
+          </AnimatePresence>
+        </div>
         {above && <div className="flex flex-col gap-2 px-4 pt-2 md:px-8">{above}</div>}
         <main id="content" className="p-4 pb-28 md:p-8 md:pb-8">
-          <Outlet />
+          <m.div key={location.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={springSoft}>
+            <Outlet />
+          </m.div>
         </main>
         </div>
       </div>

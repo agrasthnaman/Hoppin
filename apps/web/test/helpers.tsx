@@ -6,6 +6,7 @@ import { createAppRoutes } from "../src/app/routes";
 import { ServicesProvider, type Services } from "../src/app/services";
 import type { SessionClient } from "../src/app/session";
 import { openOfflineDb } from "../src/offline/db";
+import { MotionRoot } from "../src/lib/motion";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
 export const NOW = Date.UTC(2026, 11, 2, 4, 0, 0); // 2 Dec 2026, 09:30 in Kolkata
@@ -115,9 +116,11 @@ export function renderApp(path: string, services: Services) {
   const router = createMemoryRouter(createAppRoutes(), { initialEntries: [path] });
   const utils = render(
     <ThemeProvider>
-      <ServicesProvider services={services}>
-        <RouterProvider router={router} />
-      </ServicesProvider>
+      <MotionRoot>
+        <ServicesProvider services={services}>
+          <RouterProvider router={router} />
+        </ServicesProvider>
+      </MotionRoot>
     </ThemeProvider>,
   );
   return { router, ...utils };

@@ -6,6 +6,7 @@ import { createServices, ServicesProvider, type Services } from "./app/services"
 import { DemoBadge } from "./components/DemoBadge";
 import { createAppRoutes } from "./app/routes";
 import { createSupabaseClient } from "./lib/supabase";
+import { MotionRoot } from "./lib/motion";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles/tokens.css";
 
@@ -24,10 +25,12 @@ async function start() {
   root.render(
     <StrictMode>
       <ThemeProvider>
-        <ServicesProvider services={services}>
-          {demo && <DemoBadge />}
-          <RouterProvider router={router} />
-        </ServicesProvider>
+        <MotionRoot>
+          <ServicesProvider services={services}>
+            {demo && <DemoBadge />}
+            <RouterProvider router={router} />
+          </ServicesProvider>
+        </MotionRoot>
       </ThemeProvider>
     </StrictMode>,
   );

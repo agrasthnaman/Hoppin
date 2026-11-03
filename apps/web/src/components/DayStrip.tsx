@@ -1,7 +1,9 @@
 import { addDays } from "@hoppin/core";
+import { m } from "motion/react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { cn } from "../lib/cn";
+import { spring } from "../lib/motion";
 
 export interface DayStripProps {
   /** The trip's first and last day (`YYYY-MM-DD`). Without both, nothing is shown. */
@@ -45,13 +47,14 @@ export function DayStrip({ start, end, selected }: DayStripProps) {
             aria-label={longDate.format(at(day))}
             aria-current={isSelected ? "date" : undefined}
             className={cn(
-              "flex min-w-14 shrink-0 flex-col items-center rounded-2xl px-3 py-2 text-xs font-semibold transition-colors",
+              "relative flex min-w-14 shrink-0 flex-col items-center rounded-2xl px-3 py-2 text-xs font-semibold transition-colors",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              isSelected ? "bg-accent text-accent-fg" : "bg-accent-soft text-accent-soft-fg hover:brightness-95",
+              isSelected ? "bg-accent-soft text-accent-fg" : "bg-accent-soft text-accent-soft-fg hover:brightness-95",
             )}
           >
-            <span>{weekday.format(at(day))}</span>
-            <span className="font-display text-lg font-extrabold leading-none">{Number(day.slice(8, 10))}</span>
+            {isSelected && <m.span layoutId="day-pill" transition={spring} className="absolute inset-0 rounded-2xl bg-accent" />}
+            <span className="relative">{weekday.format(at(day))}</span>
+            <span className="relative font-display text-lg font-extrabold leading-none">{Number(day.slice(8, 10))}</span>
           </Link>
         );
       })}
