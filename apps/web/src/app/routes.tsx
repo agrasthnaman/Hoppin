@@ -1,4 +1,5 @@
 import { Navigate, type RouteObject } from "react-router";
+import { AccountScreen } from "../routes/AccountScreen";
 import { DaysScreen } from "../routes/DaysScreen";
 import { ItemScreen } from "../routes/ItemScreen";
 import { JoinRoute } from "../routes/JoinRoute";
@@ -23,6 +24,7 @@ export function createAppRoutes(): RouteObject[] {
       element: <RequireSession />,
       children: [
         { path: "/", element: <TripsHome /> },
+        { path: "/account", element: <AccountScreen /> },
         {
           path: "/trips/:tripId",
           element: <TripShell />,

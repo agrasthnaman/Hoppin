@@ -73,3 +73,39 @@ describe("demo mode", () => {
     await waitFor(() => expect(services.sessionClient).toBeDefined());
   });
 });
+
+describe("demo mode: account basics", () => {
+  it("a member can leave a trip and it disappears from their list", async () => {
+    const { router } = renderApp("/trips/demo-manali/more", demo());
+    await userEvent.click(await screen.findByRole("button", { name: "Leave this trip" }));
+    await userEvent.click(within(await screen.findByRole("dialog", { name: "Leave this trip?" })).getByRole("button", { name: "Leave trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    expect(await screen.findByRole("link", { name: /Goa/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Manali/ })).toBeNull();
+  });
+
+  it("the only organizer is stopped from leaving or deleting their account, and can hand over to a co-organizer first", async () => {
+    renderApp("/trips/demo-goa/members", demo());
+    await userEvent.click(await screen.findByRole("button", { name: "Make Riya an organizer" }));
+    expect(await screen.findByRole("button", { name: "Make Riya a member again" })).toBeInTheDocument();
+  });
+
+  it("changing the name shows up for other members", async () => {
+    renderApp("/account", demo());
+    const name = await screen.findByLabelText("Your name");
+    await waitFor(() => expect(name).toHaveValue("Aman"));
+    await userEvent.clear(name);
+    await userEvent.type(name, "Amanpreet");
+    await userEvent.click(screen.getByRole("button", { name: "Save name" }));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+  });
+
+  it("deleting the account is refused while the person is the only organizer of a trip with others", async () => {
+    renderApp("/account", demo());
+    await userEvent.click(await screen.findByRole("button", { name: "Delete my account" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete your account?" });
+    await userEvent.type(within(dialog).getByLabelText(/Type delete to confirm/), "delete");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete my account" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent('only organizer of "Goa"');
+  });
+});

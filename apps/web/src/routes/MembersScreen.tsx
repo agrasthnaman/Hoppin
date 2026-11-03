@@ -114,7 +114,11 @@ export function MembersScreen() {
             const organizer = member.role === "organizer";
             const subtitle = mine ? (organizer ? "You · Organizer" : "You") : organizer ? "Organizer" : undefined;
             const controls =
-              isOrganizer && !organizer ? (
+              isOrganizer && organizer && !mine ? (
+                <Button variant="ghost" disabled={off} aria-label={`Make ${member.displayName} a member again`} onClick={() => void run(() => actions.setMemberRole(trip.tripId, member.userId, "member"))}>
+                  Make member
+                </Button>
+              ) : isOrganizer && !organizer ? (
                 <div className="flex flex-col items-end gap-1">
                   <label className="flex items-center gap-2 text-xs text-muted">
                     <input
@@ -127,9 +131,14 @@ export function MembersScreen() {
                     />
                     <span aria-hidden="true">Can edit others' plans</span>
                   </label>
-                  <Button variant="ghost" disabled={off} aria-label={`Remove ${member.displayName}`} onClick={() => setRemoving(member)}>
-                    Remove
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" disabled={off} aria-label={`Make ${member.displayName} an organizer`} onClick={() => void run(() => actions.setMemberRole(trip.tripId, member.userId, "organizer"))}>
+                      Make organizer
+                    </Button>
+                    <Button variant="ghost" disabled={off} aria-label={`Remove ${member.displayName}`} onClick={() => setRemoving(member)}>
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               ) : undefined;
             return row(member, controls, subtitle);
