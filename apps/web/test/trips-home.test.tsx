@@ -96,3 +96,14 @@ describe("creating an account", () => {
     expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeInTheDocument();
   });
 });
+
+describe("the new trip form", () => {
+  it("asks 'where to?', and says dates are optional", async () => {
+    const { services } = fakeServices();
+    renderApp("/", services);
+    await userEvent.click(await screen.findByRole("button", { name: "New trip" }));
+    const dialog = await screen.findByRole("dialog", { name: "New trip" });
+    expect(within(dialog).getByPlaceholderText("Where to?")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Dates are optional/)).toBeInTheDocument();
+  });
+});

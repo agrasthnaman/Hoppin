@@ -27,11 +27,11 @@ export function Sheet({ open, onOpenChange, title, description, children }: Shee
         {open && (
           <Dialog.Portal forceMount>
             <Dialog.Overlay asChild forceMount>
-              <m.div className="fixed inset-0 bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+              <m.div className="fixed inset-0 z-[55] bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount>
               <m.div
-                className="fixed inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-surface p-5 pt-2 text-fg shadow-card
+                className="fixed inset-x-0 bottom-0 z-[60] max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-surface p-5 pt-2 text-fg shadow-card
                   md:inset-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl md:pt-5"
                 initial={desktop ? { opacity: 0, scale: 0.96 } : { y: "100%" }}
                 animate={desktop ? { opacity: 1, scale: 1 } : { y: 0 }}

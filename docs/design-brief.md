@@ -40,6 +40,12 @@ Motion has a purpose: it explains what changed and makes touch feel responsive. 
 - **Gestures need a visible alternative** (the day strip for swiping, the close button for sheets).
 - **Tests:** animations finish instantly in tests (`MotionGlobalConfig.skipAnimations`), so test behaviour, not animation. Put decisions (is this a swipe? should the sheet close?) in pure functions (`src/lib/gestures.ts`) and test those.
 
+## Forms
+- **One input look:** use `inputClass` from `src/lib/forms.ts` for every text box (48 px tall, large rounded corners, palette colours, visible focus ring). Titles and names are typed large in the display font.
+- **Prefer tappable choices to dropdowns:** short lists are rows of pill options (see the plan types in `ItemForm`), and choices that need explaining are cards with an icon, a title and a one-line hint (see "Who is it for?"). Use real radio inputs hidden with `sr-only` and style the label with `has-[:checked]`, so they stay accessible.
+- **Actions stay in reach:** Save and Cancel sit in a sticky footer at the bottom of the sheet. Sheets sit above the floating navigation bar (`z-[60]`).
+- **Friendly, specific text:** placeholders that suggest ("Where to?", "What's the plan?"), a one-line hint when something is optional, and plain error messages under the field.
+
 ## Components (`apps/web/src/components/ui/`)
 `Button` (primary, secondary, ghost), `Card`, `Avatar`, `Chip`, `Banner` (offline, stale, conflict), `Sheet` (bottom sheet on phones, dialog on desktop), `Tabs`. Built on Radix primitives for accessibility. Preview them with `npm run dev -w apps/web`.
 

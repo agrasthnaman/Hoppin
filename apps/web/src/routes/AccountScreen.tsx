@@ -1,3 +1,4 @@
+import { inputClass } from "../lib/forms";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
@@ -92,7 +93,7 @@ export function AccountScreen() {
               value={name}
               disabled={!loaded}
               onChange={(e) => setName(e.target.value)}
-              className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+              className={inputClass}
             />
             {nameError && <span className="text-sm text-danger-fg">{nameError}</span>}
             <span className="text-xs text-muted">This is how other people in your trips see you.</span>
@@ -145,7 +146,7 @@ export function AccountScreen() {
               autoComplete="off"
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
-              className="min-h-11 rounded-card border border-line bg-surface px-3 text-base text-fg focus-visible:outline-2 focus-visible:outline-accent"
+              className={inputClass}
             />
           </div>
           {deleteError && <p role="alert" className="text-sm text-danger-fg">{deleteError}</p>}
