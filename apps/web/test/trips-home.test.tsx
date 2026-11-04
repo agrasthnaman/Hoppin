@@ -10,7 +10,7 @@ afterEach(() => vi.restoreAllMocks());
 describe("trips list", () => {
   it("shows each trip with its dates", async () => {
     const { services } = fakeServices({ trips: [{ id: "t1", name: "Goa", startDate: "2026-12-01", endDate: "2026-12-05" }, { id: "t2", name: "Manali" }] });
-    renderApp("/", services);
+    renderApp("/trips", services);
     expect(await screen.findByRole("link", { name: /Goa/ })).toHaveAttribute("href", "/trips/t1");
     expect(screen.getByText("1–5 Dec 2026")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Manali/ })).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe("trips list", () => {
 describe("creating a trip", () => {
   async function openForm() {
     const fake = fakeServices();
-    const utils = renderApp("/", fake.services);
+    const utils = renderApp("/trips", fake.services);
     await userEvent.click(await screen.findByRole("button", { name: "New trip" }));
     return { ...fake, ...utils, dialog: await screen.findByRole("dialog", { name: "New trip" }) };
   }
@@ -66,7 +66,7 @@ describe("creating a trip", () => {
   it("needs a connection, and says so", async () => {
     setOnline(false);
     const { services } = fakeServices();
-    renderApp("/", services);
+    renderApp("/trips", services);
     expect(await screen.findByRole("button", { name: "New trip" })).toBeDisabled();
     expect(screen.getByText("Connect to the internet to create a trip.")).toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe("creating an account", () => {
 describe("the new trip form", () => {
   it("asks 'where to?', and says dates are optional", async () => {
     const { services } = fakeServices();
-    renderApp("/", services);
+    renderApp("/trips", services);
     await userEvent.click(await screen.findByRole("button", { name: "New trip" }));
     const dialog = await screen.findByRole("dialog", { name: "New trip" });
     expect(within(dialog).getByPlaceholderText("Where to?")).toBeInTheDocument();

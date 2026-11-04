@@ -1,6 +1,25 @@
 {
-  "defaultPalette": "rose",
+  "defaultPalette": "cobalt",
   "palettes": [
+    {
+      "id": "cobalt",
+      "name": "Blue & orange",
+      "tagline": "The welcome page, on every screen",
+      "light": {
+        "bg": "#ffffff", "surface": "#ffffff", "surface2": "#f4f5f7", "ink": "#101428", "muted": "#3c4a78", "line": "#e6e8ee",
+        "accent": "#ff6b4a", "accentFg": "#1a100c", "accentSoft": "#ffe4d8", "accentSoftFg": "#8a2e16", "link": "#0d22ee",
+        "hero": "#0d22ee", "heroFg": "#f6f3ec", "heroMuted": "#d5defa",
+        "highlight": "#ffe8d2", "highlightFg": "#2a2116",
+        "nav": "#0d22ee", "navFg": "#d5defa", "navActive": "#ffd8ce"
+      },
+      "dark": {
+        "bg": "#ffffff", "surface": "#ffffff", "surface2": "#f4f5f7", "ink": "#101428", "muted": "#3c4a78", "line": "#e6e8ee",
+        "accent": "#ff6b4a", "accentFg": "#1a100c", "accentSoft": "#ffe4d8", "accentSoftFg": "#8a2e16", "link": "#0d22ee",
+        "hero": "#0d22ee", "heroFg": "#f6f3ec", "heroMuted": "#d5defa",
+        "highlight": "#ffe8d2", "highlightFg": "#2a2116",
+        "nav": "#0d22ee", "navFg": "#d5defa", "navActive": "#ffd8ce"
+      }
+    },
     {
       "id": "rose",
       "name": "Rose & teal",

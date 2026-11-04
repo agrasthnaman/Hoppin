@@ -99,7 +99,7 @@ describe("account screen", () => {
 
   it("is reachable from the trips list and the More screen", async () => {
     const a = fakeServices();
-    const { unmount } = renderApp("/", a.services);
+    const { unmount } = renderApp("/trips", a.services);
     expect(await screen.findByRole("link", { name: "Account" })).toHaveAttribute("href", "/account");
     unmount();
     const b = fakeServices();

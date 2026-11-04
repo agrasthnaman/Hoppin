@@ -9,6 +9,13 @@ beforeEach(() => setOnline(true));
 afterEach(() => vi.restoreAllMocks());
 
 describe("sign in and gating", () => {
+  it("shows the Hoppin landing when nobody is signed in", async () => {
+    const { services } = fakeServices({ session: null });
+    renderApp("/", services);
+    expect(await screen.findByRole("heading", { name: "hoppin" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Hoppin" })).toHaveAttribute("href", "/sign-in");
+  });
+
   it("sends signed-out visitors to sign in, remembering where they were going", async () => {
     const { services } = fakeServices({ session: null });
     const { router } = renderApp("/trips/t1/days", services);
@@ -75,11 +82,12 @@ describe("trips home", () => {
 });
 
 describe("trip gate", () => {
-  it("loads the trip and shows the first day screen with the trip name", async () => {
+  it("loads the trip and opens today while the trip is happening", async () => {
     const { services } = fakeServices();
-    renderApp("/trips/t1", services); // opens on days
+    renderApp("/trips/t1", services);
     expect(await screen.findByText("Goa")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: /December/ })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Today" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Next" })).toHaveTextContent("Old town tour");
   });
 
   it("tells a removed person they lost access and wipes the copy", async () => {

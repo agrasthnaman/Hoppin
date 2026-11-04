@@ -35,7 +35,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => <ThemeProvider>
 describe("ThemeProvider", () => {
   it("starts on the default palette, following the phone's light or dark setting", () => {
     renderHook(() => useTheme(), { wrapper });
-    expect(root.dataset.palette).toBe("rose");
+    expect(root.dataset.palette).toBe("cobalt");
     expect(root.hasAttribute("data-theme")).toBe(false);
   });
 
@@ -71,7 +71,7 @@ describe("ThemeProvider", () => {
     localStorage.setItem("hoppin.palette", "neon-green");
     localStorage.setItem("hoppin.mode", "sepia");
     const { result } = renderHook(() => useTheme(), { wrapper });
-    expect(result.current.palette).toBe("rose");
+    expect(result.current.palette).toBe("cobalt");
     expect(result.current.mode).toBe("system");
   });
 
@@ -112,7 +112,7 @@ describe("AppearanceCard", () => {
     setup();
     const group = screen.getByRole("radiogroup", { name: "Colours" });
     for (const p of palettes.palettes) expect(group).toHaveTextContent(p.name);
-    expect(screen.getByRole("radio", { name: /Rose & teal/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Blue & orange/ })).toBeChecked();
   });
 
   it("changing the palette applies it straight away", async () => {

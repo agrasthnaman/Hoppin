@@ -50,9 +50,16 @@ describe("status colours", () => {
 });
 
 describe("the set of palettes", () => {
-  it("offers the three chosen palettes, with a valid default", () => {
-    expect(data.palettes.map((p) => p.id)).toEqual(["rose", "lilac", "tangerine"]);
-    expect(data.palettes.map((p) => p.id)).toContain(data.defaultPalette);
+  it("offers the four palettes, with the landing colours as the default", () => {
+    expect(data.palettes.map((p) => p.id)).toEqual(["cobalt", "rose", "lilac", "tangerine"]);
+    expect(data.defaultPalette).toBe("cobalt");
+    const landing = data.palettes.find((p) => p.id === "cobalt");
+    expect(landing?.light.bg).toBe("#ffffff");
+    expect(landing?.dark.bg).toBe("#ffffff");
+    expect(landing?.light.surface).toBe("#ffffff");
+    expect(landing?.dark.surface).toBe("#ffffff");
+    expect(landing?.light.hero).toBe("#0d22ee");
+    expect(landing?.light.accent).toBe("#ff6b4a");
   });
 
   it("every palette defines the same colours in light and dark", () => {
@@ -77,7 +84,7 @@ describe("generated stylesheet", () => {
       expect(css).toContain(`[data-palette="${p.id}"][data-theme="dark"] {`);
       expect(css).toContain(`:root[data-palette="${p.id}"]:not([data-theme])`);
     }
-    expect(css).toContain(":root:not([data-palette]),\n[data-palette=\"rose\"] {");
+    expect(css).toContain(":root:not([data-palette]),\n[data-palette=\"cobalt\"] {");
     expect(css).toContain("prefers-color-scheme: dark");
   });
 });
