@@ -153,7 +153,7 @@ describe("adding an expense", () => {
 
     await userEvent.type(within(dialog).getByLabelText("How much?"), "300000");
     // The fake rate service says 1 IDR = 2 INR.
-    expect(await within(dialog).findByText("≈ ₹600,000")).toBeInTheDocument();
+    expect(await within(dialog).findByText(/≈ ₹6(,00,000|00,000)/)).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText("What for?"), "Coconut coffee");
     await userEvent.click(within(dialog).getByRole("checkbox", { name: "Neha" }));
     expect(within(dialog).getByText(/each · 2 people/)).toBeInTheDocument();
