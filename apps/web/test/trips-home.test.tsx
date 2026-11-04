@@ -1,7 +1,12 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readPdfText } from "../src/lib/pdf-text";
 import { fakeServices, renderApp } from "./helpers";
+
+vi.mock("../src/lib/pdf-text", () => ({
+  readPdfText: vi.fn(async () => ""),
+}));
 
 const setOnline = (v: boolean) => vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(v);
 beforeEach(() => setOnline(true));
@@ -75,12 +80,52 @@ describe("creating a trip", () => {
 
   it("creates the trip and opens it", async () => {
     const { services, router, dialog } = await openForm();
+    expect(within(dialog).getByLabelText("Trip name")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Booking PDFs")).toBeNull();
     await userEvent.type(within(dialog).getByLabelText("Trip name"), "Hampi");
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2027-01-10");
     await userEvent.type(within(dialog).getByLabelText("Ends"), "2027-01-14");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create trip" }));
     await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Hampi", startDate: "2027-01-10", endDate: "2027-01-14" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/trips/new-trip/days"));
+  });
+
+  it("drafts flights and stays from booking PDFs, and keeps an edit", async () => {
+    vi.mocked(readPdfText).mockImplementation(async (data) => new TextDecoder().decode(data));
+    const { services, dialog } = await openForm();
+    await userEvent.click(within(dialog).getByRole("button", { name: "From booking documents" }));
+    const ticket = new File(["Flight 6E 204\nFrom: Delhi (DEL)\nTo: Goa (GOI)\nDeparture: 12 Dec 2026 09:40\n"], "ticket.pdf", { type: "application/pdf" });
+    const hotel = new File(["Hotel: Beach House Calangute\nAddress: Calangute, Goa\nCheck-in: 12 December 2026\nCheck-out: 15 December 2026\n"], "hotel.pdf", { type: "application/pdf" });
+    await userEvent.upload(within(dialog).getByLabelText("Booking PDFs"), [ticket, hotel]);
+    const title = await within(dialog).findByLabelText("ticket.pdf title");
+    expect(title).toHaveValue("Delhi (DEL) to Goa (GOI)");
+    expect(within(dialog).getByLabelText("Starts")).toHaveValue("2026-12-12");
+    expect(within(dialog).getByLabelText("Ends")).toHaveValue("2026-12-15");
+    expect(within(dialog).getByLabelText("hotel.pdf place")).toHaveValue("Calangute, Goa");
+    await userEvent.clear(title);
+    await userEvent.type(title, "Morning flight");
+    await userEvent.type(within(dialog).getByLabelText("Trip name"), "Goa");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create trip" }));
+    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Goa", startDate: "2026-12-12", endDate: "2026-12-15" }));
+    await waitFor(() => expect(services.actions.createItem).toHaveBeenCalledWith("new-trip", "me", expect.objectContaining({ kind: "flight", title: "Morning flight" }), expect.any(String)));
+    expect(services.actions.createItem).toHaveBeenCalledWith("new-trip", "me", expect.objectContaining({ kind: "stay", title: "Beach House Calangute" }), expect.any(String));
+    const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3];
+    expect(services.actions.uploadDocument).toHaveBeenCalledWith(ticket, { tripId: "new-trip", ownerId: "me", itemId, scope: "shared", kind: "document" });
+  });
+
+  it("keeps bookings already read when another PDF is added", async () => {
+    vi.mocked(readPdfText).mockImplementation(async (data) => new TextDecoder().decode(data));
+    const { dialog } = await openForm();
+    await userEvent.click(within(dialog).getByRole("button", { name: "From booking documents" }));
+    const ticket = new File(["Flight 6E 204\nFrom: Delhi (DEL)\nTo: Goa (GOI)\nDeparture: 12 Dec 2026 09:40\n"], "ticket.pdf", { type: "application/pdf" });
+    const villa = new File(["Property name: Abu Villa\nAddress: Canggu, Bali\nCheck-in Checkout\nSat, 3 Apr Tue, 6 Apr\n3:00 pm 11:00 am\n03/11/2026\n"], "Villa Abu.pdf", { type: "application/pdf" });
+    await userEvent.upload(within(dialog).getByLabelText("Booking PDFs"), ticket);
+    expect(await within(dialog).findByLabelText("ticket.pdf title")).toHaveValue("Delhi (DEL) to Goa (GOI)");
+    await userEvent.upload(within(dialog).getByLabelText("Booking PDFs"), villa);
+    expect(await within(dialog).findByLabelText("Villa Abu.pdf title")).toHaveValue("Abu Villa");
+    expect(within(dialog).getByLabelText("ticket.pdf title")).toHaveValue("Delhi (DEL) to Goa (GOI)");
+    expect(within(dialog).getByLabelText("Villa Abu.pdf day")).toHaveValue("2027-04-03");
+    expect(within(dialog).getByLabelText("Villa Abu.pdf until")).toHaveValue("2027-04-06");
   });
 
   it("dates are optional", async () => {
@@ -158,5 +203,8 @@ describe("the new trip form", () => {
     const dialog = await screen.findByRole("dialog", { name: "New trip" });
     expect(within(dialog).getByPlaceholderText("Where to?")).toBeInTheDocument();
     expect(within(dialog).getByText(/Dates are optional/)).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Booking PDFs")).toBeNull();
+    const documents = within(dialog).getByRole("button", { name: "From booking documents" });
+    expect(documents).toHaveClass("bg-highlight", "text-highlight-fg");
   });
 });

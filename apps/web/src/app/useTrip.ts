@@ -65,10 +65,18 @@ export interface TripState {
   applyDraft: (draft: OutboxRecord) => Promise<"queued" | "gone">;
 }
 
+/** How often an open, visible trip looks for other people's changes. A hidden or backgrounded app does not run this. */
+export const FRESH_EVERY_MS = 60_000;
+
+function pageIsQuiet(): boolean {
+  return document.hidden || !navigator.onLine || document.querySelector("[role='dialog']") !== null;
+}
+
 /**
  * One trip for one person. Always shows the copy on this device first (with their waiting changes on top); when
  * there is a connection it sends waiting changes, refreshes from the server (on open, when the connection returns,
- * after each change, and on request) and downloads documents.
+ * when the page becomes visible, about once a minute while it stays visible, after each change, and on request)
+ * and downloads documents.
  */
 export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripState {
   const [local, setLocal] = useState<{ snapshot: TripSnapshot; syncedAt: number } | null | undefined>(undefined);
@@ -146,6 +154,36 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
       window.removeEventListener("online", onOnline);
     };
   }, [tripId, refresh]);
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const stop = () => {
+      if (timer === undefined) return;
+      window.clearInterval(timer);
+      timer = undefined;
+    };
+    const start = () => {
+      stop();
+      if (document.hidden || !navigator.onLine) return;
+      timer = window.setInterval(() => {
+        if (!pageIsQuiet()) void refresh();
+      }, FRESH_EVERY_MS);
+    };
+    const onVisible = () => {
+      if (document.hidden || !navigator.onLine) {
+        stop();
+        return;
+      }
+      if (!pageIsQuiet()) void refresh();
+      start();
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refresh]);
 
   const kick = () => {
     if (navigator.onLine) void refresh();

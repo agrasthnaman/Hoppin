@@ -9,6 +9,7 @@ import * as React from "react"
 import * as THREE from "three"
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js"
 import { buildHopMascot } from "./hop-mascot"
+import { keepScreenPlace } from "./spider-place"
 
 export interface SilkSpiderCursorProps {
   /** CSS selector for elements the silk may stick to. Never anchors to empty space. */
@@ -337,7 +338,7 @@ export default function SilkSpiderCursor({
   seedWebs = 0,
   clearKeys = ["Delete", "Backspace"],
   position = "fixed",
-  zIndex = 50,
+  zIndex = 1,
   maxDpr = 2,
   className,
 }: SilkSpiderCursorProps) {
@@ -434,8 +435,7 @@ export default function SilkSpiderCursor({
       S = opts.current.size ?? clamp(Math.min(W, H * 1.4) * 0.22, 150, 300)
     }
     resize()
-    const ro = new ResizeObserver(resize)
-    ro.observe(wrap)
+    let origin = wrap.getBoundingClientRect()
 
     const sp = {
       x: W * 0.5, y: -S, vx: 0, vy: 0, th: Math.PI / 2, pitch: 0, roll: 0, z: 0, vz: 0,
@@ -451,6 +451,47 @@ export default function SilkSpiderCursor({
     const ptr = { x: sp.x, y: sp.y, has: false, lastMove: -1e9, ix: 0, iy: 0 }
 
     const silk = createSilk()
+    const settleCanvas = () => {
+      const next = wrap.getBoundingClientRect()
+      const previous = origin
+      origin = next
+      resize()
+      const moved = previous.left !== next.left || previous.top !== next.top
+      if (!moved) return
+      const body = keepScreenPlace(sp, previous, next)
+      sp.x = body.x
+      sp.y = body.y
+      const enter = keepScreenPlace({ x: sp.enterX, y: sp.enterY }, previous, next)
+      sp.enterX = enter.x
+      sp.enterY = enter.y
+      const pointer = keepScreenPlace(ptr, previous, next)
+      ptr.x = pointer.x
+      ptr.y = pointer.y
+      const n = silk.hw.p
+      for (let i = 0; i < n; i++) {
+        const placed = keepScreenPlace({ x: silk.X[i], y: silk.Y[i] }, previous, next)
+        const prev = keepScreenPlace({ x: silk.PX[i], y: silk.PY[i] }, previous, next)
+        silk.X[i] = placed.x
+        silk.Y[i] = placed.y
+        silk.PX[i] = prev.x
+        silk.PY[i] = prev.y
+      }
+      for (const anchor of silk.anchors) {
+        if (!anchor || anchor.el) continue
+        const pinned = keepScreenPlace({ x: anchor.sx, y: anchor.sy }, previous, next)
+        anchor.sx = pinned.x
+        anchor.sy = pinned.y
+      }
+      if (rig) {
+        for (const leg of rig.legs) {
+          const foot = keepScreenPlace({ x: leg.fx, y: leg.fy }, previous, next)
+          leg.fx = foot.x
+          leg.fy = foot.y
+        }
+      }
+    }
+    const ro = new ResizeObserver(settleCanvas)
+    ro.observe(wrap)
     let drag: Thread | null = null
     let dragEl: Element | null = null
     let tackX = 0, tackY = 0

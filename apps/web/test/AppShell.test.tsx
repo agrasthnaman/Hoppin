@@ -54,7 +54,7 @@ describe("AppShell navigation", () => {
     setup();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(nav).toHaveClass("fixed", "bottom-3", "rounded-full"); // a floating pill on phones
-    expect(nav).toHaveClass("md:static", "md:flex-col");
+    expect(nav).toHaveClass("md:relative", "md:z-30", "md:flex-col");
   });
 
   it("changes the page when a link is tapped", async () => {

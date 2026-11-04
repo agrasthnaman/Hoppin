@@ -43,7 +43,7 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
         aria-label="Main"
         className={cn(
           "fixed inset-x-3 bottom-3 z-20 flex justify-around rounded-full bg-nav px-2 shadow-card",
-          "md:static md:inset-auto md:min-h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:rounded-none md:p-4 md:pt-6 md:shadow-none",
+          "md:relative md:z-30 md:inset-auto md:min-h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:rounded-none md:p-4 md:pt-6 md:shadow-none",
       )}
     >
       <p className="page-title mb-4 hidden px-4 text-3xl text-nav-fg md:block">{tripName}</p>
