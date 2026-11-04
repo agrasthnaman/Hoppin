@@ -83,3 +83,21 @@ export interface ItemValues {
   groupItem: boolean;
   notes: string;
 }
+
+/** One person's part of an expense. `who` is a member's user id or a named guest's id. */
+export interface ExpenseShare {
+  who: string;
+  /** Custom split: this person's part as a whole number (an amount in minor units, or any weight). Leave it out on everyone for an equal split. */
+  share?: number;
+}
+
+/** Money someone paid for the group. Kept in the currency it was paid in, with the exchange rate captured when it was entered. */
+export interface Expense {
+  paidBy: string;
+  /** In minor units of `currency` (paise, cents), never fractions. */
+  amount: number;
+  currency: string;
+  /** What one unit of `currency` was worth in the trip's base currency when the expense was entered. */
+  rate: number;
+  split: ExpenseShare[];
+}
