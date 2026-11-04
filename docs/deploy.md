@@ -17,6 +17,19 @@ It needs two confirmed test users. Either:
 
 It runs in plain Node, not the simulated browser (jsdom corrupts file uploads). **Clean up afterwards:** remove the uploaded files through the Storage API (direct deletes from `storage.objects` are blocked on purpose), then `delete from public.trips where created_by in (select id from auth.users where email like 'smoke-%@example.invalid'); delete from auth.users where email like 'smoke-%@example.invalid';`
 
+## Hosting (Cloudflare Pages), set up 2026-11-04
+- **Live address:** https://app.hoppinclub.com (also https://hoppinclub.pages.dev). Domain `hoppinclub.com` is registered and managed in Cloudflare; the app is the `app` CNAME to `hoppinclub.pages.dev` (proxied). The root domain is free for a landing page later.
+- **Project:** Cloudflare Pages project `hoppinclub`, "direct upload" (the site is built on a developer machine and uploaded, not built by Cloudflare). This avoids Cloudflare's build reading `package-lock.json`, which points at an internal package registry.
+- **Publishing a new version** (needs a Cloudflare API token with Pages edit, and the account id):
+  ```
+  cd apps/web && npx vite build                      # uses apps/web/.env.local for the Supabase address and key
+  CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... \
+    npx wrangler pages deploy dist --project-name hoppinclub --branch main
+  ```
+  (`wrangler` is installed in a scratch folder, not in the repo: `npm install wrangler`.) Demo mode is not included in production builds.
+- **Supabase sign-in addresses:** site URL `https://app.hoppinclub.com`; allowed redirects also include `https://hoppinclub.pages.dev/**` and the `localhost` addresses.
+- Deep links (`/trips/...`, `/join/...`) work because Pages serves the app for unknown paths; the service worker and manifest are served correctly.
+
 ## Applying a new migration to a Supabase project
 Paste the file into the project's SQL editor, or send it through the Management API `database/query` endpoint with an access token. Run migrations in filename order. Test them first against the in-memory database (`npm test -w supabase`).
 
