@@ -6,7 +6,7 @@ import { createInviteApi } from "../lib/invite-api";
 import { getDocumentUrl, uploadDocument } from "../lib/documents";
 import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
-import { createItem, setRsvp, updateItem } from "../data/writes";
+import { castVote, closePoll, createItem, createPoll, deletePoll, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import type { SessionClient } from "./session";
@@ -16,6 +16,13 @@ export interface Actions {
   createItem(tripId: string, ownerId: string, values: ItemFormValues, id?: string): Promise<void>;
   updateItem(item: Item, values: ItemFormValues): Promise<void>;
   setRsvp(itemId: string, userId: string, going: boolean): Promise<void>;
+  /** Asks the group a question. Needs a connection. Returns the poll's id. */
+  createPoll(tripId: string, question: string, multiple: boolean, options: string[]): Promise<string>;
+  /** Sets this person's choice on a poll (an empty list withdraws it). Needs a connection. */
+  castVote(pollId: string, optionIds: string[]): Promise<void>;
+  /** The person who asked, or an organizer, stops a poll taking votes. */
+  closePoll(pollId: string): Promise<void>;
+  deletePoll(pollId: string): Promise<void>;
   uploadDocument(file: File, meta: { tripId: string; ownerId: string; itemId: string | null; scope: DocumentScope; kind: string }): Promise<void>;
   /** A short-lived link to open a document online. */
   documentUrl(doc: TripDocument): Promise<string>;
@@ -98,6 +105,10 @@ export function createServices(client: any): Services {
       createItem: async (tripId, ownerId, values, id) => void (await createItem(client, tripId, ownerId, values, id)),
       updateItem: async (item, values) => void (await updateItem(client, item, values)),
       setRsvp: (itemId, userId, going) => setRsvp(client, itemId, userId, going),
+      createPoll: (tripId, question, multiple, options) => createPoll(client, tripId, question, multiple, options),
+      castVote: (pollId, optionIds) => castVote(client, pollId, optionIds),
+      closePoll: (pollId) => closePoll(client, pollId),
+      deletePoll: (pollId) => deletePoll(client, pollId),
       uploadDocument: async (file, meta) => void (await uploadDocument(client, file, meta)),
       documentUrl: (doc) => getDocumentUrl(client, doc),
       listTrips: async () => {

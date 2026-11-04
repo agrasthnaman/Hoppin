@@ -10,6 +10,8 @@ export type ItemFormValues = ItemValues;
 export interface ItemFormProps {
   /** An existing item when editing. */
   initial?: Item;
+  /** Starting text for a new plan (for example the winner of a poll). Ignored when editing. */
+  prefill?: { title?: string; kind?: ItemKind; notes?: string };
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
   /** `document` is set only when creating a booking and a file was chosen. */
@@ -68,15 +70,15 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 /** Add or edit a trip item: a booking (flight, stay, transport), a group activity, an optional plan, or a private plan. */
-export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
+export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormProps) {
   const zone = initial?.tz ?? tz;
   const [arrivalZone, setArrivalZone] = useState(initial?.endTz ?? zone);
-  const [kind, setKind] = useState<ItemKind>(initial?.kind ?? "activity");
-  const [title, setTitle] = useState(initial?.title ?? "");
+  const [kind, setKind] = useState<ItemKind>(initial?.kind ?? prefill?.kind ?? "activity");
+  const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? "");
   const [starts, setStarts] = useState(initial ? instantToZonedInput(initial.startsAt, zone) : "");
   const [ends, setEnds] = useState(initial?.endsAt ? instantToZonedInput(initial.endsAt, initial.endTz ?? zone) : "");
   const [location, setLocation] = useState(initial?.locationUrl ?? "");
-  const [notes, setNotes] = useState(typeof initial?.details.notes === "string" ? initial.details.notes : "");
+  const [notes, setNotes] = useState(typeof initial?.details.notes === "string" ? initial.details.notes : (prefill?.notes ?? ""));
   const [audience, setAudience] = useState<Audience>(
     initial ? (initial.visibility === "private" ? "private" : initial.groupItem ? "group" : "optional") : "group",
   );

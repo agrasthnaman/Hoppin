@@ -52,6 +52,34 @@ export interface MemberInfo extends MemberRef {
   displayName: string;
 }
 
+/** One choice in a poll. Options keep the order they were written in. */
+export interface PollOption {
+  id: string;
+  label: string;
+}
+
+/** A question the group answers by voting (mirrors the `polls` and `poll_options` tables). */
+export interface Poll {
+  id: string;
+  tripId: string;
+  /** Null once the person who asked has deleted their account. */
+  createdBy: string | null;
+  question: string;
+  /** Members may choose several options. Otherwise each member chooses one. */
+  multiple: boolean;
+  /** Closed polls take no more votes. */
+  closed: boolean;
+  createdAt: string;
+  options: PollOption[];
+}
+
+/** One member's choice of one option. */
+export interface Vote {
+  pollId: string;
+  optionId: string;
+  userId: string;
+}
+
 /** Everything the app keeps on the device for one trip, so it works with no signal. */
 export interface TripSnapshot {
   trip: { id: string; name: string; startDate: string | null; endDate: string | null };
@@ -59,6 +87,9 @@ export interface TripSnapshot {
   items: Item[];
   rsvps: { itemId: string; userId: string }[];
   documents: TripDocument[];
+  /** Missing on copies saved before polls existed. */
+  polls?: Poll[];
+  votes?: Vote[];
 }
 
 export type SnapshotResult = { status: "ok"; snapshot: TripSnapshot } | { status: "no-access" };
