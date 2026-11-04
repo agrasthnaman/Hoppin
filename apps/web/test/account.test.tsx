@@ -113,6 +113,24 @@ describe("account screen", () => {
   });
 });
 
+describe("joining from account and more", () => {
+  it("opens an invite pasted on the account page", async () => {
+    const { router } = renderApp("/account", fakeServices().services);
+    const token = "cd".repeat(32);
+    await userEvent.type(await screen.findByLabelText("Invite link"), token);
+    await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
+  });
+
+  it("opens an invite pasted on the More screen of a trip", async () => {
+    const { router } = renderApp("/trips/t1/more", fakeServices().services);
+    const token = "ef".repeat(32);
+    await userEvent.type(await screen.findByLabelText("Invite link"), token);
+    await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
+  });
+});
+
 describe("leaving and deleting a trip (More screen)", () => {
   const open = async (snap = asMember()) => {
     const fake = fakeServices({ snapshot: snap });

@@ -246,6 +246,28 @@ describe("days screen", () => {
   });
 });
 
+describe("docs and money", () => {
+  it("lists documents saved with the trip, under the plan they belong to", async () => {
+    renderApp("/trips/t1/docs", fakeServices().services);
+    expect(await screen.findByRole("heading", { name: "Docs" })).toBeInTheDocument();
+    expect(screen.getByText("d1-ticket.pdf")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Old town tour" })).toHaveAttribute("href", "/trips/t1/items/i1");
+    expect(screen.getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
+  });
+
+  it("says when nothing has been saved", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: snapshot({ documents: [] }) }).services);
+    expect(await screen.findByText("No documents yet.")).toBeInTheDocument();
+  });
+
+  it("shows that nothing is owed yet, and where amounts are converted", async () => {
+    renderApp("/trips/t1/money", fakeServices().services);
+    expect(await screen.findByRole("heading", { name: "Money" })).toBeInTheDocument();
+    expect(screen.getByText("Nothing to settle yet.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Home currency" })).toBeInTheDocument();
+  });
+});
+
 describe("item screen", () => {
   it("shows a booking with its documents and lets the owner edit it", async () => {
     const { services } = fakeServices();

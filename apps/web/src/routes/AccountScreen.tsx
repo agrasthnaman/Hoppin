@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
 import { useUser } from "../app/user";
+import { JoinTripForm } from "../components/JoinTripForm";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
@@ -80,6 +81,11 @@ export function AccountScreen() {
         Back to your trips
       </HomeLink>
       <h1 className="font-display text-4xl font-extrabold">Account</h1>
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-semibold">Join a trip</h2>
+        <p className="text-sm text-muted">Paste the invite link an organizer sent you.</p>
+        <JoinTripForm onJoin={(token) => navigate(`/join/${token}`)} />
+      </Card>
       {!online && <p className="text-sm text-muted">Connect to the internet to change your details.</p>}
 
       <Card>

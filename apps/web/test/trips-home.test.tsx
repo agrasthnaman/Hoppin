@@ -15,6 +15,8 @@ describe("trips list", () => {
     expect(screen.getByText("1–5 Dec 2026")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Manali/ })).toBeInTheDocument();
     expect(screen.getByText("Dates not set")).toBeInTheDocument();
+    expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
+    expect(document.querySelector("main")?.className).toContain("trips-stage");
   });
 });
 
@@ -46,6 +48,16 @@ describe("a new person with no trip", () => {
     await userEvent.type(await screen.findByLabelText("Invite link"), "see you there");
     await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
     expect(screen.getByText(/doesn't look like an invite link/)).toBeInTheDocument();
+  });
+});
+
+describe("joining from the trips list", () => {
+  it("opens an invite pasted next to the trips you already have", async () => {
+    const { router } = renderApp("/trips", fakeServices({ trips: [{ id: "t1", name: "Goa" }] }).services);
+    const token = "ab".repeat(32);
+    await userEvent.type(await screen.findByLabelText("Invite link"), `https://hoppin.app/join/${token}`);
+    await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
   });
 });
 
