@@ -108,6 +108,10 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       deleteAccount: vi.fn(async () => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
+    rates: {
+      source: "European Central Bank",
+      quote: vi.fn(async (from: string, to: string, date?: string) => ({ from, to, date: date ?? "2026-12-02", rate: from === to ? 1 : 2, fetchedAt: NOW, old: false })),
+    },
   } satisfies Services;
   return { services: services as Services & typeof services, fetchSnapshot };
 }

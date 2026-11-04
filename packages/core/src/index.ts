@@ -9,3 +9,4 @@ export * from "./edits";
 export * from "./outbox";
 export * from "./money";
 export * from "./settlement";
+export * from "./providers";
