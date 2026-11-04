@@ -302,10 +302,9 @@ export function tripSpan(bookings: readonly DraftBooking[]): { startDate: string
 export function bookingItemValues(booking: DraftBooking, fallbackDay: string | null, tz: string): ItemValues | null {
   const day = booking.startsOn ?? fallbackDay;
   if (!day) return null;
-  const drafted = booking.unread
-    ? `Couldn't read ${booking.fileName}. Fill in the details.`
-    : `Drafted from ${booking.fileName}. Change anything that looks wrong.`;
-  const notes = booking.place ? `${booking.place}\n${drafted}` : drafted;
+  // The review step already says which files could not be read, and the file itself is attached to the plan.
+  // Nothing about the drafting is saved into the plan's notes, so they hold only what is useful later.
+  const notes = booking.place ?? "";
   return {
     kind: booking.kind,
     title: booking.title.trim() || booking.fileName,
