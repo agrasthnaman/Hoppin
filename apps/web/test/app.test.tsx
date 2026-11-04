@@ -419,6 +419,14 @@ describe("bookings and my documents", () => {
     expect(link.closest("li")).toHaveClass("min-w-0");
   });
 
+  it("the Who booked it dropdown shows its own arrow, in the main text colour so it reads as a dropdown", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const select = await screen.findByLabelText("Who booked it");
+    const arrow = screen.getByTestId("select-arrow");
+    expect(select.parentElement).toContainElement(arrow);
+    expect(arrow).toHaveClass("text-fg", "pointer-events-none");
+  });
+
   it("filters bookings by who booked them and by title", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
