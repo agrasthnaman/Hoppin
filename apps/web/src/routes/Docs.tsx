@@ -156,7 +156,7 @@ export default function Docs() {
                   </option>
                 ))}
               </select>
-              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
+              <ChevronDown aria-hidden="true" strokeWidth={2.5} data-testid="select-arrow" className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-fg" />
               </span>
             </label>
           </div>
