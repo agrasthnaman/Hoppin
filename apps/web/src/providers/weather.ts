@@ -108,14 +108,21 @@ export function createOpenMeteoGeocoder({
     async find(query) {
       const name = query.trim();
       if (name.length < 2) return null;
-      const params = new URLSearchParams({ name, count: "1", language: "en", format: "json" });
-      const body = (await getJson(fetch, `${geocodeUrl}?${params}`, timeoutMs)) as {
-        results?: { name?: unknown; country?: unknown; latitude?: unknown; longitude?: unknown }[];
-      };
-      const hit = body.results?.[0];
+      // Ask for several matches: the first one is often a small village that shares the name (Bali is also a town in
+      // West Bengal). Of the places called exactly what was typed, the biggest is the one people mean.
+      const params = new URLSearchParams({ name, count: "10", language: "en", format: "json" });
+      type Hit = { name?: unknown; admin1?: unknown; country?: unknown; population?: unknown; latitude?: unknown; longitude?: unknown };
+      const body = (await getJson(fetch, `${geocodeUrl}?${params}`, timeoutMs)) as { results?: Hit[] };
+      const usable = (body.results ?? []).filter((h) => typeof h.name === "string" && finite(h.latitude) && finite(h.longitude));
+      const plain = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      const exact = usable.filter((h) => plain(String(h.name)) === plain(name));
+      const population = (h: Hit) => (finite(h.population) ? h.population : 0);
+      const hit = [...(exact.length > 0 ? exact : usable)].sort((x, y) => population(y) - population(x))[0];
       if (!hit || typeof hit.name !== "string" || !finite(hit.latitude) || !finite(hit.longitude)) return null;
-      const label = typeof hit.country === "string" && hit.country ? `${hit.name}, ${hit.country}` : hit.name;
-      return { name: label, lat: hit.latitude, lon: hit.longitude };
+      // Name the region too when it adds something, so a wrong guess is easy to spot ("Bāli, West Bengal, India").
+      const region = typeof hit.admin1 === "string" && hit.admin1 && plain(hit.admin1) !== plain(hit.name) ? hit.admin1 : null;
+      const country = typeof hit.country === "string" && hit.country ? hit.country : null;
+      return { name: [hit.name, region, country].filter(Boolean).join(", "), lat: hit.latitude, lon: hit.longitude };
     },
   };
 }
