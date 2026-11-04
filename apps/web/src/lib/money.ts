@@ -42,3 +42,25 @@ export function currencyName(currency: string, locale?: string): string {
   }
   return n.of(currency) ?? currency;
 }
+
+/** Like `formatMoney`, but a whole amount drops its ".00", so long figures stay readable in lists: "₹9,475", "₹9,475.50". */
+export function formatMoneyShort(amount: number, currency: string, locale?: string): string {
+  return amount % 10 ** minorDigits(currency) === 0 ? wholeFormatter(currency, locale).format(amount / 10 ** minorDigits(currency)) : formatMoney(amount, currency, locale);
+}
+
+const wholeFormatters = new Map<string, Intl.NumberFormat>();
+function wholeFormatter(currency: string, locale: string | undefined): Intl.NumberFormat {
+  const key = `${locale ?? ""}|${currency}`;
+  let f = wholeFormatters.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    wholeFormatters.set(key, f);
+  }
+  return f;
+}
+
+/** An exchange rate as money, with enough decimals to be useful: "₹94.75", "₹0.0053", "$0.000063". */
+export function formatRate(rate: number, currency: string, locale?: string): string {
+  const digits = rate < 0.01 ? 6 : rate < 1 ? 4 : 2;
+  return new Intl.NumberFormat(locale, { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: digits }).format(rate);
+}

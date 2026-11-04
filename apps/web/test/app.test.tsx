@@ -298,11 +298,12 @@ describe("docs and money", () => {
     expect(within(bookings).getAllByText("No confirmation saved").length).toBeGreaterThan(0);
   });
 
-  it("shows that nothing is owed yet, and where amounts are converted", async () => {
+  it("invites the first expense when there is none, and offers to change the currency amounts are shown in", async () => {
     renderApp("/trips/t1/money", fakeServices().services);
     expect(await screen.findByRole("heading", { name: "Money" })).toBeInTheDocument();
-    expect(screen.getByText("Nothing to settle yet.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Home currency" })).toBeInTheDocument();
+    expect(screen.getByText("No expenses yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add expense" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Amounts shown in .*\. Change$/ })).toBeInTheDocument();
   });
 });
 

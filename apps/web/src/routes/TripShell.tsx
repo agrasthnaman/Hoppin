@@ -14,7 +14,14 @@ export function TripShell() {
   const { userId } = useUser();
   const services = useServices();
   const trip = useTrip(
-    { db: services.db, tripSource: services.tripSource, documentSource: services.documentSource, writer: services.actions },
+    {
+      db: services.db,
+      tripSource: services.tripSource,
+      documentSource: services.documentSource,
+      writer: services.actions,
+      moneyWriter: services.actions,
+      rates: services.rates,
+    },
     tripId,
     userId,
   );

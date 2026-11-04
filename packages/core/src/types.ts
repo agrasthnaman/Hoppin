@@ -89,7 +89,15 @@ export interface Vote {
 
 /** Everything the app keeps on the device for one trip, so it works with no signal. */
 export interface TripSnapshot {
-  trip: { id: string; name: string; startDate: string | null; endDate: string | null; destination?: TripDestination | null };
+  trip: {
+    id: string;
+    name: string;
+    startDate: string | null;
+    endDate: string | null;
+    destination?: TripDestination | null;
+    /** The one currency every bill is added up in. Set by the trip's first expense; absent on copies saved before expenses existed. */
+    baseCurrency?: string | null;
+  };
   members: MemberInfo[];
   items: Item[];
   rsvps: { itemId: string; userId: string }[];
@@ -97,6 +105,10 @@ export interface TripSnapshot {
   /** Missing on copies saved before polls existed. */
   polls?: Poll[];
   votes?: Vote[];
+  /** Absent on copies saved before expenses existed. */
+  guests?: TripGuest[];
+  expenses?: ExpenseRecord[];
+  expenseHistory?: ExpenseChange[];
 }
 
 export type SnapshotResult = { status: "ok"; snapshot: TripSnapshot } | { status: "no-access" };
@@ -142,4 +154,56 @@ export interface Expense {
   /** What one unit of `currency` was worth in the trip's base currency when the expense was entered. */
   rate: number;
   split: ExpenseShare[];
+}
+
+/** What a bill was for, so each one gets an icon. Payments (someone paying a person back) are `payment`. */
+export type ExpenseCategory = "food" | "stay" | "transport" | "activity" | "shopping" | "other";
+
+/** Someone without the app (a child, a partner) who can pay for or share a cost. Mirrors `trip_guests`. */
+export interface TripGuest {
+  id: string;
+  tripId: string;
+  name: string;
+  /** The member who added them; they mark payments to the guest as paid. */
+  addedBy: string;
+}
+
+/** A stored expense or payment, with its split (mirrors `expenses` and `expense_shares`). */
+export interface ExpenseRecord {
+  id: string;
+  tripId: string;
+  /** `payment`: `paidBy` paid back the one person in `split`. */
+  kind: "expense" | "payment";
+  title: string;
+  category: ExpenseCategory | "payment";
+  /** A member's user id or a guest's id. */
+  paidBy: string;
+  /** In minor units of `currency`. */
+  amount: number;
+  currency: string;
+  /** What one unit of `currency` was worth in `baseCurrency` on `rateDate`. Null only while it waits on this phone for a rate. */
+  rate: number | null;
+  rateDate: string | null;
+  /** The rate is one this phone had saved (it was offline); a fresh one is fetched before sending. */
+  rateSaved?: boolean;
+  baseCurrency: string;
+  /** The day it was paid (YYYY-MM-DD). */
+  spentOn: string;
+  /** Exact amounts (`share`) are in minor units of `currency`. */
+  split: ExpenseShare[];
+  createdBy: string;
+  /** 0 while it exists only on this phone. */
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** One entry in an expense's history (the expense rows of `change_log`). */
+export interface ExpenseChange {
+  expenseId: string;
+  actorId: string | null;
+  op: "insert" | "update" | "delete";
+  at: string;
+  before: ExpenseRecord | null;
+  after: ExpenseRecord | null;
 }

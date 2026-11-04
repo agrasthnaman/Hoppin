@@ -1,10 +1,14 @@
 import {
+  overlayMoney,
   overlaySnapshot,
   type ConflictNotice,
   type DocumentSource,
+  type ExpenseRecord,
   type Item,
   type ItemValues,
+  type MoneyRecord,
   type OutboxRecord,
+  type TripGuest,
   type TripSnapshot,
   type TripSource,
 } from "@hoppin/core";
@@ -23,7 +27,9 @@ import {
   queueRsvp,
   type Writer,
 } from "../offline/outbox";
+import { discardMoney as dropMoney, flushMoney, listMoney, queueMoney, retryMoney as resendMoney, type MoneyWriter } from "../offline/money-outbox";
 import { cacheDocuments, getLocalTrip, syncTrip, type CacheResult } from "../offline/sync";
+import type { RateService } from "../providers/rates";
 
 export interface TripDeps {
   db: OfflineDb;
@@ -31,6 +37,10 @@ export interface TripDeps {
   documentSource: DocumentSource;
   /** Sends this person's changes to the server. */
   writer: Writer;
+  /** Sends expenses, payments and guests. Without it (and `rates`), money changes stay on the device. */
+  moneyWriter?: MoneyWriter;
+  /** Prices expenses added offline before they are sent. */
+  rates?: RateService;
 }
 
 export type TripPhase = "loading" | "ready" | "removed" | "unavailable";
@@ -63,6 +73,15 @@ export interface TripState {
   discardDraft: (id: string) => Promise<void>;
   /** Put a draft back in the queue as a newer change. `gone` means its item no longer exists. */
   applyDraft: (draft: OutboxRecord) => Promise<"queued" | "gone">;
+  /** Money changes made on this device that are waiting to be sent, or that the server refused (`error`). */
+  moneyChanges: MoneyRecord[];
+  /** Add or change an expense or payment. Works offline. */
+  saveExpense: (expense: ExpenseRecord) => Promise<void>;
+  deleteExpense: (expense: ExpenseRecord) => Promise<void>;
+  /** Add a named guest (someone without the app). Works offline. */
+  addGuest: (name: string) => Promise<TripGuest>;
+  retryMoney: (id: string) => Promise<void>;
+  discardMoney: (id: string) => Promise<void>;
 }
 
 /** How often an open, visible trip looks for other people's changes. A hidden or backgrounded app does not run this. */
@@ -81,6 +100,7 @@ function pageIsQuiet(): boolean {
 export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripState {
   const [local, setLocal] = useState<{ snapshot: TripSnapshot; syncedAt: number } | null | undefined>(undefined);
   const [outbox, setOutbox] = useState<OutboxRecord[]>([]);
+  const [money, setMoney] = useState<MoneyRecord[]>([]);
   const [notices, setNotices] = useState<ConflictNotice[]>([]);
   const [drafts, setDrafts] = useState<OutboxRecord[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -99,6 +119,7 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
   const round = useCallback(async () => {
     const d = depsRef.current;
     await flushOutbox({ db: d.db, source: d.tripSource, writer: d.writer, viewerId }, tripId);
+    if (d.moneyWriter && d.rates) await flushMoney({ db: d.db, writer: d.moneyWriter, rates: d.rates }, tripId);
     const result = await syncTrip(offline(), tripId);
     if (result.status === "removed") setRemoved(true);
     else {
@@ -135,10 +156,17 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
     let alive = true;
     const read = async () => {
       const db = depsRef.current.db;
-      const [trip, waiting, notes, kept] = await Promise.all([getLocalTrip(db, tripId), listOutbox(db, tripId), listNotices(db, tripId), listDrafts(db, tripId)]);
+      let loaded;
+      try {
+        loaded = await Promise.all([getLocalTrip(db, tripId), listOutbox(db, tripId), listNotices(db, tripId), listDrafts(db, tripId), listMoney(db, tripId)]);
+      } catch {
+        return; // the device copy was just wiped (signing out); nothing left to show
+      }
+      const [trip, waiting, notes, kept, moneyWaiting] = loaded;
       if (!alive) return;
       setLocal(trip);
       setOutbox(waiting);
+      setMoney(moneyWaiting);
       setNotices(notes);
       setDrafts(kept);
     };
@@ -190,7 +218,8 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
   };
   const queueDeps = () => ({ db: depsRef.current.db });
 
-  const snapshot = useMemo(() => (local ? overlaySnapshot(local.snapshot, outbox) : null), [local, outbox]);
+  const snapshot = useMemo(() => (local ? overlayMoney(overlaySnapshot(local.snapshot, outbox), money) : null), [local, outbox, money]);
+  const onServer = (expenseId: string) => local?.snapshot.expenses?.some((e) => e.id === expenseId) ?? false;
   const phase: TripPhase = removed ? "removed" : local ? "ready" : local === undefined || syncing ? "loading" : "unavailable";
 
   return {
@@ -199,7 +228,7 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
     syncedAt: local?.syncedAt ?? null,
     syncing,
     syncFailed,
-    pendingCount: outbox.length,
+    pendingCount: outbox.length + money.filter((r) => !r.error).length,
     notices,
     drafts,
     refresh,
@@ -225,5 +254,25 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
       kick();
       return outcome;
     },
+    moneyChanges: money,
+    saveExpense: async (expense) => {
+      await queueMoney(queueDeps(), { kind: "save", tripId, expense }, onServer(expense.id));
+      kick();
+    },
+    deleteExpense: async (expense) => {
+      await queueMoney(queueDeps(), { kind: "delete", tripId, expenseId: expense.id, title: expense.title }, onServer(expense.id));
+      kick();
+    },
+    addGuest: async (name) => {
+      const guest: TripGuest = { id: crypto.randomUUID(), tripId, name: name.trim(), addedBy: viewerId };
+      await queueMoney(queueDeps(), { kind: "guest", tripId, guest });
+      kick();
+      return guest;
+    },
+    retryMoney: async (id) => {
+      await resendMoney(depsRef.current.db, id);
+      kick();
+    },
+    discardMoney: (id) => dropMoney(depsRef.current.db, id),
   };
 }

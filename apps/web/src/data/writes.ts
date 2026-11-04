@@ -1,11 +1,16 @@
-import type { Item } from "@hoppin/core";
+import type { ExpenseRecord, Item, TripGuest } from "@hoppin/core";
 import type { ItemFormValues } from "../components/ItemForm";
 import { itemFromRow, type ItemRow } from "./mappers";
-import { itemInsertRow, itemUpdatePatch } from "./payloads";
+import { expensePayload, itemInsertRow, itemUpdatePatch } from "./payloads";
 
 /** The Supabase client, as far as writing goes (kept loose so it can be faked). */
 export interface WriteClient {
   from(table: string): any;
+}
+
+/** Writing money also calls database functions, so a bill and its split always change together. */
+export interface MoneyClient extends WriteClient {
+  rpc(fn: string, args: Record<string, unknown>): any;
 }
 
 /** Someone else changed the item after this person loaded it. */
@@ -44,6 +49,26 @@ export async function setRsvp(client: WriteClient, itemId: string, userId: strin
   }
   const { error } = await client.from("rsvps").delete().eq("item_id", itemId).eq("user_id", userId);
   if (error) throw new Error(error.message);
+}
+
+/** Adds or changes an expense (only the person who added it may change it; the database checks). */
+export async function saveExpense(client: MoneyClient, expense: ExpenseRecord, guestIds: ReadonlySet<string>): Promise<void> {
+  const { error } = await client.rpc("save_expense", { p: expensePayload(expense, guestIds) });
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteExpense(client: MoneyClient, expenseId: string): Promise<void> {
+  const { error } = await client.rpc("delete_expense", { p_id: expenseId });
+  if (error) throw new Error(error.message);
+}
+
+/** Adds a guest with the id chosen on the phone. Sending the same guest again is fine. */
+export async function addGuest(client: WriteClient, guest: TripGuest): Promise<void> {
+  const { error } = await client.from("trip_guests").insert({ id: guest.id, trip_id: guest.tripId, name: guest.name, added_by: guest.addedBy });
+  if (!error) return;
+  if (/duplicate key/i.test(error.message) && /pkey/i.test(error.message)) return; // an earlier attempt already saved it
+  if (/duplicate key/i.test(error.message)) throw new Error(`There's already someone called ${guest.name} in this trip.`);
+  throw new Error(error.message);
 }
 
 /** The Supabase client, as far as calling database functions goes. */

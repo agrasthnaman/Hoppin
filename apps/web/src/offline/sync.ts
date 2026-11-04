@@ -97,12 +97,13 @@ export async function getLocalDocument(db: OfflineDb, doc: TripDocument, key: Cr
 
 /** Removes one trip, its documents and any changes still waiting from this device. */
 export async function wipeTrip(db: OfflineDb, tripId: string): Promise<void> {
-  await db.transaction("rw", [db.trips, db.blobs, db.outbox, db.drafts, db.notices], async () => {
+  await db.transaction("rw", [db.trips, db.blobs, db.outbox, db.drafts, db.notices, db.moneyOutbox], async () => {
     await db.trips.delete(tripId);
     await db.blobs.where("tripId").equals(tripId).delete();
     await db.outbox.where("tripId").equals(tripId).delete();
     await db.drafts.where("tripId").equals(tripId).delete();
     await db.notices.where("tripId").equals(tripId).delete();
+    await db.moneyOutbox.where("tripId").equals(tripId).delete();
   });
   announceChange(tripId);
 }

@@ -4,9 +4,12 @@ import {
   applyVote,
   canManagePoll,
   validatePollDraft,
+  changedFields,
   itemFromValues,
   localDate,
   zonedTimeToInstant,
+  type ExpenseChange,
+  type ExpenseRecord,
   type Item,
   type ItemValues,
   type MemberInfo,
@@ -15,6 +18,7 @@ import {
   type SnapshotResult,
   type TripDestination,
   type TripDocument,
+  type TripGuest,
   type Vote,
 } from "@hoppin/core";
 import type { Services } from "../app/services";
@@ -52,6 +56,10 @@ interface DemoTrip {
   invites: Invite[];
   polls: Poll[];
   votes: Vote[];
+  baseCurrency?: string | null;
+  guests?: TripGuest[];
+  expenses?: ExpenseRecord[];
+  expenseHistory?: ExpenseChange[];
 }
 
 const ME = "demo-me";
@@ -109,7 +117,23 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-riya" },
       { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-neha" },
     ],
+    baseCurrency: "INR",
+    guests: [{ id: "g-zoya", tripId: "demo-goa", name: "Zoya", addedBy: "demo-neha" }],
+    expenses: [],
+    expenseHistory: [],
   };
+  const spend = (over: Partial<ExpenseRecord> & Pick<ExpenseRecord, "id" | "title" | "paidBy" | "amount" | "split" | "createdBy">, day: number): ExpenseRecord => ({
+    tripId: "demo-goa", kind: "expense", category: "other", currency: "INR", rate: 1, rateDate: addDays(base, day), baseCurrency: "INR",
+    spentOn: addDays(base, day), version: 1, createdAt: stamp(), updatedAt: stamp(), ...over,
+  });
+  goa.expenses = [
+    spend({ id: "x-hotel", title: "Beach Hotel deposit", category: "stay", paidBy: ME, amount: 1800000, createdBy: ME, split: [{ who: ME }, { who: "demo-riya" }, { who: "demo-neha" }] }, 0),
+    spend({ id: "x-dinner", title: "Seafood dinner", category: "food", paidBy: "demo-riya", amount: 420000, createdBy: "demo-riya", split: [{ who: ME }, { who: "demo-riya" }, { who: "demo-neha" }, { who: "g-zoya" }] }, 0),
+    spend({ id: "x-lounge", title: "Airport lounge", category: "other", paidBy: "demo-neha", amount: 4500, currency: "USD", rate: 94.75, createdBy: "demo-neha", split: [{ who: "demo-neha", share: 3000 }, { who: ME, share: 1500 }] }, 0),
+    spend({ id: "x-scooter", title: "Scooter rental", category: "transport", paidBy: "demo-neha", amount: 150000, createdBy: "demo-neha", split: [{ who: "demo-riya" }, { who: "demo-neha" }] }, 1),
+    spend({ id: "x-paid", kind: "payment", title: "Paid back", category: "payment", paidBy: "demo-riya", amount: 200000, createdBy: ME, split: [{ who: ME }] }, 1),
+  ];
+  goa.expenseHistory = goa.expenses.map((e) => ({ expenseId: e.id, actorId: e.createdBy, op: "insert" as const, at: e.createdAt ?? stamp(), before: null, after: e }));
   files.set("d-pass", { bytes: new TextEncoder().encode("Sample boarding passes (demo file)").buffer as ArrayBuffer, type: "text/plain" });
 
   const manali: DemoTrip = {
@@ -165,6 +189,37 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       t.rsvps = t.rsvps.filter((r) => !(r.itemId === itemId && r.userId === userId));
       if (going) t.rsvps.push({ itemId, userId });
     },
+    // Money follows the same rules as the database: only the person who added an expense changes it, and the first
+    // expense fixes the trip's counting currency.
+    async saveExpense(expense: ExpenseRecord) {
+      const t = find(expense.tripId);
+      if (!t) throw new Error("trip not found");
+      t.baseCurrency ??= expense.baseCurrency;
+      if (t.baseCurrency !== expense.baseCurrency) throw new Error(`base_currency:${t.baseCurrency}`);
+      const list = (t.expenses ??= []);
+      const old = list.find((e) => e.id === expense.id);
+      if (old && old.createdBy !== ME) throw new Error("only the person who added this can change it");
+      const saved: ExpenseRecord = { ...expense, createdBy: ME, version: (old?.version ?? 0) + 1, createdAt: old?.createdAt ?? stamp(), updatedAt: stamp() };
+      if (old && changedFields(old, saved).length === 0 && old.rate === saved.rate) return;
+      t.expenses = old ? list.map((e) => (e.id === expense.id ? saved : e)) : [...list, saved];
+      (t.expenseHistory ??= []).push({ expenseId: saved.id, actorId: ME, op: old ? "update" : "insert", at: stamp(), before: old ?? null, after: saved });
+    },
+    async deleteExpense(expenseId: string) {
+      const t = trips.find((x) => x.expenses?.some((e) => e.id === expenseId));
+      const old = t?.expenses?.find((e) => e.id === expenseId);
+      if (!t || !old) return;
+      if (old.createdBy !== ME) throw new Error("only the person who added this can delete it");
+      t.expenses = t.expenses?.filter((e) => e.id !== expenseId);
+      (t.expenseHistory ??= []).push({ expenseId, actorId: ME, op: "delete", at: stamp(), before: old, after: null });
+    },
+    async addGuest(guest: TripGuest) {
+      const t = find(guest.tripId);
+      if (!t) throw new Error("trip not found");
+      const guests = (t.guests ??= []);
+      if (guests.some((g) => g.id === guest.id)) return;
+      if (guests.some((g) => g.name.trim().toLowerCase() === guest.name.trim().toLowerCase())) throw new Error(`There's already someone called ${guest.name} in this trip.`);
+      guests.push(guest);
+    },
   };
 
   const guardOrganizer = (tripId: string) => {
@@ -182,13 +237,16 @@ export function createDemoServices(options: DemoOptions = {}): Services {
         return structuredClone({
           status: "ok",
           snapshot: {
-            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, destination: t.destination ?? null },
+            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, destination: t.destination ?? null, baseCurrency: t.baseCurrency ?? null },
             members: t.members,
             items: t.items.filter((i) => i.visibility === "shared" || i.ownerId === ME),
             rsvps: t.rsvps,
             documents: t.documents,
             polls: t.polls,
             votes: t.votes.filter((v) => t.members.some((m) => m.userId === v.userId && m.status === "approved")),
+            guests: t.guests ?? [],
+            expenses: t.expenses ?? [],
+            expenseHistory: t.expenseHistory ?? [],
           },
         }) as SnapshotResult;
       },
@@ -285,6 +343,9 @@ export function createDemoServices(options: DemoOptions = {}): Services {
         t.polls = t.polls.filter((p) => p.id !== pollId);
         t.votes = t.votes.filter((v) => v.pollId !== pollId);
       },
+      saveExpense: writer.saveExpense,
+      deleteExpense: writer.deleteExpense,
+      addGuest: writer.addGuest,
       async uploadDocument(file, meta) {
         const t = find(meta.tripId);
         if (!t) throw new Error("trip not found");

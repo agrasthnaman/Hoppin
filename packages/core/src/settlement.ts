@@ -1,5 +1,5 @@
 import { convertMinor, isCurrencyCode } from "./money";
-import type { Expense } from "./types";
+import type { Expense, ExpenseShare } from "./types";
 
 export interface Payment {
   from: string;
@@ -128,4 +128,13 @@ export function computeSettlement(expenses: Expense[], baseCurrency: string): Se
 
   for (const [who, balance] of balances) if (Object.is(balance, -0)) balances.set(who, 0);
   return { balances: Object.fromEntries(balances), payments: settle(balances) };
+}
+
+/** Splits `total` among the people in `split` the way the bill says (equal, or in proportion to exact amounts), adding up exactly. */
+export function splitAmount(total: number, split: ExpenseShare[]): Record<string, number> {
+  const custom = split.some((s) => s.share !== undefined);
+  const weights = split.map((s) => (custom ? (s.share ?? 0) : 1));
+  if (weights.every((w) => w === 0)) return Object.fromEntries(split.map((s) => [s.who, 0]));
+  const parts = largestRemainder(total, weights);
+  return Object.fromEntries(split.map((s, i) => [s.who, parts[i] as number]));
 }

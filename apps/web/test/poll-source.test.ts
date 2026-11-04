@@ -3,7 +3,7 @@ import { createTripSource } from "../src/data/trip-source";
 
 type Row = Record<string, unknown>;
 
-/** A tiny stand-in for the Supabase query builder (select, eq, in) that records what was asked. */
+/** A tiny stand-in for the Supabase query builder (select, eq, in, not-is-null) that records what was asked. */
 function fakeClient(tables: Record<string, Row[] | { error: string }>) {
   const calls: { table: string; filters: [string, string, unknown][] }[] = [];
   const client = {
@@ -16,7 +16,9 @@ function fakeClient(tables: Record<string, Row[] | { error: string }>) {
             const t = tables[table];
             if (!t) return { data: [] as Row[], error: null };
             if ("error" in t) return { data: null, error: { message: t.error } };
-            return { data: t.filter((r) => filters.every(([op, col, val]) => (op === "eq" ? r[col] === val : (val as unknown[]).includes(r[col])))), error: null };
+            const keep = (r: Row) =>
+              filters.every(([op, col, val]) => (op === "eq" ? r[col] === val : op === "notnull" ? r[col] !== null && r[col] !== undefined : (val as unknown[]).includes(r[col])));
+            return { data: t.filter(keep), error: null };
           };
           const builder: any = {
             eq(col: string, val: unknown) {
@@ -25,6 +27,11 @@ function fakeClient(tables: Record<string, Row[] | { error: string }>) {
             },
             in(col: string, val: unknown[]) {
               filters.push(["in", col, val]);
+              return builder;
+            },
+            not(col: string, op: string, val: unknown) {
+              if (op !== "is" || val !== null) throw new Error(`fake client: not(${col}, ${op}) is not supported`);
+              filters.push(["notnull", col, null]);
               return builder;
             },
             then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {

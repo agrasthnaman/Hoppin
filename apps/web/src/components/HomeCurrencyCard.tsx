@@ -97,23 +97,40 @@ function RateLine({ home }: { home: string }) {
   );
 }
 
-interface PickerProps {
+export interface CurrencyPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   value: string | null;
   onPick: (currency: string | null) => void;
+  title?: string;
+  description?: string;
+  /** Offer "Don't convert" (choosing a home currency); off when a currency must be picked. */
+  allowOff?: boolean;
+  /** Currencies to list first (for example the ones a trip already uses). */
+  pinned?: readonly string[];
 }
 
-function CurrencyPicker({ open, onOpenChange, value, onPick }: PickerProps) {
+/** Pick a currency from a searchable list. Tapping one picks it and closes the list. */
+export function CurrencyPicker({
+  open,
+  onOpenChange,
+  value,
+  onPick,
+  title = "Home currency",
+  description = "Amounts in other currencies are also shown in this one.",
+  allowOff = true,
+  pinned = [],
+}: CurrencyPickerProps) {
   const [query, setQuery] = useState("");
   const options = useMemo(
     () => RATE_CURRENCIES.map((code) => ({ code, name: currencyName(code), symbol: currencySymbol(code) })).sort((a, b) => a.name.localeCompare(b.name)),
     [],
   );
   const q = query.trim().toLowerCase();
+  const rank = (code: string) => (code === value ? 2 : pinned.includes(code) ? 1 : 0);
   const shown = q
     ? options.filter((o) => o.code.toLowerCase().includes(q) || o.name.toLowerCase().includes(q))
-    : [...options].sort((a, b) => Number(b.code === value) - Number(a.code === value)); // current choice on top
+    : [...options].sort((a, b) => rank(b.code) - rank(a.code)); // current choice, then pinned ones, on top
 
   const close = (next: boolean) => {
     onOpenChange(next);
@@ -125,7 +142,7 @@ function CurrencyPicker({ open, onOpenChange, value, onPick }: PickerProps) {
   };
 
   return (
-    <Sheet open={open} onOpenChange={close} title="Home currency" description="Amounts in other currencies are also shown in this one.">
+    <Sheet open={open} onOpenChange={close} title={title} description={description}>
       <div className="flex flex-col gap-2">
         <label className="sticky top-0 z-10 -mx-1 block bg-surface px-1 pb-1">
           <span className="sr-only">Search currencies</span>
@@ -142,7 +159,7 @@ function CurrencyPicker({ open, onOpenChange, value, onPick }: PickerProps) {
         </label>
 
         <div role="group" aria-label="Currencies" className="flex flex-col gap-1">
-          {!q && <Option selected={value === null} onSelect={choose(null)} badge={<Coins className="size-5" />} title="Don't convert" hint="Show amounts as entered" />}
+          {!q && allowOff && <Option selected={value === null} onSelect={choose(null)} badge={<Coins className="size-5" />} title="Don't convert" hint="Show amounts as entered" />}
           {shown.map((o) => (
             <Option key={o.code} selected={value === o.code} onSelect={choose(o.code)} badge={o.symbol} title={o.name} hint={o.code} />
           ))}
