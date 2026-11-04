@@ -39,7 +39,7 @@ export function DayWeather({ destination, date }: { destination: TripDestination
       <section aria-label="Weather" className={`${box} text-muted`}>
         <CloudSun aria-hidden="true" className="size-5 shrink-0" />
         <span>
-          Weather in {destination.name}: the forecast opens on {opens(date)}, {FORECAST_DAYS} days before
+          Too early for a forecast. Weather for {destination.name} shows up here from {opens(date)}, {FORECAST_DAYS} days before this day.
         </span>
       </section>
     );
