@@ -38,3 +38,19 @@ Paste the file into the project's SQL editor, or send it through the Management 
 - **Prod project, hosting (Cloudflare Pages), domain, Unsplash/Pexels keys, map-tile key, web push keys:** not set up yet (issues #1 and #2).
 - **Hosted builds** read `package-lock.json`, which currently points at an internal Artifactory registry, so a hosted build cannot install from it yet. Decide how to handle the lockfile before setting up hosting.
 - Backups: check what the Supabase plan includes before the first real trip; free projects may pause when unused.
+
+
+## Automatic release (GitHub Actions)
+
+`.github/workflows/release.yml` tests every pull request. When a change lands on `main` it tests again, builds, publishes to Cloudflare Pages and checks that https://hoppinclub.com answers. The build fails if the offline cache grows past 1500 KiB.
+
+One-time setup, in the repository settings (or with `gh`):
+
+| Kind | Name | What |
+|---|---|---|
+| secret | `JFROG_NPM_TOKEN` | Artifactory access token that can read `npm-virtual` (packages only ever come from Artifactory) |
+| secret | `CLOUDFLARE_API_TOKEN` | Cloudflare token with **Account > Cloudflare Pages > Edit** only. Nothing else. |
+| secret | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account id |
+| variable | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Same values as `apps/web/.env.local` (the anon key is public by design) |
+
+Database migrations are **not** applied by this workflow. Apply them first, then merge.

@@ -45,7 +45,9 @@ describe("AppShell navigation", () => {
       "/trips/t1/more",
     ]);
     expect(within(nav).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Today" })).toHaveClass("md:bg-nav-active");
     expect(within(nav).getByRole("link", { name: "Days" })).not.toHaveAttribute("aria-current");
+    expect(within(nav).getByText("Goa")).toBeInTheDocument();
   });
 
   it("is a floating bar on phones and becomes a sidebar on wide screens", () => {
@@ -74,7 +76,7 @@ describe("AppShell sync status", () => {
   it("always shows when the trip was last synced", () => {
     setup();
     expect(screen.getByText("Synced 5 min ago")).toBeInTheDocument();
-    expect(screen.getByText("Goa")).toBeInTheDocument();
+    expect(screen.getAllByText("Goa")).toHaveLength(2);
   });
 
   it("shows no banner when online and fresh", () => {

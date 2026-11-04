@@ -94,7 +94,7 @@ export function ResetPassword() {
         Choose a new password
       </h1>
       <p className="auth-lede">One new password, then you're back on the trip.</p>
-      <div className="auth-card" data-silk-anchor>
+      <div className="auth-card on-cream" data-silk-anchor>
         {body}
       </div>
     </AuthStage>

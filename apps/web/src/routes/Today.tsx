@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import { Link } from "react-router";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
+import { PageHeading } from "../components/PageHeading";
 
 function notesOf(item: Item): string {
   return typeof item.details.notes === "string" ? item.details.notes : "";
@@ -42,8 +43,8 @@ function Plan({
   const notes = notesOf(item);
   return (
     <section aria-label={label} className={`flex flex-col gap-2 rounded-card p-5 ${className}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em]">{label}</p>
-      <h2 className="font-display text-3xl font-extrabold leading-none">
+      <p className="border-b border-dashed border-current/25 pb-2 text-xs font-semibold uppercase tracking-[0.14em]">{label}</p>
+      <h2 className="page-title text-4xl">
         <Link to={`/trips/${tripId}/items/${item.id}`} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
           {item.title}
         </Link>
@@ -73,22 +74,22 @@ export default function Today() {
 
   return (
     <div className="flex flex-col gap-4 pb-24">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-4xl font-extrabold leading-none">Today</h1>
-          <p className="mt-1 text-sm text-muted">{dateLine}</p>
-        </div>
-        <Link to="/trips" className="text-sm font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
-          All trips
-        </Link>
-      </div>
+      <PageHeading
+        title="Today"
+        date={dateLine}
+        aside={
+          <Link to="/trips" className="text-sm font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+            All trips
+          </Link>
+        }
+      />
 
       {current ? (
         <Plan label="Now" item={current} tripId={trip.tripId} onHero className="bg-hero text-hero-fg" />
       ) : (
         <section aria-label="Now" className="rounded-card border border-line bg-surface p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Now</p>
-          <p className="mt-2 font-display text-2xl font-extrabold">Nothing on right now</p>
+          <p className="page-title mt-2 text-3xl">Nothing on right now</p>
         </section>
       )}
 

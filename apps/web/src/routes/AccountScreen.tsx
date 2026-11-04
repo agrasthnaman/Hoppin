@@ -80,7 +80,7 @@ export function AccountScreen() {
       <HomeLink className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
         Back to your trips
       </HomeLink>
-      <h1 className="font-display text-4xl font-extrabold">Account</h1>
+      <h1 className="page-title text-5xl">Account</h1>
       <Card className="flex flex-col gap-3">
         <h2 className="font-semibold">Join a trip</h2>
         <p className="text-sm text-muted">Paste the invite link an organizer sent you.</p>

@@ -32,6 +32,7 @@ function apply(palette: string, mode: Mode) {
   if (mode === "system") root.removeAttribute("data-theme");
   else root.dataset.theme = mode;
   const resolved = mode === "system" ? (prefersDark() ? "dark" : "light") : mode;
+  root.style.colorScheme = resolved;
   const info = data.palettes.find((p) => p.id === palette);
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", info ? info[resolved].bg : "#ffffff");
 }

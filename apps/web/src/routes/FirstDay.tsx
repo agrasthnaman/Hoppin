@@ -47,7 +47,7 @@ export function FirstDay({ online, onStart, onJoin }: { online: boolean; onStart
       </p>
 
       <div className="first-day-actions">
-        <article className="first-day-card" data-silk-anchor>
+        <article className="first-day-card on-cream" data-silk-anchor>
           <h2>Start a trip</h2>
           <p>You become the organizer. The dates can wait.</p>
           <Button disabled={!online} onClick={onStart}>
@@ -55,7 +55,7 @@ export function FirstDay({ online, onStart, onJoin }: { online: boolean; onStart
           </Button>
           {!online && <p className="first-day-hint">Connect to the internet to create a trip.</p>}
         </article>
-        <article className="first-day-card" data-silk-anchor>
+        <article className="first-day-card on-cream" data-silk-anchor>
           <h2>Join a trip</h2>
           <p>Paste the invite link an organizer sent you.</p>
           <JoinTripForm onJoin={onJoin} />
