@@ -201,6 +201,23 @@ describe("days screen", () => {
     expect(screen.queryByText("Lunch on day three")).toBeNull();
   });
 
+  it("each plan you may change has an Edit button right on the day, which opens the plan form filled in", async () => {
+    const { services } = fakeServices();
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    const block = await screen.findByRole("region", { name: "Old town tour" });
+    await userEvent.click(within(block).getByRole("button", { name: "Edit Old town tour" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit plan" });
+    expect(within(dialog).getByLabelText("Title")).toHaveValue("Old town tour");
+  });
+
+  it("a friend's optional plan opens with an Edit plan button only when you may change it", async () => {
+    const { services } = fakeServices();
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    await userEvent.click(await screen.findByRole("button", { name: "R: Museum" }));
+    const sheet = await screen.findByRole("dialog", { name: "Museum" });
+    expect(within(sheet).queryByRole("button", { name: "Edit plan" })).toBeNull();
+  });
+
   it("opens on today (in the device's time zone) when it is within the trip", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/days", services);
@@ -357,6 +374,26 @@ describe("bookings and my documents", () => {
     await userEvent.click(within(bookings).getByRole("button", { name: "Edit Goa flight" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit booking" });
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Goa flight");
+  });
+
+  it("a group of bookings folds away and opens again, and the count stays visible", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    const flights = within(bookings).getByRole("button", { name: "Flights" });
+    expect(flights).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(flights);
+    expect(flights).toHaveAttribute("aria-expanded", "false");
+    expect(within(bookings).queryByRole("link", { name: "Goa flight" })).toBeNull();
+    expect(within(bookings).getByRole("link", { name: "Beach house" })).toBeInTheDocument();
+    await userEvent.click(flights);
+    expect(within(bookings).getByRole("link", { name: "Goa flight" })).toBeInTheDocument();
+  });
+
+  it("a plan added on the days screen is a booking on Docs too (same list of plans)", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    expect(within(bookings).getByRole("heading", { name: "Plans" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
   });
 
   it("filters bookings by who booked them and by title", async () => {

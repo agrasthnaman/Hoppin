@@ -1,5 +1,5 @@
 import { canEdit, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
-import { FileText, Plus } from "lucide-react";
+import { ChevronDown, FileText, Plus } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { peopleFrom } from "../app/people";
@@ -44,6 +44,7 @@ export default function Docs() {
   const [person, setPerson] = useState("all");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [folded, setFolded] = useState<Set<ItemKind>>(new Set());
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const gate = tripGate(trip);
@@ -146,8 +147,28 @@ export default function Docs() {
             if (group.length === 0) return null;
             return (
               <div key={kind} className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold text-muted">{KIND_HEADING[kind]}</h3>
-                <ul className="flex flex-col gap-2">
+                <h3 className="text-sm font-semibold text-muted">
+                  <button
+                    type="button"
+                    aria-expanded={!folded.has(kind)}
+                    aria-controls={`group-${kind}`}
+                    onClick={() =>
+                      setFolded((current) => {
+                        const next = new Set(current);
+                        if (!next.delete(kind)) next.add(kind);
+                        return next;
+                      })
+                    }
+                    className="flex min-h-11 w-full items-center gap-2 rounded-card px-1 text-left hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <ChevronDown aria-hidden="true" className={`size-4 shrink-0 transition-transform ${folded.has(kind) ? "-rotate-90" : ""}`} />
+                    {KIND_HEADING[kind]}
+                    <span aria-hidden="true" className="rounded-full bg-raised px-2 py-0.5 text-xs font-medium">
+                      {group.length}
+                    </span>
+                  </button>
+                </h3>
+                <ul id={`group-${kind}`} hidden={folded.has(kind)} className="grid items-start gap-2 sm:grid-cols-2">
                   {group.map((item) => {
                     const day = dayOf(item);
                     const attached = visible.filter((doc) => doc.itemId === item.id);
@@ -290,7 +311,7 @@ export default function Docs() {
 
 function FileList({ docs, items, tripId, onOpen }: { docs: TripDocument[]; items: Item[]; tripId: string; onOpen: (doc: TripDocument) => void }) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="grid gap-2 sm:grid-cols-2">
       {docs.map((doc) => {
         const plan = doc.itemId ? items.find((item) => item.id === doc.itemId) : undefined;
         const kind = doc.scope === "personal" ? "Personal" : doc.kind.charAt(0).toUpperCase() + doc.kind.slice(1);

@@ -1,8 +1,16 @@
-import { formatTime, type TripDestination } from "@hoppin/core";
+import { addDays, formatTime, type TripDestination } from "@hoppin/core";
 import { CloudSun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useServices } from "../app/services";
-import type { WeatherResult } from "../providers/weather";
+import { FORECAST_DAYS, type WeatherResult } from "../providers/weather";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** The first day the forecast can be shown for `date`, like "21 Nov". */
+function opens(date: string): string {
+  const day = addDays(date, -FORECAST_DAYS);
+  return `${Number(day.slice(8, 10))} ${MONTHS[Number(day.slice(5, 7)) - 1]}`;
+}
 
 /** The day's forecast at the trip's destination, under the day strip. Shows nothing when there is none to show. */
 export function DayWeather({ destination, date }: { destination: TripDestination | null | undefined; date: string }) {
@@ -30,7 +38,9 @@ export function DayWeather({ destination, date }: { destination: TripDestination
     return (
       <section aria-label="Weather" className={`${box} text-muted`}>
         <CloudSun aria-hidden="true" className="size-5 shrink-0" />
-        <span>Weather in {destination.name}: not available yet</span>
+        <span>
+          Weather in {destination.name}: the forecast opens on {opens(date)}, {FORECAST_DAYS} days before
+        </span>
       </section>
     );
   }

@@ -31,6 +31,9 @@ export interface DayViewProps {
   headerAction?: React.ReactNode;
   /** Lets the app turn a block's title into a link to its detail page. */
   renderBlockTitle?: (item: Item) => React.ReactNode;
+  /** Shows an Edit button on each plan this returns true for, and calls `onEdit` with it. */
+  canEditItem?: (item: Item) => boolean;
+  onEdit?: (item: Item) => void;
 }
 
 const LIST = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } } };
@@ -50,7 +53,7 @@ function dateParts(date: string): { weekday: string; rest: string } {
 }
 
 /** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction }: DayViewProps) {
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
   const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
@@ -72,6 +75,20 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
   const empty =
     layout.blocks.length === 0 && layout.privateLines.length === 0 && Object.keys(layout.chips).length === 0;
   const going = selected ? (goingByItem[selected.id] ?? []) : [];
+  const editable = (item: Item) => !!onEdit && (canEditItem ? canEditItem(item) : true);
+  const editButton = (item: Item, tone: "light" | "dark" = "light") => (
+    <button
+      type="button"
+      aria-label={`Edit ${item.title}`}
+      onClick={() => onEdit?.(item)}
+      className={cn(
+        "-my-1 min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-accent",
+        tone === "dark" ? "text-hero-fg hover:bg-white/10" : "text-link hover:bg-raised",
+      )}
+    >
+      Edit
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -91,8 +108,13 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
         return (
           <m.section key={block.id} aria-label={block.title} variants={ITEM}>
             <div className={cn("rounded-card p-4", spotlight ? "bg-hero text-hero-fg" : "border border-line bg-surface shadow-card")}>
-              <p className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</p>
-              <p className="font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</p>
+                  <p className="font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
+                </div>
+                {editable(block) && editButton(block, spotlight ? "dark" : "light")}
+              </div>
               {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
             </div>
           </m.section>
@@ -111,6 +133,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
           <span className="text-sm">{formatTime(line.startsAt, line.tz)}</span>
           <span>{line.title}</span>
           <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-xs">Only you</span>
+          {editable(line) && editButton(line)}
         </m.div>
       ))}
       </m.div>
@@ -145,6 +168,18 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 </div>
                 <span className="text-sm text-muted">{going.length} going</span>
               </div>
+            )}
+            {editable(selected) && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const item = selected;
+                  setSelected(null);
+                  onEdit?.(item);
+                }}
+              >
+                Edit plan
+              </Button>
             )}
             <Button disabled={going.includes(viewerId)} onClick={() => onJoin(selected.id)}>
               {going.includes(viewerId) ? "You're in" : "I'm in"}

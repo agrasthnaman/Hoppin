@@ -41,11 +41,11 @@ describe("weather on a day", () => {
     expect(await screen.findByRole("region", { name: "Weather" })).toHaveTextContent("Saved forecast, updated 09:05");
   });
 
-  it('days beyond the forecast say "not available yet"', async () => {
+  it("days beyond the forecast say when the forecast opens", async () => {
     const { services } = fakeServices({ snapshot: withDestination(GOA) });
     services.weather.forDay.mockResolvedValue({ status: "not-yet" });
     renderApp("/trips/t1/days?date=2026-12-04", services);
-    expect(await screen.findByRole("region", { name: "Weather" })).toHaveTextContent("not available yet");
+    expect(await screen.findByRole("region", { name: "Weather" })).toHaveTextContent("the forecast opens on 18 Nov, 16 days before");
   });
 
   it("shows nothing when there is no forecast to show, and never breaks the day", async () => {
