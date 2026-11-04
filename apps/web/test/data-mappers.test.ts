@@ -178,3 +178,18 @@ describe("arrival time zone", () => {
     expect(itemInsertRow("t1", "u1", values).end_tz).toBe("Europe/London");
   });
 });
+
+describe("trip destination", () => {
+  it("is read from the row when the name and both coordinates are there", () => {
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null, destination: "Goa, India", destination_lat: 15.49, destination_lon: 73.83 }).destination).toEqual({
+      name: "Goa, India",
+      lat: 15.49,
+      lon: 73.83,
+    });
+  });
+
+  it("is none when any part is missing", () => {
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null, destination: "Goa", destination_lat: null, destination_lon: 73.83 }).destination).toBeNull();
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null }).destination).toBeNull();
+  });
+});
