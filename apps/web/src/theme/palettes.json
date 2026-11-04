@@ -17,7 +17,7 @@
         "accent": "#ff6b4a", "accentFg": "#1a100c", "accentSoft": "#4a261c", "accentSoftFg": "#ffd0c4", "link": "#c5d0ff",
         "hero": "#0d22ee", "heroFg": "#f6f3ec", "heroMuted": "#d5defa",
         "highlight": "#ffd8b0", "highlightFg": "#2a2116",
-        "nav": "#0d22ee", "navFg": "#d5defa", "navActive": "#ffd8ce"
+        "nav": "#2d3da8", "navFg": "#d5defa", "navActive": "#ffd8ce"
       }
     },
     {
