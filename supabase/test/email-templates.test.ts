@@ -17,8 +17,17 @@ describe("confirm signup email", () => {
 describe.each(["confirm-signup.html", "recovery.html"])("email template %s", (name) => {
   const html = read(name);
 
-  it("contains the link twice (button and plain fallback)", () => {
-    expect(html.match(/\{\{ \.ConfirmationURL \}\}/g)).toHaveLength(2);
+  it("links to our own domain, not to the auth provider, in the button and the fallback link (and shows it as text)", () => {
+    expect(html).not.toContain("ConfirmationURL");
+    const links = html.match(/\{\{ \.SiteURL \}\}\/auth\/confirm\?token_hash=\{\{ \.TokenHash \}\}&type=(signup|recovery)/g);
+    expect(links).toHaveLength(3);
+  });
+
+  it("makes the fallback link readable on the blue background: a real link, underlined, in a light colour", () => {
+    const fallback = html.slice(html.indexOf("Button not working?"));
+    const anchor = fallback.match(/<a [^>]*>/)?.[0] ?? "";
+    expect(anchor).toContain("text-decoration:underline");
+    expect(anchor).toMatch(/color:#(ffd2c6|ffb8a3|ff6b4a|f6f3ec)/i);
   });
 
   it("is safe and simple: no scripts, no remote images, no forms", () => {
