@@ -61,7 +61,8 @@ describe("the set of palettes", () => {
     expect(landing?.dark.ink).toBe("#f6f3ec");
     expect(landing?.light.hero).toBe("#0d22ee");
     expect(landing?.dark.hero).toBe("#0d22ee");
-    expect(landing?.dark.nav).toBe("#0d22ee");
+    expect(landing?.light.nav).toBe("#0d22ee");
+    expect(landing?.dark.nav).toBe("#2d3da8"); // a calmer blue that stands out from both the dark page and the dark cards, so the bar never blends into a card
     expect(landing?.light.accent).toBe("#ff6b4a");
     expect(landing?.dark.accent).toBe("#ff6b4a");
   });
