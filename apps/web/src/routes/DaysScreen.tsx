@@ -19,7 +19,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** One day of the trip: a strip of day pills, the plans (the one happening now or next is spotlighted), RSVPs, adding a plan. */
 export function DaysScreen() {
   const trip = useTripData();
-  const { clock } = useServices();
+  const { actions, clock } = useServices();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
@@ -45,7 +45,7 @@ export function DaysScreen() {
       {quiet && (
         <section className="rounded-card bg-hero p-5 text-hero-fg" data-silk-anchor>
           <p className="text-sm font-semibold text-hero-muted">Welcome</p>
-          <h2 className="font-display text-3xl font-extrabold leading-none">This day is waiting</h2>
+          <h2 className="page-title text-4xl">This day is waiting</h2>
           <p className="mt-2 text-hero-muted">Add the first plan. The group sees it as soon as you do.</p>
           <SilkSpiderCursor bounceColor="#0d22ee" shadowColor="#000a3a" silkColor="#f6f3ec" seedWebs={6} />
         </section>
@@ -104,8 +104,12 @@ export function DaysScreen() {
         <ItemForm
           tz={clock.timeZone}
           onCancel={() => setAdding(false)}
-          onSubmit={async (values) => {
-            await trip.addItem(values); // saved on this device first; sent as soon as there is a connection
+          onSubmit={async (values, file) => {
+            const id = await trip.addItem(values); // saved on this device first; sent as soon as there is a connection
+            if (file) {
+              await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: id, scope: "shared", kind: "document" });
+              await trip.refresh();
+            }
             setAdding(false);
           }}
         />

@@ -233,7 +233,7 @@ export function AuthForm({
           )}
         </>
       )}
-      <div className={titled ? "auth-card" : undefined} {...(titled ? { "data-silk-anchor": "" } : {})}>
+      <div className={titled ? "auth-card on-cream" : undefined} {...(titled ? { "data-silk-anchor": "" } : {})}>
         {fields}
       </div>
     </>

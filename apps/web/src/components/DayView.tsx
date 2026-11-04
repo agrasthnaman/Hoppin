@@ -76,9 +76,9 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display">
-          <span className="block text-sm font-semibold text-muted">{dateParts(date).weekday}</span>{" "}
-          <span className="block text-3xl font-extrabold leading-none">{dateParts(date).rest}</span>
+        <h2>
+          <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted">{dateParts(date).weekday}</span>{" "}
+          <span className="editorial mt-1 block text-4xl leading-none">{dateParts(date).rest}</span>
         </h2>
         {headerAction}
       </div>

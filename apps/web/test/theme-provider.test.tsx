@@ -55,6 +55,9 @@ describe("ThemeProvider", () => {
     act(() => result.current.setMode("system"));
     expect(root.hasAttribute("data-theme")).toBe(false);
     expect(localStorage.getItem("hoppin.mode")).toBe("system");
+    expect(root.style.colorScheme).toBe("light");
+    act(() => result.current.setMode("dark"));
+    expect(root.style.colorScheme).toBe("dark");
   });
 
   it("restores what was chosen last time", () => {

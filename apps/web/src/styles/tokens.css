@@ -54,3 +54,39 @@ body {
   font-family: var(--font-display);
   letter-spacing: -0.03em;
 }
+
+/* Trip pages borrow the landing's lighter titles and italic dates, and nothing else. */
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.9;
+}
+.editorial {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+/* Cream cards on the blue stage stay ink on white, even when the trip theme is dark. */
+.on-cream {
+  color: #101428;
+  color-scheme: light;
+}
+.on-cream input,
+.on-cream textarea,
+.on-cream select {
+  background-color: #ffffff;
+  color: #101428;
+  border-color: #d5d0c4;
+}
+.on-cream input::placeholder,
+.on-cream textarea::placeholder {
+  color: #5c678f;
+}
+.on-cream .text-fg { color: #101428; }
+.on-cream .text-muted { color: #3c4a78; }
+.on-cream .text-link { color: #0d22ee; }
+.on-cream .text-danger-fg { color: #7f1d1d; }
+.on-cream button.bg-transparent:hover { background-color: rgb(16 20 40 / 0.06); }
