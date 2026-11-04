@@ -66,7 +66,7 @@ describe("JoinFlow: signed out", () => {
 
   it("shows an error and lets them try again when creating the account fails", async () => {
     const { props } = setup();
-    props.auth.signUp.mockRejectedValue(new Error("boom"));
+    vi.mocked(props.auth.signUp).mockRejectedValue(new Error("boom"));
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
