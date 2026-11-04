@@ -33,7 +33,7 @@ function apply(palette: string, mode: Mode) {
   else root.dataset.theme = mode;
   const resolved = mode === "system" ? (prefersDark() ? "dark" : "light") : mode;
   const info = data.palettes.find((p) => p.id === palette);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", info ? info[resolved].bg : "#fdf3f1");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", info ? info[resolved].bg : "#ffffff");
 }
 
 export interface ThemeState {

@@ -8,9 +8,19 @@ const demo = () => createDemoServices({ today: "2026-12-01", timeZone: "Asia/Kol
 
 describe("demo mode", () => {
   it("starts signed in with two sample trips", async () => {
-    renderApp("/", demo());
+    renderApp("/trips", demo());
     expect(await screen.findByRole("link", { name: /Goa/ })).toHaveAttribute("href", "/trips/demo-goa");
     expect(screen.getByRole("link", { name: /Manali weekend/ })).toBeInTheDocument();
+  });
+
+  it("opens the app on today during the sample trip", async () => {
+    const { router } = renderApp("/", demo());
+    expect(await screen.findByRole("heading", { name: "Today" })).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/demo-goa/today"));
+    expect(screen.getByRole("region", { name: "Now" })).toHaveTextContent("Old town walking tour");
+    const stay = screen.getByRole("region", { name: "Where you're staying" });
+    expect(stay).toHaveTextContent("Beach Hotel");
+    expect(within(stay).getByRole("link", { name: "Open in Maps" })).toHaveAttribute("href", "https://maps.google.com/?q=Calangute+Beach");
   });
 
   it("opens on today, which is the busy day of the sample trip", async () => {
@@ -56,7 +66,7 @@ describe("demo mode", () => {
   });
 
   it("creating a trip works and opens it", async () => {
-    const { router } = renderApp("/", demo());
+    const { router } = renderApp("/trips", demo());
     await userEvent.click(await screen.findByRole("button", { name: "New trip" }));
     await userEvent.type(await screen.findByLabelText("Trip name"), "Hampi");
     await userEvent.click(screen.getByRole("button", { name: "Create trip" }));
@@ -79,7 +89,8 @@ describe("demo mode: account basics", () => {
     const { router } = renderApp("/trips/demo-manali/more", demo());
     await userEvent.click(await screen.findByRole("button", { name: "Leave this trip" }));
     await userEvent.click(within(await screen.findByRole("dialog", { name: "Leave this trip?" })).getByRole("button", { name: "Leave trip" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/demo-goa/today"));
+    await userEvent.click(await screen.findByRole("link", { name: "All trips" }));
     expect(await screen.findByRole("link", { name: /Goa/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Manali/ })).toBeNull();
   });
