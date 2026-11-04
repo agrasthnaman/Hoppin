@@ -531,12 +531,14 @@ describe("item screen", () => {
   });
 
   it("opens a document from the device when it is stored there, otherwise through a signed link", async () => {
-    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const tab = { document: { write: vi.fn() }, location: { href: "" }, close: vi.fn(), opener: {} };
+    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
     URL.createObjectURL = vi.fn(() => "blob:local");
     const { services } = fakeServices();
     renderApp("/trips/t1/items/i1", services);
     await userEvent.click(await screen.findByRole("button", { name: "Open d1-ticket.pdf" }));
-    await waitFor(() => expect(open).toHaveBeenCalledWith("blob:local", "_blank", "noopener"));
+    await waitFor(() => expect(tab.location.href).toBe("blob:local"));
+    expect(open).toHaveBeenCalledWith("", "_blank");
     expect(services.actions.documentUrl).not.toHaveBeenCalled();
   });
 

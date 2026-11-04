@@ -1,5 +1,6 @@
 import { canEdit, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
 import { ChevronDown, FileText, Plus } from "lucide-react";
+import { openFile } from "../lib/open-file";
 import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
@@ -70,13 +71,12 @@ export default function Docs() {
   async function open(doc: TripDocument) {
     setFailed(null);
     try {
-      const stored = await getLocalDocument(db, doc, await getDeviceKey(db));
-      if (stored) {
-        window.open(URL.createObjectURL(stored), "_blank", "noopener");
-        return;
-      }
-      if (!navigator.onLine) throw new Error("offline");
-      window.open(await actions.documentUrl(doc), "_blank", "noopener");
+      await openFile(async () => {
+        const stored = await getLocalDocument(db, doc, await getDeviceKey(db));
+        if (stored) return URL.createObjectURL(stored);
+        if (!navigator.onLine) throw new Error("offline");
+        return actions.documentUrl(doc);
+      });
     } catch {
       setFailed(doc.fileName);
     }

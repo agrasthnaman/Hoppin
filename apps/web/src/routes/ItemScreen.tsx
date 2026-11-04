@@ -5,6 +5,7 @@ import { peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { BookingDetail } from "../components/BookingDetail";
+import { openFile } from "../lib/open-file";
 import { getDeviceKey } from "../offline/crypto";
 import { getLocalDocument } from "../offline/sync";
 
@@ -36,13 +37,12 @@ export function ItemScreen() {
   }
 
   async function openDocument(doc: TripDocument) {
-    const stored = await getLocalDocument(db, doc, await getDeviceKey(db));
-    if (stored) {
-      window.open(URL.createObjectURL(stored), "_blank", "noopener");
-      return;
-    }
-    if (!navigator.onLine) throw new Error("This document isn't on this device and you're offline.");
-    window.open(await actions.documentUrl(doc), "_blank", "noopener");
+    await openFile(async () => {
+      const stored = await getLocalDocument(db, doc, await getDeviceKey(db));
+      if (stored) return URL.createObjectURL(stored);
+      if (!navigator.onLine) throw new Error("This document isn't on this device and you're offline.");
+      return actions.documentUrl(doc);
+    });
   }
 
   return (
