@@ -73,14 +73,15 @@ describe("demo mode", () => {
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/trips\/demo-\d+\/days$/));
   });
 
-  it("signing out and back in works without any email", async () => {
+  it("signing out and back in works with any password", async () => {
     const services = demo();
     renderApp("/trips/demo-goa/more", services);
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Email"), "aman@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    await waitFor(() => expect(services.sessionClient).toBeDefined());
+    await userEvent.type(screen.getByLabelText("Password"), "demo password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull());
   });
 });
 

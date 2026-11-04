@@ -185,8 +185,14 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       },
     },
     auth: {
-      sendMagicLink: async () => setSignedIn(true),
+      signUp: async () => {
+        setSignedIn(true);
+        return { confirmationNeeded: false };
+      },
       signIn: async () => setSignedIn(true),
+      resendConfirmation: async () => {},
+      requestPasswordReset: async () => {},
+      updatePassword: async () => {},
       signOut: async () => setSignedIn(false),
     },
     invites: {

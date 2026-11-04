@@ -1,0 +1,97 @@
+import { MIN_PASSWORD_LENGTH, validatePassword } from "@hoppin/core";
+import { useId, useState, type FormEvent } from "react";
+import { Link } from "react-router";
+import { useServices } from "../app/services";
+import { useSession } from "../app/session";
+import { Banner } from "../components/ui/Banner";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { AuthError } from "../lib/auth-api";
+import { inputClass } from "../lib/forms";
+import { HomeLink } from "./HomeLink";
+
+/**
+ * Choose a new password. The emailed reset link signs the person in and brings them here; the same page is used from
+ * the account screen to change a password. Without a session the link was already used or has expired.
+ */
+export function ResetPassword() {
+  const { auth, sessionClient } = useServices();
+  const session = useSession(sessionClient);
+  const id = useId();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const check = validatePassword(password);
+    setError(check.ok ? null : check.reason);
+    setFailure(null);
+    if (!check.ok) return;
+    setBusy(true);
+    try {
+      await auth.updatePassword(password);
+      setDone(true);
+    } catch (e) {
+      setFailure(e instanceof AuthError && e.code === "weak-password" ? e.message : "Couldn't save the password. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  let body: React.ReactNode;
+  if (session.status === "loading") body = <p role="status">Loading…</p>;
+  else if (session.status === "signedOut")
+    body = (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-lg font-semibold">This link has expired or was already used</p>
+        <p className="text-muted">Reset links work once and expire after 24 hours. Ask for a new one from the sign-in page.</p>
+        <Link to="/sign-in" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+          Go to sign in
+        </Link>
+      </div>
+    );
+  else if (done)
+    body = (
+      <div className="flex flex-col items-start gap-3">
+        <p role="status" className="text-lg font-semibold">Password updated</p>
+        <HomeLink className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">Continue</HomeLink>
+      </div>
+    );
+  else
+    body = (
+      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={id} className="text-sm font-medium">
+            New password
+          </label>
+          <input
+            id={id}
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={`${id}-help`}
+            className={inputClass}
+          />
+          <span id={`${id}-help`} className={error ? "text-sm text-danger-fg" : "text-sm text-muted"}>
+            {error ?? `At least ${MIN_PASSWORD_LENGTH} characters. A few words in a row works well.`}
+          </span>
+        </div>
+        {failure && <Banner kind="conflict" text={failure} />}
+        <Button type="submit" disabled={busy}>
+          Save password
+        </Button>
+      </form>
+    );
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
+      <h1 className="font-display text-4xl font-extrabold">Choose a new password</h1>
+      <Card>{body}</Card>
+    </main>
+  );
+}

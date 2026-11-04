@@ -334,3 +334,12 @@ describe.skipIf(!run)("real Supabase project", () => {
     await expect(createInviteApi(bob).redeemInvite(invite4.token)).rejects.toThrow(); // his session no longer works
   });
 });
+
+// A weak password is refused by the server itself, before any account exists or any email is sent.
+describe.skipIf(!run)("password rules on the real project", () => {
+  it("rejects a password shorter than 10 characters", async () => {
+    const { data, error } = await newClient().auth.signUp({ email: `smoke-${stamp}-weak@example.invalid`, password: "short-pw1" });
+    expect(error?.code).toBe("weak_password");
+    expect(data.user).toBeNull();
+  });
+});

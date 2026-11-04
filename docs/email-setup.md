@@ -32,5 +32,6 @@
 - Optional: add a **DMARC** record for your domain (Resend's docs explain how) so your emails are trusted.
 
 ## What is already prepared in this repo
-- `supabase/email-templates/` has the branded magic-link and confirm-signup emails (tested to be small, script-free and image-free). A preview is in `docs/ui-screenshots/email-magic-link.png`.
+- `supabase/email-templates/` has the branded confirm-signup and password-recovery emails (tested to be small, script-free and image-free, and to say the link works once and lasts 24 hours).
+- People sign in with **email and password**. The email link only confirms the address when an account is created, and resets a forgotten password. Links are single-use and valid for 24 hours; passwords need at least 10 characters (and at most 72). Apply those settings with `node scripts/supabase-email.mjs auth` (needs `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`). Keep "Confirm email" on.
 - `scripts/supabase-email.mjs` applies the provider and templates.

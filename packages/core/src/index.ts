@@ -11,3 +11,4 @@ export * from "./outbox";
 export * from "./money";
 export * from "./settlement";
 export * from "./providers";
+export * from "./password";

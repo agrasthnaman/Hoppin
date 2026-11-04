@@ -1,3 +1,4 @@
+import { AuthError } from "../src/lib/auth-api";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,13 +24,13 @@ describe("sign in and gating", () => {
     expect(router.state.location.search).toContain("next=%2Ftrips%2Ft1%2Fdays");
   });
 
-  it("emails a sign-in link that returns to where they were going", async () => {
+  it("signs in with email and password", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in?next=%2Ftrips%2Ft1%2Fdays", services);
     await userEvent.type(await screen.findByLabelText("Email"), "aman@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(services.auth.signIn).toHaveBeenCalledWith({ email: "aman@example.com", redirectTo: `${window.location.origin}/trips/t1/days` });
-    expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(services.auth.signIn).toHaveBeenCalledWith({ email: "aman@example.com", password: "a long enough password" });
   });
 
   it("sends someone who is already signed in on to today", async () => {
@@ -45,21 +46,48 @@ describe("sign in and gating", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/account"));
   });
 
-  it("ignores a 'next' address that points to another site", async () => {
+  it("ignores a 'next' address that points to another site when creating an account", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in?next=%2F%2Fevil.example", services);
-    await userEvent.type(await screen.findByLabelText("Email"), "a@b.co");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(services.auth.signIn).toHaveBeenCalledWith({ email: "a@b.co", redirectTo: `${window.location.origin}/` });
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
+    await userEvent.type(screen.getByLabelText("Your name"), "A");
+    await userEvent.type(screen.getByLabelText("Email"), "a@b.co");
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(services.auth.signUp).toHaveBeenCalledWith(expect.objectContaining({ redirectTo: `${window.location.origin}/` }));
   });
 
-  it("explains when the email has no account", async () => {
+  it("says so when the email or password is wrong, without saying which", async () => {
     const { services } = fakeServices({ session: null });
-    services.auth.signIn.mockRejectedValueOnce(new Error("Signups not allowed for otp"));
+    services.auth.signIn.mockRejectedValueOnce(new AuthError("invalid-credentials", "Invalid login credentials"));
     renderApp("/sign-in", services);
     await userEvent.type(await screen.findByLabelText("Email"), "new@b.co");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("ask the organizer for an invite link");
+    await userEvent.type(screen.getByLabelText("Password"), "whatever password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email or password");
+  });
+
+  it("asks someone with an unconfirmed email to confirm it, and can send a new link", async () => {
+    const { services } = fakeServices({ session: null });
+    services.auth.signIn.mockRejectedValueOnce(new AuthError("email-not-confirmed", "Email not confirmed"));
+    renderApp("/sign-in", services);
+    await userEvent.type(await screen.findByLabelText("Email"), "new@b.co");
+    await userEvent.type(screen.getByLabelText("Password"), "whatever password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByText(/confirmation link to new@b.co/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send a new link" }));
+    expect(services.auth.resendConfirmation).toHaveBeenCalledWith({ email: "new@b.co", redirectTo: `${window.location.origin}/` });
+    expect(await screen.findByText(/old one no longer works/)).toBeInTheDocument();
+  });
+
+  it("sends a password reset link that comes back to the reset page", async () => {
+    const { services } = fakeServices({ session: null });
+    renderApp("/sign-in", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Forgot password?" }));
+    await userEvent.type(screen.getByLabelText("Email"), "aman@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Email me a reset link" }));
+    expect(services.auth.requestPasswordReset).toHaveBeenCalledWith({ email: "aman@example.com", redirectTo: `${window.location.origin}/reset-password` });
+    expect(await screen.findByText(/If aman@example.com has an account/)).toBeInTheDocument();
   });
 });
 

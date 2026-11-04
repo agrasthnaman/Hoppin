@@ -1,8 +1,6 @@
-import { inputClass } from "../lib/forms";
 import type { RedeemResult } from "@hoppin/core";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import type { MagicLinkRequest } from "../lib/auth-api";
-import { Banner } from "../components/ui/Banner";
+import { useEffect, useRef, useState } from "react";
+import { AuthForm, type AuthFormApi } from "../components/AuthForm";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 
@@ -10,9 +8,11 @@ export interface JoinFlowProps {
   token: string;
   /** Set once the person is signed in (after clicking the emailed link). */
   signedInUserId: string | null;
-  /** Where the emailed link brings them back to (this page). */
+  /** Where the confirmation link brings them back to (this page). */
   redirectTo: string;
-  sendMagicLink: (request: MagicLinkRequest) => Promise<void>;
+  /** Where a password-reset link brings them. */
+  resetRedirectTo: string;
+  auth: AuthFormApi;
   redeem: (token: string) => Promise<RedeemResult>;
   onContinue: (tripId: string) => void;
 }
@@ -23,40 +23,8 @@ type JoinState =
   | { kind: "invalid" }
   | { kind: "error" };
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function Field({ label, error, ...input }: { label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <input
-        {...input}
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={inputClass}
-      />
-      {error && (
-        <span id={`${id}-error`} className="text-sm text-danger-fg">
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Join a trip from an invite link: sign in with an emailed link, then request to join and wait for approval. */
-export function JoinFlow({ token, signedInUserId, redirectTo, sendMagicLink, redeem, onContinue }: JoinFlowProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
-  const [sending, setSending] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const [sendFailed, setSendFailed] = useState(false);
-
+/** Join a trip from an invite link: create an account or sign in, then request to join and wait for approval. */
+export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, auth, redeem, onContinue }: JoinFlowProps) {
   const [join, setJoin] = useState<JoinState>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
   const started = useRef<number | null>(null);
@@ -70,26 +38,6 @@ export function JoinFlow({ token, signedInUserId, redirectTo, sendMagicLink, red
       (err: unknown) => setJoin(/invalid or expired/.test(String((err as Error)?.message)) ? { kind: "invalid" } : { kind: "error" }),
     );
   }, [signedInUserId, token, redeem, attempt]);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const next = {
-      name: name.trim() ? undefined : "Enter your name",
-      email: EMAIL.test(email.trim()) ? undefined : "Enter a valid email",
-    };
-    setErrors(next);
-    if (next.name || next.email) return;
-    setSending(true);
-    setSendFailed(false);
-    try {
-      await sendMagicLink({ email: email.trim(), name: name.trim(), redirectTo });
-      setSentTo(email.trim());
-    } catch {
-      setSendFailed(true);
-    } finally {
-      setSending(false);
-    }
-  }
 
   let body: React.ReactNode;
   if (signedInUserId) {
@@ -118,24 +66,8 @@ export function JoinFlow({ token, signedInUserId, redirectTo, sendMagicLink, red
           <p className="text-muted">Waiting for the organizer to approve you. You'll see the trip as soon as they do.</p>
         </div>
       );
-  } else if (sentTo) {
-    body = (
-      <div className="flex flex-col gap-2">
-        <p className="text-lg font-semibold">Check your email</p>
-        <p className="text-muted">We sent a sign-in link to {sentTo}. Open it on this device to join the trip.</p>
-      </div>
-    );
   } else {
-    body = (
-      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-        <Field label="Your name" name="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
-        <Field label="Email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
-        {sendFailed && <Banner kind="conflict" text="Couldn't send the link. Please try again." />}
-        <Button type="submit" disabled={sending}>
-          Email me a sign-in link
-        </Button>
-      </form>
-    );
+    body = <AuthForm api={auth} initialMode="signup" confirmRedirectTo={redirectTo} resetRedirectTo={resetRedirectTo} />;
   }
 
   return (
