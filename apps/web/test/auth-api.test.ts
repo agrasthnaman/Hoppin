@@ -1,0 +1,96 @@
+import { describe, expect, it, vi } from "vitest";
+import { AuthError, createAuthApi } from "../src/lib/auth-api";
+
+const ok = { data: { session: null }, error: null };
+function client(over: Record<string, unknown> = {}) {
+  return {
+    auth: {
+      signUp: vi.fn().mockResolvedValue(ok),
+      signInWithPassword: vi.fn().mockResolvedValue({ data: { session: {} }, error: null }),
+      resend: vi.fn().mockResolvedValue({ error: null }),
+      resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+      updateUser: vi.fn().mockResolvedValue({ error: null }),
+      ...over,
+    },
+  };
+}
+const fail = (code: string, message = "x", status = 400) => ({ data: { session: null }, error: { code, message, status } });
+
+describe("signUp", () => {
+  it("creates the account with the name and a confirmation link back to the app", async () => {
+    const c = client();
+    const r = await createAuthApi(c).signUp({ email: "n@x.co", password: "longenoughpw", name: "Neha", redirectTo: "https://h.app/join/t" });
+    expect(c.auth.signUp).toHaveBeenCalledWith({
+      email: "n@x.co",
+      password: "longenoughpw",
+      options: { emailRedirectTo: "https://h.app/join/t", data: { display_name: "Neha" } },
+    });
+    expect(r).toEqual({ confirmationNeeded: true });
+  });
+
+  it("says no confirmation is needed when a session came back", async () => {
+    const c = client({ signUp: vi.fn().mockResolvedValue({ data: { session: {} }, error: null }) });
+    expect(await createAuthApi(c).signUp({ email: "a@b.co", password: "longenoughpw", name: "A", redirectTo: "x" })).toEqual({ confirmationNeeded: false });
+  });
+
+  it("refuses a password that is too short before calling the server", async () => {
+    const c = client();
+    await expect(createAuthApi(c).signUp({ email: "a@b.co", password: "short", name: "A", redirectTo: "x" })).rejects.toMatchObject({ code: "weak-password" });
+    expect(c.auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("maps server errors to readable codes", async () => {
+    const run = (e: unknown) =>
+      createAuthApi(client({ signUp: vi.fn().mockResolvedValue(e) })).signUp({ email: "a@b.co", password: "longenoughpw", name: "A", redirectTo: "x" });
+    await expect(run(fail("weak_password"))).rejects.toMatchObject({ code: "weak-password" });
+    await expect(run(fail("over_email_send_rate_limit", "rate", 429))).rejects.toMatchObject({ code: "rate-limited" });
+    await expect(run(fail("unexpected", "boom", 500))).rejects.toBeInstanceOf(AuthError);
+  });
+});
+
+describe("signIn", () => {
+  it("signs in with email and password", async () => {
+    const c = client();
+    await createAuthApi(c).signIn({ email: "a@b.co", password: "longenoughpw" });
+    expect(c.auth.signInWithPassword).toHaveBeenCalledWith({ email: "a@b.co", password: "longenoughpw" });
+  });
+
+  it("tells wrong credentials from an unconfirmed email", async () => {
+    const run = (e: unknown) => createAuthApi(client({ signInWithPassword: vi.fn().mockResolvedValue(e) })).signIn({ email: "a@b.co", password: "longenoughpw" });
+    await expect(run(fail("invalid_credentials", "Invalid login credentials"))).rejects.toMatchObject({ code: "invalid-credentials" });
+    await expect(run(fail("email_not_confirmed", "Email not confirmed"))).rejects.toMatchObject({ code: "email-not-confirmed" });
+  });
+});
+
+describe("email links", () => {
+  it("resends the confirmation link", async () => {
+    const c = client();
+    await createAuthApi(c).resendConfirmation({ email: "a@b.co", redirectTo: "https://h.app/" });
+    expect(c.auth.resend).toHaveBeenCalledWith({ type: "signup", email: "a@b.co", options: { emailRedirectTo: "https://h.app/" } });
+  });
+
+  it("requests a password reset link that comes back to the reset page", async () => {
+    const c = client();
+    await createAuthApi(c).requestPasswordReset({ email: "a@b.co", redirectTo: "https://h.app/reset-password" });
+    expect(c.auth.resetPasswordForEmail).toHaveBeenCalledWith("a@b.co", { redirectTo: "https://h.app/reset-password" });
+  });
+
+  it("surfaces rate limits when sending", async () => {
+    const c = client({ resetPasswordForEmail: vi.fn().mockResolvedValue({ error: { code: "over_email_send_rate_limit", message: "r", status: 429 } }) });
+    await expect(createAuthApi(c).requestPasswordReset({ email: "a@b.co", redirectTo: "x" })).rejects.toMatchObject({ code: "rate-limited" });
+  });
+});
+
+describe("updatePassword", () => {
+  it("sets a new password for the signed-in person", async () => {
+    const c = client();
+    await createAuthApi(c).updatePassword("brand new password");
+    expect(c.auth.updateUser).toHaveBeenCalledWith({ password: "brand new password" });
+  });
+
+  it("rejects a weak one without calling the server", async () => {
+    const c = client();
+    await expect(createAuthApi(c).updatePassword("tiny")).rejects.toMatchObject({ code: "weak-password" });
+    expect(c.auth.updateUser).not.toHaveBeenCalled();
+  });
+});

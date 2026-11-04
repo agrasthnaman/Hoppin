@@ -1,6 +1,6 @@
 import { inputClass } from "../lib/forms";
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
 import { useUser } from "../app/user";
@@ -112,7 +112,10 @@ export function AccountScreen() {
       <Card className="flex flex-col gap-1">
         <p className="text-sm font-medium">Email</p>
         <p>{email ?? "Not available"}</p>
-        <p className="text-xs text-muted">You sign in with a link sent to this address. There is no password.</p>
+        <p className="text-xs text-muted">You sign in with this email and your password.</p>
+        <Link to="/reset-password" className="w-fit text-sm font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+          Change password
+        </Link>
       </Card>
 
       <div>

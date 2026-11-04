@@ -76,8 +76,11 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
     documentSource: { download: vi.fn(async () => ({ data: new TextEncoder().encode("file").buffer as ArrayBuffer, contentType: "application/pdf" })) },
     sessionClient,
     auth: {
-      sendMagicLink: vi.fn(async () => {}),
+      signUp: vi.fn(async () => ({ confirmationNeeded: true })),
       signIn: vi.fn(async () => {}),
+      resendConfirmation: vi.fn(async () => {}),
+      requestPasswordReset: vi.fn(async () => {}),
+      updatePassword: vi.fn(async () => {}),
       signOut: vi.fn(async () => {
         session = null;
         listener("SIGNED_OUT", null);

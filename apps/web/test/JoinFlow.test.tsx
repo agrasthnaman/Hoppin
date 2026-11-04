@@ -11,7 +11,13 @@ function setup(over: Partial<React.ComponentProps<typeof JoinFlow>> = {}) {
     token: TOKEN,
     signedInUserId: null,
     redirectTo: `https://hoppin.app/join/${TOKEN}`,
-    sendMagicLink: vi.fn().mockResolvedValue(undefined),
+    resetRedirectTo: "https://hoppin.app/reset-password",
+    auth: {
+      signUp: vi.fn().mockResolvedValue({ confirmationNeeded: true }),
+      signIn: vi.fn().mockResolvedValue(undefined),
+      resendConfirmation: vi.fn().mockResolvedValue(undefined),
+      requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+    },
     redeem: vi.fn().mockResolvedValue({ tripId: "trip1", status: "pending" }),
     onContinue: vi.fn(),
     ...over,
@@ -20,39 +26,53 @@ function setup(over: Partial<React.ComponentProps<typeof JoinFlow>> = {}) {
 }
 
 describe("JoinFlow: signed out", () => {
-  it("asks for name and email, sends a link, and tells them to check their email", async () => {
+  it("creates an account with name, email and password, then tells them to confirm their email", async () => {
     const { props } = setup();
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(props.sendMagicLink).toHaveBeenCalledWith({
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(props.auth.signUp).toHaveBeenCalledWith({
       email: "neha@example.com",
       name: "Neha",
+      password: "a long enough password",
       redirectTo: `https://hoppin.app/join/${TOKEN}`,
     });
     expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
     expect(screen.getByText(/neha@example.com/)).toBeInTheDocument();
   });
 
-  it("does not send when the name is empty or the email is invalid", async () => {
+  it("does not create the account when the name is empty, the email is invalid or the password is short", async () => {
     const { props } = setup();
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(screen.getByText("Enter your name")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "not-an-email");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
+    await userEvent.type(screen.getByLabelText("Password"), "short");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(screen.getByText("Enter a valid email")).toBeInTheDocument();
-    expect(props.sendMagicLink).not.toHaveBeenCalled();
+    expect(screen.getByText("Use at least 10 characters")).toBeInTheDocument();
+    expect(props.auth.signUp).not.toHaveBeenCalled();
   });
 
-  it("shows an error and lets them try again when sending fails", async () => {
-    const sendMagicLink = vi.fn().mockRejectedValue(new Error("rate limit"));
-    setup({ sendMagicLink });
+  it("lets someone who already has an account sign in instead", async () => {
+    const { props } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "I already have an account" }));
+    await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(props.auth.signIn).toHaveBeenCalledWith({ email: "neha@example.com", password: "a long enough password" });
+  });
+
+  it("shows an error and lets them try again when creating the account fails", async () => {
+    const { props } = setup();
+    props.auth.signUp.mockRejectedValue(new Error("boom"));
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Email me a sign-in link" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't send the link");
-    expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeEnabled();
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't create the account");
+    expect(screen.getByRole("button", { name: "Create account" })).toBeEnabled();
   });
 
   it("has no accessibility violations", async () => {

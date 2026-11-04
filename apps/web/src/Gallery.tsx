@@ -63,7 +63,13 @@ export function Gallery() {
           token={"a1".repeat(32)}
           signedInUserId={null}
           redirectTo={location.href}
-          sendMagicLink={async () => {}}
+          resetRedirectTo={location.origin}
+          auth={{
+            signUp: async () => ({ confirmationNeeded: true }),
+            signIn: async () => {},
+            resendConfirmation: async () => {},
+            requestPasswordReset: async () => {},
+          }}
           redeem={async () => ({ tripId: "t", status: "pending" })}
           onContinue={() => {}}
         />

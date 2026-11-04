@@ -79,8 +79,9 @@ describe("creating an account", () => {
     await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Create account and email me a link" }));
-    expect(services.auth.sendMagicLink).toHaveBeenCalledWith({ email: "neha@example.com", name: "Neha", redirectTo: `${window.location.origin}/` });
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(services.auth.signUp).toHaveBeenCalledWith({ email: "neha@example.com", name: "Neha", password: "a long enough password", redirectTo: `${window.location.origin}/` });
     expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
   });
 
@@ -89,11 +90,12 @@ describe("creating an account", () => {
     renderApp("/sign-in", services);
     await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
-    await userEvent.click(screen.getByRole("button", { name: "Create account and email me a link" }));
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(screen.getByText("Enter your name")).toBeInTheDocument();
-    expect(services.auth.sendMagicLink).not.toHaveBeenCalled();
+    expect(services.auth.signUp).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "I already have an account" }));
-    expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
 });
 

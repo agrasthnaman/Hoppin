@@ -1,7 +1,7 @@
 import type { DocumentScope, DocumentSource, InviteApi, Item, TripDocument, TripSource } from "@hoppin/core";
 import { createContext, useContext, type ReactNode } from "react";
 import type { ItemFormValues } from "../components/ItemForm";
-import { createAuthApi } from "../lib/auth-api";
+import { createAuthApi, type AuthApi } from "../lib/auth-api";
 import { createInviteApi } from "../lib/invite-api";
 import { getDocumentUrl, uploadDocument } from "../lib/documents";
 import { createDocumentSource } from "../data/document-source";
@@ -44,11 +44,7 @@ export interface Services {
   tripSource: TripSource;
   documentSource: DocumentSource;
   sessionClient: SessionClient;
-  auth: {
-    sendMagicLink(args: { email: string; name: string; redirectTo: string }): Promise<void>;
-    signIn(args: { email: string; redirectTo: string }): Promise<void>;
-    signOut(): Promise<void>;
-  };
+  auth: AuthApi & { signOut(): Promise<void> };
   invites: InviteApi;
   actions: Actions;
   /** The current time and the device's time zone (replaceable in tests). */

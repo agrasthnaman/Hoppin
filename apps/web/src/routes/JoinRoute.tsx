@@ -15,7 +15,8 @@ export function JoinRoute() {
       token={token}
       signedInUserId={session.status === "signedIn" ? session.userId : null}
       redirectTo={window.location.href}
-      sendMagicLink={auth.sendMagicLink}
+      resetRedirectTo={`${window.location.origin}/reset-password`}
+      auth={auth}
       redeem={invites.redeemInvite}
       onContinue={(tripId) => navigate(`/trips/${tripId}/today`)}
     />
