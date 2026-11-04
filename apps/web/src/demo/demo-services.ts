@@ -7,12 +7,14 @@ import {
   type Item,
   type ItemValues,
   type MemberInfo,
+  type RateProvider,
   type SnapshotResult,
   type TripDocument,
 } from "@hoppin/core";
 import type { Services } from "../app/services";
 import { ConflictError } from "../data/writes";
 import { openOfflineDb } from "../offline/db";
+import { createRateService, createRateStore, RatesUnavailableError } from "../providers/rates";
 
 /** A pretend server living in memory, so the whole app can be tried with no accounts, no email and no network. */
 export interface DemoOptions {
@@ -289,5 +291,17 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       },
     },
     clock: { now: () => (options.today ? Date.parse(zonedTimeToInstant(`${today}T12:00`, timeZone)) : Date.now()), timeZone },
+    rates: createRateService({ provider: demoRates, store: createRateStore(null), source: "Sample" }),
   };
 }
+
+// Sample rates (units per US dollar), so demo mode never touches the network.
+const PER_USD: Record<string, number> = { USD: 1, EUR: 0.89, GBP: 0.76, INR: 94.75, JPY: 152.4, AUD: 1.52, CAD: 1.39, SGD: 1.29, THB: 32.6, CHF: 0.8 };
+const demoRates: RateProvider = {
+  async getRate(from, to) {
+    const a = PER_USD[from];
+    const b = PER_USD[to];
+    if (a === undefined || b === undefined) throw new RatesUnavailableError(`No sample rate for ${from} to ${to}`);
+    return b / a;
+  },
+};

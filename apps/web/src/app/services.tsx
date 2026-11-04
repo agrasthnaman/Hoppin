@@ -8,6 +8,7 @@ import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
 import { createItem, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
+import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import type { SessionClient } from "./session";
 
 /** Everything the screens do to the outside world. Real implementations use Supabase; tests pass fakes. */
@@ -52,6 +53,8 @@ export interface Services {
   actions: Actions;
   /** The current time and the device's time zone (replaceable in tests). */
   clock: { now(): number; timeZone: string };
+  /** Exchange rates, cached on the device for offline use. */
+  rates: RateService;
 }
 
 const ServicesContext = createContext<Services | null>(null);
@@ -172,5 +175,6 @@ export function createServices(client: any): Services {
       },
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),
   };
 }

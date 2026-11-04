@@ -21,3 +21,9 @@ export function formatDateRange(start: string | null | undefined, end: string | 
   if (a.m !== b.m) return `${a.d} ${MONTHS[a.m]} – ${b.d} ${MONTHS[b.m]} ${a.y}`;
   return `${a.d}–${b.d} ${MONTHS[a.m]} ${a.y}`;
 }
+
+/** A day without the year: "3 Nov". */
+export function formatShortDate(date: string): string {
+  const { m, d } = parts(date);
+  return `${d} ${MONTHS[m]}`;
+}

@@ -8,6 +8,7 @@ import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
 import { AppearanceCard } from "../components/AppearanceCard";
 import { DraftList } from "../components/DraftList";
+import { HomeCurrencyCard } from "../components/HomeCurrencyCard";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
@@ -82,6 +83,7 @@ export function MoreScreen() {
         </Card>
       )}
       <AppearanceCard />
+      <HomeCurrencyCard />
       {!gate && (
         <Card className="flex flex-col gap-3">
           <h3 className="font-semibold">Unsent changes</h3>
