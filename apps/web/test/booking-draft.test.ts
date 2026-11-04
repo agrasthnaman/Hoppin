@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftBookingFromText, draftBookingsFromText, tripSpan } from "../src/lib/booking-draft";
+import { bookingItemValues, draftBookingFromText, draftBookingsFromText, tripSpan } from "../src/lib/booking-draft";
 
 const ticket = `
 INDIGO E-TICKET
@@ -131,5 +131,25 @@ describe("tripSpan", () => {
     const outbound = draftBookingFromText("out.pdf", "Flight 6E 1\nDeparture: 1 Dec 2026\nFrom: Delhi\nTo: Goa");
     const back = draftBookingFromText("back.pdf", "Flight 6E 2\nDeparture: 10 Dec 2026\nFrom: Goa\nTo: Delhi");
     expect(tripSpan([outbound, back])).toEqual({ startDate: "2026-12-01", endDate: "2026-12-10" });
+  });
+});
+
+describe("bookingItemValues", () => {
+  const draft = draftBookingFromText(ticket, "ticket (2).pdf");
+
+  it("does not write drafting notes into the plan", () => {
+    const values = bookingItemValues(draft, "2026-12-12", "Asia/Kolkata");
+    expect(values).not.toBeNull();
+    expect(values?.notes).not.toMatch(/Drafted from|Change anything|Couldn't read/);
+  });
+
+  it("keeps the place as the note when one was found, and nothing otherwise", () => {
+    expect(bookingItemValues({ ...draft, place: "Calangute Beach" }, "2026-12-12", "Asia/Kolkata")?.notes).toBe("Calangute Beach");
+    expect(bookingItemValues({ ...draft, place: null }, "2026-12-12", "Asia/Kolkata")?.notes).toBe("");
+  });
+
+  it("an unreadable file also leaves the notes clean (the review step already warns about it)", () => {
+    const unread = bookingItemValues({ ...draft, unread: true, place: null }, "2026-12-01", "Asia/Kolkata");
+    expect(unread?.notes).toBe("");
   });
 });
