@@ -33,10 +33,22 @@ afterEach(() => vi.restoreAllMocks());
 const wrapper = ({ children }: { children: React.ReactNode }) => <ThemeProvider>{children}</ThemeProvider>;
 
 describe("ThemeProvider", () => {
-  it("starts on the default palette, following the phone's light or dark setting", () => {
-    renderHook(() => useTheme(), { wrapper });
+  it("starts on the default palette in the light theme", () => {
+    const { result } = renderHook(() => useTheme(), { wrapper });
     expect(root.dataset.palette).toBe("cobalt");
-    expect(root.hasAttribute("data-theme")).toBe(false);
+    expect(result.current.mode).toBe("light");
+    expect(root.dataset.theme).toBe("light");
+    expect(root.style.colorScheme).toBe("light");
+  });
+
+  it("stays light even when the phone is in dark mode, and does not react to it switching", () => {
+    systemDark = true;
+    renderHook(() => useTheme(), { wrapper });
+    expect(root.dataset.theme).toBe("light");
+    expect(listeners).toHaveLength(0);
+    systemDark = false;
+    act(() => listeners.forEach((l) => l()));
+    expect(root.dataset.theme).toBe("light");
   });
 
   it("changes palette and remembers it", () => {
@@ -46,18 +58,22 @@ describe("ThemeProvider", () => {
     expect(localStorage.getItem("hoppin.palette")).toBe("lilac");
   });
 
-  it("forces light or dark, and 'system' goes back to following the phone", () => {
+  it("switches between light and dark and remembers the choice", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
     act(() => result.current.setMode("dark"));
     expect(root.dataset.theme).toBe("dark");
+    expect(root.style.colorScheme).toBe("dark");
+    expect(localStorage.getItem("hoppin.mode")).toBe("dark");
     act(() => result.current.setMode("light"));
     expect(root.dataset.theme).toBe("light");
-    act(() => result.current.setMode("system"));
-    expect(root.hasAttribute("data-theme")).toBe(false);
-    expect(localStorage.getItem("hoppin.mode")).toBe("system");
-    expect(root.style.colorScheme).toBe("light");
-    act(() => result.current.setMode("dark"));
-    expect(root.style.colorScheme).toBe("dark");
+    expect(localStorage.getItem("hoppin.mode")).toBe("light");
+  });
+
+  it("an old 'follow the phone' choice becomes light", () => {
+    localStorage.setItem("hoppin.mode", "system");
+    const { result } = renderHook(() => useTheme(), { wrapper });
+    expect(result.current.mode).toBe("light");
+    expect(root.dataset.theme).toBe("light");
   });
 
   it("restores what was chosen last time", () => {
@@ -75,7 +91,7 @@ describe("ThemeProvider", () => {
     localStorage.setItem("hoppin.mode", "sepia");
     const { result } = renderHook(() => useTheme(), { wrapper });
     expect(result.current.palette).toBe("cobalt");
-    expect(result.current.mode).toBe("system");
+    expect(result.current.mode).toBe("light");
   });
 
   it("still works when the browser will not store anything (private windows)", () => {
@@ -86,12 +102,11 @@ describe("ThemeProvider", () => {
     expect(root.dataset.palette).toBe("lilac");
   });
 
-  it("colours the browser's address bar to match, and follows the phone switching to dark", () => {
+  it("colours the browser's address bar to match the theme and palette", () => {
     const { result } = renderHook(() => useTheme(), { wrapper });
     const bar = () => document.querySelector('meta[name="theme-color"]')!.getAttribute("content");
     expect(bar()).toBe(palettes.palettes[0]!.light.bg);
-    systemDark = true;
-    act(() => listeners.forEach((l) => l()));
+    act(() => result.current.setMode("dark"));
     expect(bar()).toBe(palettes.palettes[0]!.dark.bg);
     act(() => result.current.setPalette("lilac"));
     expect(bar()).toBe(palettes.palettes.find((p) => p.id === "lilac")!.dark.bg);
@@ -105,6 +120,11 @@ describe("the first-paint script in index.html", () => {
     for (const p of palettes.palettes) expect(html).toContain(`"${p.id}"`);
     expect(html).toContain("hoppin.palette");
     expect(html).toContain("hoppin.mode");
+  });
+
+  it("is light unless dark was chosen, and never looks at the phone's setting", () => {
+    expect(html).toContain('m === "dark" ? "dark" : "light"');
+    expect(html).not.toContain("prefers-color-scheme");
   });
 });
 
@@ -125,10 +145,11 @@ describe("AppearanceCard", () => {
     expect(root.dataset.palette).toBe("tangerine");
   });
 
-  it("lets the person pick system, light or dark", async () => {
+  it("lets the person pick light or dark, with light on by default and no 'System' option", async () => {
     setup();
     const mode = screen.getByRole("radiogroup", { name: "Light or dark" });
-    expect(mode).toHaveTextContent("System");
+    expect(mode).not.toHaveTextContent("System");
+    expect(screen.getByRole("radio", { name: "Light" })).toBeChecked();
     await userEvent.click(screen.getByRole("radio", { name: "Dark" }));
     expect(root.dataset.theme).toBe("dark");
     expect(screen.getByRole("radio", { name: "Dark" })).toBeChecked();

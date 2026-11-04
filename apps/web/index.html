@@ -11,7 +11,8 @@
           p = localStorage.getItem("hoppin.palette"),
           m = localStorage.getItem("hoppin.mode");
         if (["cobalt", "rose", "lilac", "tangerine"].indexOf(p) > -1) r.setAttribute("data-palette", p);
-        if (m === "light" || m === "dark") r.setAttribute("data-theme", m);
+        r.setAttribute("data-theme", m === "dark" ? "dark" : "light"); // light unless dark was chosen; the phone setting is ignored
+        r.style.colorScheme = m === "dark" ? "dark" : "light";
       } catch (e) {}
     </script>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
