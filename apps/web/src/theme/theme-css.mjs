@@ -22,10 +22,8 @@ export function themeCss(data) {
     // Light values are the base. An element (normally <html>) with data-palette gets that palette's colours.
     out.push(`/* ${p.name}${isDefault ? " (default)" : ""} */`);
     out.push(`${isDefault ? ":root:not([data-palette]),\n" : ""}${attr} {\n${light}\n}\n`);
-    // Dark when asked for explicitly...
+    // Dark only when the person chose it. The phone's own light or dark setting is not followed.
     out.push(`${isDefault ? ':root:not([data-palette])[data-theme="dark"],\n' : ""}${attr}[data-theme="dark"] {\n${dark}\n}\n`);
-    // ...or when the phone is in dark mode and nothing was chosen ("system").
-    out.push(`@media (prefers-color-scheme: dark) {\n  ${isDefault ? ":root:not([data-palette]):not([data-theme]),\n  " : ""}:root${attr}:not([data-theme]) {\n${dark.replace(/^/gm, "  ")}\n  }\n}\n`);
   }
   return out.join("\n");
 }

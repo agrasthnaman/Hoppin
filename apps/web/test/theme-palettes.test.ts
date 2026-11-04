@@ -86,9 +86,8 @@ describe("generated stylesheet", () => {
     for (const p of data.palettes) {
       expect(css).toContain(`[data-palette="${p.id}"] {`);
       expect(css).toContain(`[data-palette="${p.id}"][data-theme="dark"] {`);
-      expect(css).toContain(`:root[data-palette="${p.id}"]:not([data-theme])`);
     }
     expect(css).toContain(":root:not([data-palette]),\n[data-palette=\"cobalt\"] {");
-    expect(css).toContain("prefers-color-scheme: dark");
+    expect(css).not.toContain("prefers-color-scheme"); // dark only when chosen; the phone setting is not followed
   });
 });

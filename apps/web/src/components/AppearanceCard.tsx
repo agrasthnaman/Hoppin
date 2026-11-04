@@ -2,12 +2,11 @@ import { useTheme, type Mode } from "../theme/ThemeProvider";
 import { Card } from "./ui/Card";
 
 const MODE_LABEL: { value: Mode; label: string }[] = [
-  { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ];
 
-/** Pick a palette and light, dark or follow-the-phone. Applies straight away and is remembered on this device. */
+/** Pick a palette and light or dark (light is the default). Applies straight away and is remembered on this device. */
 export function AppearanceCard() {
   const { palette, mode, palettes, setPalette, setMode } = useTheme();
   return (
@@ -34,7 +33,7 @@ export function AppearanceCard() {
         ))}
       </div>
 
-      <div role="radiogroup" aria-label="Light or dark" className="grid grid-cols-3 gap-1 rounded-full bg-raised p-1">
+      <div role="radiogroup" aria-label="Light or dark" className="grid grid-cols-2 gap-1 rounded-full bg-raised p-1">
         {MODE_LABEL.map(({ value, label }) => (
           <label
             key={value}
