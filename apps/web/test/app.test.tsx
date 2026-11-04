@@ -410,6 +410,15 @@ describe("bookings and my documents", () => {
     expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: "f1", scope: "shared", kind: "document" });
   });
 
+  it("a very long booking name is cut with an ellipsis inside its card, and the full name is on hover", async () => {
+    const long = "Round trip flight from Delhi to Denpasar with a long layover and extra baggage for the whole group";
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: snapshot({ items: [item({ id: "l1", title: long, kind: "flight", startsAt: at("08:00") })] }) }).services);
+    const link = await screen.findByRole("link", { name: long });
+    expect(link).toHaveClass("truncate", "min-w-0");
+    expect(link).toHaveAttribute("title", long);
+    expect(link.closest("li")).toHaveClass("min-w-0");
+  });
+
   it("filters bookings by who booked them and by title", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });

@@ -197,10 +197,14 @@ export default function Docs() {
                     const day = dayOf(item);
                     const attached = visible.filter((doc) => doc.itemId === item.id);
                     return (
-                      <li key={item.id} className="flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3">
-                        <div>
+                      <li key={item.id} className="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3">
+                        <div className="min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                          <Link to={`/trips/${trip.tripId}/items/${item.id}`} className="font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent">
+                          <Link
+                            to={`/trips/${trip.tripId}/items/${item.id}`}
+                            title={item.title}
+                            className="min-w-0 flex-1 truncate font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent"
+                          >
                             {item.title}
                           </Link>
                           {canEdit(item, member) && (
@@ -214,8 +218,8 @@ export default function Docs() {
                             </button>
                           )}
                           </div>
-                          <p className="text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
-                          <p className="text-xs text-muted">
+                          <p className="truncate text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
+                          <p className="truncate text-xs text-muted">
                             <Link
                               to={`/trips/${trip.tripId}/days?date=${day.date}`}
                               className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent"
@@ -230,7 +234,7 @@ export default function Docs() {
                         {attached.map((doc) => (
                           <div key={doc.id} className="flex items-center gap-3">
                             <FileText aria-hidden="true" className="size-5 shrink-0 text-muted" />
-                            <p className="min-w-0 flex-1 truncate text-sm">{doc.fileName}</p>
+                            <p className="min-w-0 flex-1 truncate text-sm" title={doc.fileName}>{doc.fileName}</p>
                             <button
                               type="button"
                               aria-label={`Open ${doc.fileName}`}
@@ -354,10 +358,10 @@ function FileList({ docs, items, tripId, onOpen }: { docs: TripDocument[]; items
         const plan = doc.itemId ? items.find((item) => item.id === doc.itemId) : undefined;
         const kind = doc.scope === "personal" ? "Personal" : doc.kind.charAt(0).toUpperCase() + doc.kind.slice(1);
         return (
-          <li key={doc.id} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3">
+          <li key={doc.id} className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-3">
             <FileText aria-hidden="true" className="size-5 shrink-0 text-muted" />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{doc.fileName}</p>
+              <p className="truncate font-medium" title={doc.fileName}>{doc.fileName}</p>
               <p className="truncate text-xs text-muted">
                 {plan ? (
                   <Link to={`/trips/${tripId}/items/${plan.id}`} className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
