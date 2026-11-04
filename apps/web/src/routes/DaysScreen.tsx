@@ -1,4 +1,4 @@
-import { addDays, buildDay, defaultDay, localDate, nextBlock } from "@hoppin/core";
+import { addDays, buildDay, canEdit, defaultDay, localDate, nextBlock, type Item } from "@hoppin/core";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { m } from "motion/react";
@@ -24,10 +24,12 @@ export function DaysScreen() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Item | null>(null);
 
   const gate = tripGate(trip);
   if (gate || !trip.snapshot) return gate;
   const { snapshot } = trip;
+  const member = snapshot.members.find((entry) => entry.userId === trip.viewerId);
 
   const requested = params.get("date");
   const date = requested && DATE.test(requested) ? requested : defaultDay(snapshot.trip, clock.now(), clock.timeZone);
@@ -89,6 +91,8 @@ export function DaysScreen() {
         goingByItem={goingFrom(snapshot.rsvps)}
         highlightId={highlightId}
         onJoin={(id) => void trip.setGoing(id, true)}
+        canEditItem={(item) => (member ? canEdit(item, member) : false)}
+        onEdit={setEditing}
         headerAction={
           <Button onClick={() => setAdding(true)}>
             <Plus aria-hidden="true" className="size-4" />
@@ -102,6 +106,20 @@ export function DaysScreen() {
         )}
       />
       </m.div>
+
+      <Sheet open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} title="Edit plan">
+        {editing && (
+          <ItemForm
+            initial={editing}
+            tz={editing.tz}
+            onCancel={() => setEditing(null)}
+            onSubmit={async (values) => {
+              await trip.editItem(editing, values);
+              setEditing(null);
+            }}
+          />
+        )}
+      </Sheet>
 
       <Sheet open={adding} onOpenChange={setAdding} title="Add a plan">
         <ItemForm
