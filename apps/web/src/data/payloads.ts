@@ -1,4 +1,4 @@
-import type { Item } from "@hoppin/core";
+import type { ExpenseRecord, Item } from "@hoppin/core";
 import type { ItemFormValues } from "../components/ItemForm";
 
 function details(base: Record<string, unknown>, notes: string): Record<string, unknown> {
@@ -28,4 +28,29 @@ export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormV
 export function itemUpdatePatch(item: Item, values: ItemFormValues) {
   const { trip_id: _t, owner_id: _o, ...rest } = itemInsertRow(item.tripId, item.ownerId, values);
   return { ...rest, details: details(item.details, values.notes) };
+}
+
+/** What save_expense() takes. `guestIds` tells guests apart from members (both are ids in the app). */
+export function expensePayload(expense: ExpenseRecord, guestIds: ReadonlySet<string>) {
+  if (expense.rate === null || expense.rateDate === null) throw new Error("An expense needs its exchange rate before it is sent");
+  const isGuest = (who: string) => guestIds.has(who);
+  return {
+    id: expense.id,
+    trip_id: expense.tripId,
+    kind: expense.kind,
+    title: expense.title,
+    category: expense.category,
+    paid_by_user: isGuest(expense.paidBy) ? null : expense.paidBy,
+    paid_by_guest: isGuest(expense.paidBy) ? expense.paidBy : null,
+    amount: expense.amount,
+    currency: expense.currency,
+    rate: expense.rate,
+    rate_date: expense.rateDate,
+    base_currency: expense.baseCurrency,
+    spent_on: expense.spentOn,
+    shares: expense.split.map((s) => ({
+      ...(isGuest(s.who) ? { guest_id: s.who } : { user_id: s.who }),
+      ...(s.share === undefined ? {} : { share: s.share }),
+    })),
+  };
 }

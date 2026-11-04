@@ -144,7 +144,7 @@ export interface FlushResult {
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const isDuplicate = (e: unknown) => /duplicate key/i.test(errorText(e));
-const isRetryLater = (e: unknown) =>
+export const isRetryLater = (e: unknown) =>
   e instanceof TypeError ||
   (typeof navigator !== "undefined" && navigator.onLine === false) ||
   /failed to fetch|network|timed? ?out|fetch failed/i.test(errorText(e));

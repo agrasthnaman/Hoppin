@@ -1,4 +1,4 @@
-import type { DocumentScope, DocumentSource, InviteApi, Item, TripDocument, TripSource } from "@hoppin/core";
+import type { DocumentScope, DocumentSource, ExpenseRecord, InviteApi, Item, TripDocument, TripGuest, TripSource } from "@hoppin/core";
 import { createContext, useContext, type ReactNode } from "react";
 import type { ItemFormValues } from "../components/ItemForm";
 import { createAuthApi, type AuthApi } from "../lib/auth-api";
@@ -6,7 +6,7 @@ import { createInviteApi } from "../lib/invite-api";
 import { getDocumentUrl, uploadDocument } from "../lib/documents";
 import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
-import { createItem, setRsvp, updateItem } from "../data/writes";
+import { addGuest, createItem, deleteExpense, saveExpense, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import type { SessionClient } from "./session";
@@ -37,6 +37,10 @@ export interface Actions {
   deleteTrip(tripId: string): Promise<void>;
   /** Deletes the signed-in person's account (refused if they are the only organizer of a trip with other people). */
   deleteAccount(): Promise<void>;
+  /** Adds or changes an expense or payment. `guestIds` tells guests apart from members. */
+  saveExpense(expense: ExpenseRecord, guestIds: ReadonlySet<string>): Promise<void>;
+  deleteExpense(expenseId: string): Promise<void>;
+  addGuest(guest: TripGuest): Promise<void>;
 }
 
 export interface Services {
@@ -169,6 +173,9 @@ export function createServices(client: any): Services {
         const { error } = await client.rpc("delete_my_account");
         if (error) throw new Error(error.message);
       },
+      saveExpense: (expense, guestIds) => saveExpense(client, expense, guestIds),
+      deleteExpense: (expenseId) => deleteExpense(client, expenseId),
+      addGuest: (guest) => addGuest(client, guest),
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),

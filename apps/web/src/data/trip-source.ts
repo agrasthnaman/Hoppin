@@ -2,6 +2,10 @@ import type { SnapshotResult, TripSource } from "@hoppin/core";
 import {
   assembleSnapshot,
   type DocumentRow,
+  type ExpenseLogRow,
+  type ExpenseRow,
+  type ExpenseShareRow,
+  type GuestRow,
   type ItemRow,
   type MemberRow,
   type ProfileRow,
@@ -38,16 +42,20 @@ export function createTripSource(client: ReadClient): TripSource {
       const [trip] = await read<TripRow>(client.from("trips").select().eq("id", tripId));
       if (!trip) return { status: "no-access" };
 
-      const [members, items, documents] = await Promise.all([
+      const [members, items, documents, guests, expenses, shares, expenseLog] = await Promise.all([
         read<MemberRow>(client.from("members").select().eq("trip_id", tripId)),
         read<ItemRow>(client.from("items").select().eq("trip_id", tripId)),
         read<DocumentRow>(client.from("documents").select().eq("trip_id", tripId)),
+        read<GuestRow>(client.from("trip_guests").select().eq("trip_id", tripId)),
+        read<ExpenseRow>(client.from("expenses").select().eq("trip_id", tripId)),
+        read<ExpenseShareRow>(client.from("expense_shares").select().eq("trip_id", tripId)),
+        read<ExpenseLogRow>(client.from("change_log").select().eq("trip_id", tripId).not("expense_id", "is", null)),
       ]);
       const [profiles, rsvps] = await Promise.all([
         members.length ? read<ProfileRow>(client.from("profiles").select().in("user_id", members.map((m) => m.user_id))) : [],
         items.length ? read<RsvpRow>(client.from("rsvps").select().in("item_id", items.map((i) => i.id))) : [],
       ]);
-      return { status: "ok", snapshot: assembleSnapshot({ trip, members, profiles, items, rsvps, documents }) };
+      return { status: "ok", snapshot: assembleSnapshot({ trip, members, profiles, items, rsvps, documents, guests, expenses, shares, expenseLog }) };
     },
   };
 }

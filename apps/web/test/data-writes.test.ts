@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ConflictError, createItem, setRsvp, updateItem } from "../src/data/writes";
-import type { Item } from "@hoppin/core";
+import { addGuest, ConflictError, createItem, deleteExpense, saveExpense, setRsvp, updateItem } from "../src/data/writes";
+import { expensePayload } from "../src/data/payloads";
+import type { ExpenseRecord, Item } from "@hoppin/core";
 import type { ItemFormValues } from "../src/components/ItemForm";
 
 const values: ItemFormValues = {
@@ -85,5 +86,47 @@ describe("setRsvp", () => {
   it("treats an RSVP that already exists as success", async () => {
     const { client } = recorder({ data: null, error: { message: 'duplicate key value violates unique constraint "rsvps_pkey"' } });
     await expect(setRsvp(client, "i1", "u1", true)).resolves.toBeUndefined();
+  });
+});
+
+describe("money writes", () => {
+  const expense: ExpenseRecord = {
+    id: "e1", tripId: "t1", kind: "expense", title: "Dinner", category: "food", paidBy: "mia", amount: 90000, currency: "INR", rate: 1,
+    rateDate: "2026-12-01", baseCurrency: "INR", spentOn: "2026-12-01", split: [{ who: "mia", share: 60000 }, { who: "u1", share: 30000 }], createdBy: "u1", version: 0,
+  };
+
+  it("sends an expense and its split in one call, telling guests apart from members", async () => {
+    const calls: unknown[][] = [];
+    const client = { from: () => null, rpc: async (...args: unknown[]) => (calls.push(args), { error: null }) };
+    await saveExpense(client, expense, new Set(["mia"]));
+    expect(calls).toEqual([
+      [
+        "save_expense",
+        {
+          p: {
+            id: "e1", trip_id: "t1", kind: "expense", title: "Dinner", category: "food", paid_by_user: null, paid_by_guest: "mia", amount: 90000,
+            currency: "INR", rate: 1, rate_date: "2026-12-01", base_currency: "INR", spent_on: "2026-12-01",
+            shares: [{ guest_id: "mia", share: 60000 }, { user_id: "u1", share: 30000 }],
+          },
+        },
+      ],
+    ]);
+  });
+
+  it("never sends an expense without its exchange rate", () => {
+    expect(() => expensePayload({ ...expense, rate: null }, new Set())).toThrow(/exchange rate/);
+  });
+
+  it("passes on what the database refused, in its words", async () => {
+    const client = { from: () => null, rpc: async () => ({ error: { message: "only the person who added this can change it" } }) };
+    await expect(saveExpense(client, expense, new Set())).rejects.toThrow("only the person who added this can change it");
+    await expect(deleteExpense(client, "e1")).rejects.toThrow("only the person who added");
+  });
+
+  it("adding a guest twice is fine, but two guests cannot share a name", async () => {
+    const guest = { id: "g1", tripId: "t1", name: "Mia", addedBy: "u1" };
+    const insertFails = (message: string) => ({ from: () => ({ insert: async () => ({ error: { message } }) }) });
+    await addGuest(insertFails('duplicate key value violates unique constraint "trip_guests_pkey"'), guest);
+    await expect(addGuest(insertFails('duplicate key value violates unique constraint "trip_guests_name_idx"'), guest)).rejects.toThrow("There's already someone called Mia");
   });
 });

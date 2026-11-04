@@ -33,3 +33,22 @@ export function convertMinor(amount: number, rate: number, from: string, to: str
   const scaled = shift >= 0 ? amount * rate * 10 ** shift : (amount * rate) / 10 ** -shift;
   return roundMinor(scaled);
 }
+
+/** Typed money as whole minor units: "1,250.50" in INR is 125050. Null if it is not an amount in that currency. */
+export function parseMinor(text: string, currency: string): number | null {
+  const clean = text.trim().replace(/[,\s_]/g, "");
+  const digits = minorDigits(currency);
+  const match = (digits === 0 ? /^(\d+)$/ : new RegExp(`^(\\d+)(?:\\.(\\d{0,${digits}}))?$`)).exec(clean);
+  if (!match) return null;
+  const minor = Number(match[1]) * 10 ** digits + Number((match[2] ?? "").padEnd(digits, "0") || 0);
+  return Number.isSafeInteger(minor) ? minor : null;
+}
+
+/** Minor units back as text for a form field: 125000 INR is "1250", 125050 is "1250.50". */
+export function minorToText(minor: number, currency: string): string {
+  const digits = minorDigits(currency);
+  if (digits === 0) return String(minor);
+  const whole = Math.trunc(minor / 10 ** digits);
+  const part = minor % 10 ** digits;
+  return part === 0 ? String(whole) : `${whole}.${String(part).padStart(digits, "0")}`;
+}

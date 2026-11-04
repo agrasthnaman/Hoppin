@@ -4,7 +4,7 @@ import { createTripSource } from "../src/data/trip-source";
 
 type Row = Record<string, unknown>;
 
-/** A tiny stand-in for the Supabase query builder: select, eq, in. Records what was asked. */
+/** A tiny stand-in for the Supabase query builder: select, eq, in, not-is-null. Records what was asked. */
 function fakeClient(tables: Record<string, Row[] | { error: string }>) {
   const calls: { table: string; filters: [string, string, unknown][] }[] = [];
   const client = {
@@ -18,7 +18,9 @@ function fakeClient(tables: Record<string, Row[] | { error: string }>) {
             if (!t) return { data: [] as Row[], error: null };
             if ("error" in t) return { data: null, error: { message: t.error } };
             const data = t.filter((r) =>
-              filters.every(([op, col, val]) => (op === "eq" ? r[col] === val : (val as unknown[]).includes(r[col]))),
+              filters.every(([op, col, val]) =>
+                op === "eq" ? r[col] === val : op === "notnull" ? r[col] !== null && r[col] !== undefined : (val as unknown[]).includes(r[col]),
+              ),
             );
             return { data, error: null };
           };
@@ -29,6 +31,11 @@ function fakeClient(tables: Record<string, Row[] | { error: string }>) {
             },
             in(col: string, val: unknown[]) {
               filters.push(["in", col, val]);
+              return builder;
+            },
+            not(col: string, op: string, val: unknown) {
+              if (op !== "is" || val !== null) throw new Error(`fake client: not(${col}, ${op}) is not supported`);
+              filters.push(["notnull", col, null]);
               return builder;
             },
             then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
@@ -59,6 +66,18 @@ const tables = () => ({
   ],
   rsvps: [{ item_id: "i1", user_id: "u2" }, { item_id: "i9", user_id: "u2" }],
   documents: [{ id: "d1", trip_id: "t1", item_id: "i1", owner_id: "u1", scope: "shared", storage_path: "t1/u1/d1-ticket.pdf", kind: "ticket" }],
+  trip_guests: [{ id: "g1", trip_id: "t1", name: "Mia", added_by: "u2" }],
+  expenses: [
+    { id: "e1", trip_id: "t1", kind: "expense", title: "Dinner", category: "food", paid_by_user: null, paid_by_guest: "g1", amount: "300000", currency: "IDR", rate: "0.0053", rate_date: "2026-12-01", base_currency: "INR", spent_on: "2026-12-01", created_by: "u2", version: 2, created_at: "2026-12-01T10:00:00+00:00" },
+  ],
+  expense_shares: [
+    { expense_id: "e1", trip_id: "t1", position: 1, user_id: "u2", guest_id: null, share: null },
+    { expense_id: "e1", trip_id: "t1", position: 0, user_id: null, guest_id: "g1", share: null },
+  ],
+  change_log: [
+    { trip_id: "t1", item_id: "i1", expense_id: null, actor_id: "u1", op: "insert", changed_at: "2026-12-01T09:00:00+00:00", before: null, after: {} },
+    { trip_id: "t1", item_id: null, expense_id: "e1", actor_id: "u2", op: "insert", changed_at: "2026-12-01T10:00:00+00:00", before: null, after: { id: "e1", trip_id: "t1", kind: "expense", title: "Dinner", category: "food", paid_by_user: null, paid_by_guest: "g1", amount: 250000, currency: "IDR", rate: 0.0053, rate_date: "2026-12-01", base_currency: "INR", spent_on: "2026-12-01", created_by: "u2", shares: [{ user_id: null, guest_id: "g1", share: null }] } },
+  ],
 });
 
 describe("createTripSource", () => {
@@ -72,6 +91,23 @@ describe("createTripSource", () => {
     expect(s.items.map((i) => i.title)).toEqual(["Hotel"]);
     expect(s.rsvps).toEqual([{ itemId: "i1", userId: "u2" }]);
     expect(s.documents.map((d) => d.fileName)).toEqual(["d1-ticket.pdf"]);
+  });
+
+  it("reads the trip's money: its counting currency, guests, expenses with their split in order, and their history", async () => {
+    const { client } = fakeClient({ ...tables(), trips: [{ id: "t1", name: "Goa", start_date: null, end_date: null, base_currency: "INR" }] });
+    const result = await createTripSource(client).fetchSnapshot("t1");
+    if (result.status !== "ok") throw new Error("expected ok");
+    const s = result.snapshot;
+    expect(s.trip.baseCurrency).toBe("INR");
+    expect(s.guests).toEqual([{ id: "g1", tripId: "t1", name: "Mia", addedBy: "u2" }]);
+    expect(s.expenses).toEqual([
+      {
+        id: "e1", tripId: "t1", kind: "expense", title: "Dinner", category: "food", paidBy: "g1", amount: 300000, currency: "IDR", rate: 0.0053,
+        rateDate: "2026-12-01", baseCurrency: "INR", spentOn: "2026-12-01", split: [{ who: "g1" }, { who: "u2" }], createdBy: "u2", version: 2,
+        createdAt: "2026-12-01T10:00:00.000Z",
+      },
+    ]);
+    expect(s.expenseHistory?.map((h) => [h.expenseId, h.op, h.after?.amount])).toEqual([["e1", "insert", 250000]]);
   });
 
   it("reports no access when the trip is not visible (removed or never joined)", async () => {
@@ -95,7 +131,7 @@ describe("createTripSource", () => {
     await createTripSource(client).fetchSnapshot("t1");
     const filtered = (table: string) => calls.find((c) => c.table === table)?.filters ?? [];
     expect(filtered("trips")).toContainEqual(["eq", "id", "t1"]);
-    for (const t of ["members", "items", "documents"]) expect(filtered(t), t).toContainEqual(["eq", "trip_id", "t1"]);
+    for (const t of ["members", "items", "documents", "trip_guests", "expenses", "expense_shares", "change_log"]) expect(filtered(t), t).toContainEqual(["eq", "trip_id", "t1"]);
   });
 });
 

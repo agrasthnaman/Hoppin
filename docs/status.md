@@ -3,12 +3,12 @@
 Updated 2026-11-04. Read this first if you are new. Then see [CONTRIBUTING.md](../CONTRIBUTING.md), [work-plan.md](work-plan.md), [design-brief.md](design-brief.md), [deploy.md](deploy.md) and the [design](superpowers/specs/2026-11-03-tripapp-design.md).
 
 ## What works today
-Run `npm run demo` to click through all of it on sample data. A signed-in person can: create an account (confirming their email once) and sign in with a password, reset a forgotten password, change their name, leave a trip, delete their account, create a trip (and become its organizer), make a co-organizer, delete a trip, join a trip from an invite link (and be approved or removed by the organizer), open their trips, see a day-by-day plan with group items and optional plans from friends, add plans, say "I'm in", open a booking, edit it, attach and open documents, and do all of this with no signal. Changes made offline are saved on the phone and sent when the connection returns; if two people changed the same thing, the later change wins, and the other is kept as a draft that can be applied again or discarded. Personal documents are stored encrypted on the phone, and a removed member's copy is wiped. The privacy rules are enforced in the database and verified against a real Supabase project.
+Run `npm run demo` to click through all of it on sample data. A signed-in person can: create an account (confirming their email once) and sign in with a password, reset a forgotten password, change their name, leave a trip, delete their account, create a trip (and become its organizer), make a co-organizer, delete a trip, join a trip from an invite link (and be approved or removed by the organizer), open their trips, see a day-by-day plan with group items and optional plans from friends, add plans, say "I'm in", open a booking, edit it, attach and open documents, record shared expenses in any currency (with guests, equal or exact splits) and see who pays whom in their own currency, and do all of this with no signal. Changes made offline are saved on the phone and sent when the connection returns; if two people changed the same thing, the later change wins, and the other is kept as a draft that can be applied again or discarded. Personal documents are stored encrypted on the phone, and a removed member's copy is wiped. The privacy rules are enforced in the database and verified against a real Supabase project.
 
 ## Issues
 | Done | Issue |
 |---|---|
-| yes | #3 scaffold, #4 design system, #5 schema and privacy rules, #6 invites, #7 app shell, #9 trips list and create trip, #10 day view, #11 bookings and documents, #12 members screen, #13 offline cache, #14 offline edits and conflicts, #37 data layer |
+| yes | #3 scaffold, #4 design system, #5 schema and privacy rules, #6 invites, #7 app shell, #9 trips list and create trip, #10 day view, #11 bookings and documents, #12 members screen, #13 offline cache, #14 offline edits and conflicts, #18 settlement, #19 currency, #20 expenses and Money screen (migration 005 not yet applied to dev), #37 data layer |
 | partly | #1 accounts: dev project done, email service, prod project and hosting not done |
 | open | everything else on the [issues page](https://github.com/agrasthnaman/Hoppin/issues) |
 
@@ -20,7 +20,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 
 | Lane | Issues | Why it is safe |
 |---|---|---|
-| **Money** (good first lane) | #18 settlement logic, then #19 currency, then #20 expenses screen | #18 and #19 are new files (`packages/core/src/settlement.ts`, `apps/web/src/providers/rates.ts`). #20 adds a route and migration 005, so tell the others when you reach it. |
+| **Money** | Done: #18, #19, #20 | The Money screen, migration 005 and the money outbox are in. Follow-ups go in new issues. |
 | Polls and weather | #21 polls (migration 002), #22 weather | New files; each adds one line to the route table. |
 | Owner's lane (in progress, please avoid) | #15 Today view, then #38 bookings and My documents screens | These change the trip shell and the route table. |
 | Waiting on accounts or keys | #8 images, #23 day map, #24 notifications, #28 deploy | Need keys from the owner (#2) or the email service (#1). |
@@ -28,7 +28,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 ## Files that cause merge conflicts (be careful)
 - `apps/web/src/app/routes.tsx`: the route table. Add your one line at the end of the list and rebase often.
 - `packages/core/src/types.ts` and `packages/core/src/index.ts`: only append. Do not reorder or rename existing exports.
-- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 005 expenses, 006 notifications, 010 and up free. Never edit a migration that is already applied (001, 007, 008, 009): add a new one. Add a test in `supabase/test/` first.
+- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 006 notifications, 011 and up free (005 expenses and 010 account are taken). Never edit a migration that is already applied (001, 007, 008, 009, 010): add a new one. Add a test in `supabase/test/` first.
 - `apps/web/src/app/services.tsx` (the `Actions` list) and `apps/web/test/helpers.tsx` (the fake services): add at the end.
 
 ## Get set up
@@ -47,6 +47,6 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 ## Known gaps
 - No timer-based refresh: the app refreshes on open, on reconnect, after each change and on request (issue filed).
 - "Later change wins" compares the phone's clock with the server's, so a badly wrong phone clock can pick the wrong winner (notices and drafts make sure nothing is lost).
-- Documents cannot be added offline (only plans, edits and replies).
+- Documents cannot be added offline (plans, edits, replies and money can).
 - The iPhone offline check (#16) has not been done on a real phone.
 - Email sending is limited until a custom email service is set up (#1).

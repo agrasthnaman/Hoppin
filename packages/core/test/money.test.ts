@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertMinor, isCurrencyCode, minorDigits } from "../src/money";
+import { convertMinor, isCurrencyCode, minorDigits, minorToText, parseMinor } from "../src/money";
 
 describe("minorDigits", () => {
   it("knows how many decimal places each currency has (ISO 4217)", () => {
@@ -51,5 +51,29 @@ describe("convertMinor", () => {
     expect(convertMinor(100, 1.005, "USD", "EUR")).toBe(101);
     expect(convertMinor(1, 0.5, "USD", "EUR")).toBe(1);
     expect(convertMinor(1, 0.49, "USD", "EUR")).toBe(0);
+  });
+});
+
+describe("parseMinor", () => {
+  it("reads typed money as whole minor units, without floating-point drift", () => {
+    expect(parseMinor("1250", "INR")).toBe(125000);
+    expect(parseMinor("1,250.5", "INR")).toBe(125050);
+    expect(parseMinor(" 0.29 ", "USD")).toBe(29);
+    expect(parseMinor("300000", "IDR")).toBe(30000000);
+    expect(parseMinor("1500", "JPY")).toBe(1500);
+    expect(parseMinor("1.250", "KWD")).toBe(1250);
+  });
+
+  it("returns null for anything that is not an amount in that currency", () => {
+    for (const text of ["", "abc", "-5", "1.2.3", "1.234", "1e5"]) expect(parseMinor(text, "INR"), text).toBeNull();
+    expect(parseMinor("10.5", "JPY")).toBeNull();
+  });
+});
+
+describe("minorToText", () => {
+  it("writes minor units back as typed text, dropping a .00", () => {
+    expect(minorToText(125000, "INR")).toBe("1250");
+    expect(minorToText(125050, "INR")).toBe("1250.50");
+    expect(minorToText(1500, "JPY")).toBe("1500");
   });
 });

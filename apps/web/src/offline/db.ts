@@ -1,4 +1,4 @@
-import type { ConflictNotice, OutboxRecord, TripSnapshot } from "@hoppin/core";
+import type { ConflictNotice, MoneyRecord, OutboxRecord, TripSnapshot } from "@hoppin/core";
 import Dexie, { type Table } from "dexie";
 
 export interface TripRecord {
@@ -34,11 +34,14 @@ export class OfflineDb extends Dexie {
   /** Changes that could not be applied; kept so the person can apply or discard them. */
   drafts!: Table<OutboxRecord, string>;
   notices!: Table<ConflictNotice, string>;
+  /** Expenses, payments and guests added or changed on this device, waiting to be sent. */
+  moneyOutbox!: Table<MoneyRecord, string>;
 
   constructor(name: string) {
     super(name);
     this.version(1).stores({ trips: "tripId", blobs: "id, tripId", meta: "key" });
     this.version(2).stores({ outbox: "id, tripId", drafts: "id, tripId", notices: "id, tripId" });
+    this.version(3).stores({ moneyOutbox: "id, tripId" });
   }
 }
 

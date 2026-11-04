@@ -1,4 +1,4 @@
-import type { Item, MembershipStatus, TripSnapshot } from "@hoppin/core";
+import type { ExpenseRecord, Item, MembershipStatus, TripGuest, TripSnapshot } from "@hoppin/core";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
@@ -110,6 +110,9 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       setMemberRole: vi.fn(async () => {}),
       deleteTrip: vi.fn(async () => {}),
       deleteAccount: vi.fn(async () => {}),
+      saveExpense: vi.fn(async (_expense: ExpenseRecord, _guestIds: ReadonlySet<string>) => {}),
+      deleteExpense: vi.fn(async (_expenseId: string) => {}),
+      addGuest: vi.fn(async (_guest: TripGuest) => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
     rates: {
