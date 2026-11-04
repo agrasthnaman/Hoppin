@@ -32,6 +32,19 @@ describe("sign in and gating", () => {
     expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
   });
 
+  it("sends someone who is already signed in on to today", async () => {
+    const { services } = fakeServices();
+    const { router } = renderApp("/sign-in", services);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/today"));
+    expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
+  });
+
+  it("sends an already signed-in person to the page they were trying to open", async () => {
+    const { services } = fakeServices();
+    const { router } = renderApp("/sign-in?next=%2Faccount", services);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/account"));
+  });
+
   it("ignores a 'next' address that points to another site", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in?next=%2F%2Fevil.example", services);
@@ -55,6 +68,14 @@ describe("join route", () => {
     const { services } = fakeServices({ session: null });
     renderApp(`/join/${"a1".repeat(32)}`, services);
     expect(await screen.findByLabelText("Your name")).toBeInTheDocument();
+  });
+
+  it("opens today once the organizer has approved the join", async () => {
+    const { services } = fakeServices();
+    services.invites.redeemInvite.mockResolvedValue({ tripId: "t1", status: "approved" });
+    const { router } = renderApp(`/join/${"ab".repeat(32)}`, services);
+    await userEvent.click(await screen.findByRole("button", { name: "Open trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/today"));
   });
 
   it("joins once when signed in, and waits for approval", async () => {

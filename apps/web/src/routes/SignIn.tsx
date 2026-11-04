@@ -1,7 +1,8 @@
 import { inputClass } from "../lib/forms";
 import { useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 import { useServices } from "../app/services";
+import { useSession } from "../app/session";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -13,7 +14,8 @@ function safeNext(next: string | null): string {
 
 /** Returning members sign in with an emailed link. New people join through an organizer's invite link instead. */
 export function SignIn() {
-  const { auth } = useServices();
+  const { auth, sessionClient } = useServices();
+  const session = useSession(sessionClient);
   const [params] = useSearchParams();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
@@ -49,6 +51,9 @@ export function SignIn() {
       setSending(false);
     }
   }
+
+  if (session.status === "loading") return <p role="status" className="p-4">Loading…</p>;
+  if (session.status === "signedIn") return <Navigate to={safeNext(params.get("next"))} replace />;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">

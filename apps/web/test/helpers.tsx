@@ -1,4 +1,4 @@
-import type { Item, TripSnapshot } from "@hoppin/core";
+import type { Item, MembershipStatus, TripSnapshot } from "@hoppin/core";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
@@ -86,7 +86,7 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
     invites: {
       createInvite: vi.fn(async () => ({ id: "inv-new", token: "b2".repeat(32) })),
       revokeInvite: vi.fn(async () => {}),
-      redeemInvite: vi.fn(async () => ({ tripId: "t1", status: "pending" as const })),
+      redeemInvite: vi.fn(async (): Promise<{ tripId: string; status: MembershipStatus }> => ({ tripId: "t1", status: "pending" })),
       approveMember: vi.fn(async () => {}),
       removeMember: vi.fn(async () => {}),
     },

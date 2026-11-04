@@ -1,6 +1,6 @@
 import { inputClass } from "../lib/forms";
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
 import { useUser } from "../app/user";
@@ -9,6 +9,7 @@ import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
 import { clearAllLocalData } from "../offline/sync";
+import { HomeLink } from "./HomeLink";
 
 /** The person's own details: name, email, sign out, and deleting the account. */
 export function AccountScreen() {
@@ -75,9 +76,9 @@ export function AccountScreen() {
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-      <Link to="/" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+      <HomeLink className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
         Back to your trips
-      </Link>
+      </HomeLink>
       <h1 className="font-display text-4xl font-extrabold">Account</h1>
       {!online && <p className="text-sm text-muted">Connect to the internet to change your details.</p>}
 

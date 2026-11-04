@@ -23,6 +23,11 @@ describe("account screen", () => {
     return { ...fake, ...utils };
   }
 
+  it("links back to today while a trip is happening", async () => {
+    await open();
+    expect(await screen.findByRole("link", { name: "Back to your trips" })).toHaveAttribute("href", "/trips/t1/today");
+  });
+
   it("shows the person's name and email, and saves a new name", async () => {
     const { services } = await open();
     const name = await screen.findByLabelText("Your name");
@@ -123,7 +128,7 @@ describe("leaving and deleting a trip (More screen)", () => {
     expect(within(dialog).getByText(/private plans and personal documents in this trip are deleted/i)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: "Leave trip" }));
     await waitFor(() => expect(services.actions.leaveTrip).toHaveBeenCalledWith("t1"));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips"));
     expect(await services.db.trips.get("t1")).toBeUndefined();
   });
 
@@ -148,7 +153,7 @@ describe("leaving and deleting a trip (More screen)", () => {
     await userEvent.type(within(dialog).getByLabelText(/Type the trip name to confirm/), "Goa");
     await userEvent.click(confirm);
     await waitFor(() => expect(services.actions.deleteTrip).toHaveBeenCalledWith("t1"));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips"));
   });
 
   it("members do not see the delete option", async () => {

@@ -17,7 +17,7 @@ export function JoinRoute() {
       redirectTo={window.location.href}
       sendMagicLink={auth.sendMagicLink}
       redeem={invites.redeemInvite}
-      onContinue={(tripId) => navigate(`/trips/${tripId}/days`)}
+      onContinue={(tripId) => navigate(`/trips/${tripId}/today`)}
     />
   );
 }
