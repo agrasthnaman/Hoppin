@@ -7,6 +7,7 @@ import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
 import { AppearanceCard } from "../components/AppearanceCard";
+import { JoinTripForm } from "../components/JoinTripForm";
 import { DraftList } from "../components/DraftList";
 import { HomeCurrencyCard } from "../components/HomeCurrencyCard";
 import { Button } from "../components/ui/Button";
@@ -64,6 +65,11 @@ export function MoreScreen() {
           <UserRound aria-hidden="true" className="size-5 text-muted" />
           Account
         </Link>
+      </Card>
+      <Card className="flex flex-col gap-3">
+        <h3 className="font-semibold">Join another trip</h3>
+        <p className="text-sm text-muted">Paste an invite link. This trip stays as it is.</p>
+        <JoinTripForm onJoin={(token) => navigate(`/join/${token}`)} />
       </Card>
       {gate ?? (
         <Card className="flex flex-col gap-3">

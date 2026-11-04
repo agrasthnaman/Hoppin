@@ -1,11 +1,10 @@
-import { localDate, parseInviteToken } from "@hoppin/core";
-import { useState, type FormEvent } from "react";
+import { localDate } from "@hoppin/core";
 import { Link } from "react-router";
 import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
+import { JoinTripForm } from "../components/JoinTripForm";
 import { Button } from "../components/ui/Button";
 import { SpiderCursor as SilkSpiderCursor } from "../components/ui/SpiderCursor";
-import { inputClass } from "../lib/forms";
 
 const OPTIONS = [
   { k: "Days", d: "The plan, one day at a time." },
@@ -24,19 +23,7 @@ function dayLabel(date: string): { weekday: string; rest: string } {
 export function FirstDay({ online, onStart, onJoin }: { online: boolean; onStart: () => void; onJoin: (token: string) => void }) {
   const { clock } = useServices();
   const signOut = useSignOut();
-  const [link, setLink] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const today = dayLabel(localDate(clock.now(), clock.timeZone));
-
-  function join(event: FormEvent) {
-    event.preventDefault();
-    const token = parseInviteToken(link);
-    if (!token) {
-      setError("That doesn't look like an invite link. Ask the organizer to send you theirs.");
-      return;
-    }
-    onJoin(token);
-  }
 
   return (
     <main className="first-day">
@@ -71,14 +58,7 @@ export function FirstDay({ online, onStart, onJoin }: { online: boolean; onStart
         <article className="first-day-card" data-silk-anchor>
           <h2>Join a trip</h2>
           <p>Paste the invite link an organizer sent you.</p>
-          <form onSubmit={join} className="first-day-form">
-            <label className="first-day-label">
-              Invite link
-              <input className={inputClass} value={link} onChange={(event) => setLink(event.target.value)} autoComplete="off" />
-            </label>
-            {error && <p className="first-day-hint">{error}</p>}
-            <Button type="submit">Join the trip</Button>
-          </form>
+          <JoinTripForm onJoin={onJoin} />
         </article>
       </div>
 

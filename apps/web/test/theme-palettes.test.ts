@@ -55,11 +55,15 @@ describe("the set of palettes", () => {
     expect(data.defaultPalette).toBe("cobalt");
     const landing = data.palettes.find((p) => p.id === "cobalt");
     expect(landing?.light.bg).toBe("#ffffff");
-    expect(landing?.dark.bg).toBe("#ffffff");
     expect(landing?.light.surface).toBe("#ffffff");
-    expect(landing?.dark.surface).toBe("#ffffff");
+    expect(landing?.dark.bg).toBe("#12162c");
+    expect(landing?.dark.surface).toBe("#1a2040");
+    expect(landing?.dark.ink).toBe("#f6f3ec");
     expect(landing?.light.hero).toBe("#0d22ee");
+    expect(landing?.dark.hero).toBe("#0d22ee");
+    expect(landing?.dark.nav).toBe("#0d22ee");
     expect(landing?.light.accent).toBe("#ff6b4a");
+    expect(landing?.dark.accent).toBe("#ff6b4a");
   });
 
   it("every palette defines the same colours in light and dark", () => {
