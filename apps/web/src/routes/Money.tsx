@@ -1,4 +1,5 @@
 import { HomeCurrencyCard } from "../components/HomeCurrencyCard";
+import { PageHeading } from "../components/PageHeading";
 import { tripGate, useTripData } from "../app/trip-data";
 
 /**
@@ -12,10 +13,7 @@ export default function Money() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-display text-4xl font-extrabold">Money</h1>
-        <p className="mt-1 text-sm text-muted">Who owes whom, worked out on this phone. Hoppin doesn't send any money.</p>
-      </div>
+      <PageHeading title="Money" lede="Who owes whom, worked out on this phone. Hoppin doesn't send any money." />
       <section className="rounded-card border border-line bg-surface p-4">
         <h2 className="font-semibold">Who owes whom</h2>
         <p className="mt-1 text-sm text-muted">Nothing to settle yet.</p>

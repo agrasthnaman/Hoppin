@@ -1,9 +1,10 @@
 import { AuthError } from "../src/lib/auth-api";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getLocalTrip } from "../src/offline/sync";
-import { fakeServices, renderApp, snapshot } from "./helpers";
+import { fakeServices, item, renderApp, snapshot } from "./helpers";
 
 const setOnline = (v: boolean) => vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(v);
 beforeEach(() => setOnline(true));
@@ -91,6 +92,17 @@ describe("sign in and gating", () => {
     expect(services.auth.requestPasswordReset).toHaveBeenCalledWith({ email: "aman@example.com", redirectTo: `${window.location.origin}/reset-password` });
     expect(await screen.findByText(/If aman@example.com has an account/)).toBeInTheDocument();
   });
+
+  it("keeps the email field and the waitlist links on the cream card", async () => {
+    const { services } = fakeServices({ session: null });
+    renderApp("/sign-in", services);
+    const email = await screen.findByLabelText("Email");
+    const forgot = screen.getByRole("button", { name: "Forgot password?" });
+    const waitlist = screen.getByRole("button", { name: "New here? Join the waitlist" });
+    expect(email.closest(".on-cream")).not.toBeNull();
+    expect(forgot.closest(".on-cream")).toBe(email.closest(".on-cream"));
+    expect(waitlist.closest(".on-cream")).toBe(email.closest(".on-cream"));
+  });
 });
 
 describe("join route", () => {
@@ -145,8 +157,10 @@ describe("trip gate", () => {
   it("loads the trip and opens today while the trip is happening", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1", services);
-    expect(await screen.findByText("Goa")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Today" })).toBeInTheDocument();
+    expect(await screen.findAllByText("Goa")).toHaveLength(2);
+    const today = await screen.findByRole("heading", { name: "Today" });
+    expect(today).toHaveClass("page-title");
+    expect(today.parentElement?.querySelector(".editorial")).not.toBeNull();
     expect(screen.getByRole("region", { name: "Next" })).toHaveTextContent("Old town tour");
   });
 
@@ -190,7 +204,8 @@ describe("days screen", () => {
   it("opens on today (in the device's time zone) when it is within the trip", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/days", services);
-    expect(await screen.findByRole("heading", { name: /Wednesday 2 December/ })).toBeInTheDocument();
+    const day = await screen.findByRole("heading", { name: /Wednesday 2 December/ });
+    expect(day.querySelector(".editorial")).toHaveTextContent("2 December");
   });
 
   it("moves between days with the day strip", async () => {
@@ -243,21 +258,42 @@ describe("days screen", () => {
     );
     await waitFor(() => expect(fetchSnapshot.mock.calls.length).toBeGreaterThan(calls));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(services.actions.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it("can attach a document when a plan is added from the day", async () => {
+    const { services } = fakeServices();
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Add plan" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
+    await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
+    await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T19:30");
+    await userEvent.upload(within(dialog).getByLabelText("Booking document"), new File(["x"], "dinner.pdf", { type: "application/pdf" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(services.actions.createItem).toHaveBeenCalled());
+    const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3] as string;
+    await waitFor(() =>
+      expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId, scope: "shared", kind: "document" }),
+    );
   });
 });
 
 describe("docs and money", () => {
-  it("lists documents saved with the trip, under the plan they belong to", async () => {
+  it("opens a booking's document from the docs tab, on the same plan as that day", async () => {
     renderApp("/trips/t1/docs", fakeServices().services);
-    expect(await screen.findByRole("heading", { name: "Docs" })).toBeInTheDocument();
-    expect(screen.getByText("d1-ticket.pdf")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Old town tour" })).toHaveAttribute("href", "/trips/t1/items/i1");
-    expect(screen.getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    const row = within(bookings).getByRole("link", { name: "Old town tour" }).closest("li");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByRole("link", { name: "Old town tour" })).toHaveAttribute("href", "/trips/t1/items/i1");
+    expect(within(row as HTMLElement).getByRole("link", { name: "Wednesday 2 December" })).toHaveAttribute("href", "/trips/t1/days?date=2026-12-02");
+    expect(within(row as HTMLElement).getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
   });
 
-  it("says when nothing has been saved", async () => {
+  it("says when a trip has no personal files", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: snapshot({ documents: [] }) }).services);
-    expect(await screen.findByText("No documents yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing personal saved yet.")).toBeInTheDocument();
+    const bookings = screen.getByRole("region", { name: "Bookings" });
+    expect(within(bookings).queryByRole("button", { name: /^Open / })).toBeNull();
   });
 
   it("shows that nothing is owed yet, and where amounts are converted", async () => {
@@ -265,6 +301,116 @@ describe("docs and money", () => {
     expect(await screen.findByRole("heading", { name: "Money" })).toBeInTheDocument();
     expect(screen.getByText("Nothing to settle yet.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Home currency" })).toBeInTheDocument();
+  });
+});
+
+describe("bookings and my documents", () => {
+  const at = (hhmm: string) => new Date(`2026-12-02T${hhmm}:00+05:30`).toISOString();
+  const doc = (over: Partial<ReturnType<typeof snapshot>["documents"][number]> & Pick<ReturnType<typeof snapshot>["documents"][number], "id" | "fileName" | "ownerId" | "scope">) => ({
+    tripId: "t1",
+    itemId: null,
+    storagePath: `t1/${over.ownerId}/${over.fileName}`,
+    kind: "document",
+    ...over,
+  });
+
+  function bookingsSnapshot() {
+    return snapshot({
+      items: [
+        item({ id: "f1", title: "Goa flight", kind: "flight", startsAt: at("08:00") }),
+        item({ id: "s1", title: "Beach house", kind: "stay", ownerId: "riya", startsAt: at("15:00") }),
+        item({ id: "secret", title: "Riya's note", kind: "plan", visibility: "private", ownerId: "riya", startsAt: at("18:00") }),
+        item({ id: "mine", title: "Call the hotel", kind: "plan", visibility: "private", ownerId: "me", startsAt: at("19:00") }),
+      ],
+      documents: [
+        doc({ id: "p1", fileName: "passport.pdf", ownerId: "me", scope: "personal", kind: "passport" }),
+        doc({ id: "p2", fileName: "riya-visa.pdf", ownerId: "riya", scope: "personal" }),
+        doc({ id: "d1", fileName: "d1-ticket.pdf", ownerId: "me", scope: "shared", itemId: "f1", kind: "ticket" }),
+      ],
+    });
+  }
+
+  it("groups bookings by kind, and leaves out other people's private plans", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    expect(within(bookings).getByRole("heading", { name: "Flights" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("heading", { name: "Stays" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("heading", { name: "Plans" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("link", { name: "Goa flight" })).toHaveAttribute("href", "/trips/t1/items/f1");
+    expect(within(bookings).getByRole("link", { name: "Beach house" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
+    expect(within(bookings).queryByText("Riya's note")).toBeNull();
+  });
+
+  it("filters bookings by who booked them and by title", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    await userEvent.selectOptions(within(bookings).getByLabelText("Who booked it"), "riya");
+    expect(within(bookings).getByRole("link", { name: "Beach house" })).toBeInTheDocument();
+    expect(within(bookings).queryByRole("link", { name: "Goa flight" })).toBeNull();
+    expect(within(bookings).queryByRole("link", { name: "Call the hotel" })).toBeNull();
+    await userEvent.selectOptions(within(bookings).getByLabelText("Who booked it"), "all");
+    await userEvent.type(within(bookings).getByLabelText("Search bookings"), "hotel");
+    expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
+    expect(within(bookings).queryByRole("link", { name: "Beach house" })).toBeNull();
+  });
+
+  it("adds a booking from the docs tab", async () => {
+    const { services } = fakeServices({ snapshot: bookingsSnapshot() });
+    renderApp("/trips/t1/docs", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Add booking" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a booking" });
+    await userEvent.type(within(dialog).getByLabelText("Title"), "Airport cab");
+    await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T07:00");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(services.actions.createItem).toHaveBeenCalledWith("t1", "me", expect.objectContaining({ title: "Airport cab" }), expect.any(String)));
+    expect(services.actions.uploadDocument).not.toHaveBeenCalled();
+  });
+
+  it("can attach a confirmation when the booking is added, for anyone in the group to open", async () => {
+    const { services } = fakeServices({ snapshot: bookingsSnapshot() });
+    renderApp("/trips/t1/docs", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Add booking" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add a booking" });
+    await userEvent.click(within(dialog).getByRole("radio", { name: "Stay" }));
+    await userEvent.type(within(dialog).getByLabelText("Title"), "Beach house");
+    await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T15:00");
+    await userEvent.upload(within(dialog).getByLabelText("Booking document"), new File(["x"], "stay.pdf", { type: "application/pdf" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(services.actions.createItem).toHaveBeenCalled());
+    const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3] as string;
+    await waitFor(() =>
+      expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId, scope: "shared", kind: "document" }),
+    );
+  });
+
+  it("shows only the viewer's own files under My documents, and can add one", async () => {
+    const snap = bookingsSnapshot();
+    snap.members = snap.members.map((member) => (member.userId === "me" ? { ...member, role: "organizer" } : member));
+    const { services } = fakeServices({ snapshot: snap });
+    renderApp("/trips/t1/docs", services);
+    const mine = await screen.findByRole("region", { name: "My documents" });
+    expect(within(mine).getByText("passport.pdf")).toBeInTheDocument();
+    expect(within(mine).queryByText("riya-visa.pdf")).toBeNull();
+    const bookings = screen.getByRole("region", { name: "Bookings" });
+    expect(within(bookings).getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Other files" })).getByText("riya-visa.pdf")).toBeInTheDocument();
+    await userEvent.upload(within(mine).getByLabelText("Add a document"), new File(["x"], "visa.pdf", { type: "application/pdf" }));
+    await waitFor(() =>
+      expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: null, scope: "personal", kind: "document" }),
+    );
+  });
+
+  it("says when there are no bookings and no files", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: snapshot({ items: [], documents: [] }) }).services);
+    expect(await screen.findByText("No bookings yet.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing personal saved yet.")).toBeInTheDocument();
+  });
+
+  it("has no axe violations", async () => {
+    const { container } = renderApp("/trips/t1/docs", fakeServices().services);
+    await screen.findByRole("heading", { name: "Docs" });
+    expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 });
 

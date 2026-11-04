@@ -38,7 +38,9 @@ describe("a new person with no trip", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     const token = "ab".repeat(32);
-    await userEvent.type(screen.getByLabelText("Invite link"), `https://hoppin.app/join/${token}`);
+    const invite = screen.getByLabelText("Invite link");
+    expect(invite.closest(".on-cream")).not.toBeNull();
+    await userEvent.type(invite, `https://hoppin.app/join/${token}`);
     await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
   });
@@ -55,7 +57,9 @@ describe("joining from the trips list", () => {
   it("opens an invite pasted next to the trips you already have", async () => {
     const { router } = renderApp("/trips", fakeServices({ trips: [{ id: "t1", name: "Goa" }] }).services);
     const token = "ab".repeat(32);
-    await userEvent.type(await screen.findByLabelText("Invite link"), `https://hoppin.app/join/${token}`);
+    const invite = await screen.findByLabelText("Invite link");
+    expect(invite.closest(".on-cream")).not.toBeNull();
+    await userEvent.type(invite, `https://hoppin.app/join/${token}`);
     await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
   });

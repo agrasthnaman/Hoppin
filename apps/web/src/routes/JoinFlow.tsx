@@ -78,7 +78,7 @@ export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, a
       <p className="auth-lede" data-silk-anchor>
         An invite got you this far. Make an account, or hop in if you already have one.
       </p>
-      <div className="auth-card" data-silk-anchor>
+      <div className="auth-card on-cream" data-silk-anchor>
         {body}
       </div>
     </AuthStage>

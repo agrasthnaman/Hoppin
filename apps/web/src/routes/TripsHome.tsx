@@ -77,7 +77,7 @@ export function TripsHome() {
         Your trips
       </h1>
       <p className="trips-lede">Pick one up, start the next, or join with an invite.</p>
-      <article className="trips-join" data-silk-anchor>
+      <article className="trips-join on-cream" data-silk-anchor>
         <h2>Join a trip</h2>
         <p>Paste the invite link an organizer sent you.</p>
         <JoinTripForm onJoin={(token) => navigate(`/join/${token}`)} />
