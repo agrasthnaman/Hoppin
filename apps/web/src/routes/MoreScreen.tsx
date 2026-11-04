@@ -1,5 +1,5 @@
 import { inputClass } from "../lib/forms";
-import { formatSyncedAgo } from "@hoppin/core";
+import { formatSyncedAgo, localDate } from "@hoppin/core";
 import { UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -13,6 +13,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
+import { homePath } from "../app/home-path";
 import { wipeTrip } from "../offline/sync";
 
 /** Offline controls and sign out. */
@@ -104,7 +105,9 @@ export function MoreScreen() {
           try {
             await action();
             await wipeTrip(db, trip.tripId);
-            navigate("/", { replace: true });
+            const trips = await actions.listTrips().catch(() => []);
+            const rest = trips.filter((item) => item.id !== trip.tripId);
+            navigate(homePath(rest, localDate(clock.now(), clock.timeZone)), { replace: true });
           } catch {
             setTripError(failure);
             setBusy2(false);
