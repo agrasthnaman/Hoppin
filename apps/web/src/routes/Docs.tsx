@@ -1,4 +1,4 @@
-import { formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
+import { canEdit, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
 import { FileText, Plus } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
@@ -43,6 +43,7 @@ export default function Docs() {
   const [query, setQuery] = useState("");
   const [person, setPerson] = useState("all");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Item | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const gate = tripGate(trip);
@@ -153,9 +154,21 @@ export default function Docs() {
                     return (
                       <li key={item.id} className="flex flex-col gap-2 rounded-card border border-line bg-surface px-4 py-3">
                         <div>
+                          <div className="flex items-start justify-between gap-2">
                           <Link to={`/trips/${trip.tripId}/items/${item.id}`} className="font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent">
                             {item.title}
                           </Link>
+                          {canEdit(item, member) && (
+                            <button
+                              type="button"
+                              aria-label={`Edit ${item.title}`}
+                              onClick={() => setEditing(item)}
+                              className="-mt-1 min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold text-link hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          </div>
                           <p className="text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
                           <p className="text-xs text-muted">
                             <Link
@@ -239,6 +252,20 @@ export default function Docs() {
           Couldn't open {failed}. Check your connection and try again.
         </p>
       )}
+
+      <Sheet open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} title="Edit booking">
+        {editing && (
+          <ItemForm
+            initial={editing}
+            tz={editing.tz}
+            onCancel={() => setEditing(null)}
+            onSubmit={async (values) => {
+              await trip.editItem(editing, values);
+              setEditing(null);
+            }}
+          />
+        )}
+      </Sheet>
 
       <Sheet open={adding} onOpenChange={setAdding} title="Add a booking">
         <ItemForm

@@ -262,7 +262,7 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
           {failed}
         </p>
       )}
-      <div className="sticky bottom-0 -mx-5 flex gap-2 bg-surface px-5 pb-1 pt-3">
+      <div className="sticky bottom-0 z-20 -mx-5 flex gap-2 bg-surface px-5 pb-1 pt-3">
         <Button type="submit" disabled={saving} className="flex-1">
           Save
         </Button>
