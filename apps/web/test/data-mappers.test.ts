@@ -32,6 +32,7 @@ describe("row mappers", () => {
       startsAt: "2026-12-01T04:30:00.000Z",
       endsAt: "2026-12-03T06:00:00.000Z",
       tz: "Asia/Kolkata",
+      endTz: null,
       title: "Beach hotel",
       locationUrl: "https://x.example",
       details: { notes: "n" },
@@ -129,6 +130,7 @@ describe("item write payloads", () => {
       starts_at: "2026-12-01T04:30:00.000Z",
       ends_at: null,
       tz: "Asia/Kolkata",
+      end_tz: null,
       title: "Museum",
       location_url: "https://maps.example/museum",
       details: { notes: "Bring tickets" },
@@ -165,5 +167,13 @@ describe("item server time and chosen ids", () => {
     const values: ItemFormValues = { kind: "activity", title: "Dinner", startsAt: "2026-12-01T14:00:00.000Z", endsAt: null, tz: "Asia/Kolkata", locationUrl: null, visibility: "shared", groupItem: false, notes: "" };
     expect(itemInsertRow("t1", "u1", values, "chosen-id").id).toBe("chosen-id");
     expect(itemInsertRow("t1", "u1", values)).not.toHaveProperty("id");
+  });
+});
+
+describe("arrival time zone", () => {
+  it("is read from the row and written back", () => {
+    expect(itemFromRow(row({ end_tz: "Europe/London" })).endTz).toBe("Europe/London");
+    const values: ItemFormValues = { kind: "flight", title: "DEL to LHR", startsAt: "2026-12-01T17:30:00.000Z", endsAt: "2026-12-02T04:30:00.000Z", tz: "Asia/Kolkata", endTz: "Europe/London", locationUrl: null, visibility: "shared", groupItem: true, notes: "" };
+    expect(itemInsertRow("t1", "u1", values).end_tz).toBe("Europe/London");
   });
 });

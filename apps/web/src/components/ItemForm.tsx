@@ -17,6 +17,23 @@ export interface ItemFormProps {
   onCancel: () => void;
 }
 
+function isZone(name: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: name });
+    return name.trim() !== "";
+  } catch {
+    return false;
+  }
+}
+
+function zoneNames(): string[] {
+  try {
+    return Intl.supportedValuesOf("timeZone");
+  } catch {
+    return [];
+  }
+}
+
 type Audience = "group" | "optional" | "private";
 
 const KINDS: { value: ItemKind; label: string; icon: LucideIcon }[] = [
@@ -53,10 +70,11 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 /** Add or edit a trip item: a booking (flight, stay, transport), a group activity, an optional plan, or a private plan. */
 export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
   const zone = initial?.tz ?? tz;
+  const [arrivalZone, setArrivalZone] = useState(initial?.endTz ?? zone);
   const [kind, setKind] = useState<ItemKind>(initial?.kind ?? "activity");
   const [title, setTitle] = useState(initial?.title ?? "");
   const [starts, setStarts] = useState(initial ? instantToZonedInput(initial.startsAt, zone) : "");
-  const [ends, setEnds] = useState(initial?.endsAt ? instantToZonedInput(initial.endsAt, zone) : "");
+  const [ends, setEnds] = useState(initial?.endsAt ? instantToZonedInput(initial.endsAt, initial.endTz ?? zone) : "");
   const [location, setLocation] = useState(initial?.locationUrl ?? "");
   const [notes, setNotes] = useState(typeof initial?.details.notes === "string" ? initial.details.notes : "");
   const [audience, setAudience] = useState<Audience>(
@@ -69,12 +87,17 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
   const online = useOnline();
   const documentId = useId();
 
+  // Only a flight or other transport ends somewhere else. Anything else ends where it starts.
+  const travels = kind === "flight" || kind === "transport";
+  const endZone = travels && isZone(arrivalZone) ? arrivalZone : zone;
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
     if (!title.trim()) next.title = "Enter a title";
     if (!starts) next.starts = "Choose when it starts";
-    if (starts && ends && zonedTimeToInstant(ends, zone) <= zonedTimeToInstant(starts, zone)) {
+    if (travels && !isZone(arrivalZone)) next.arrivalZone = "Enter a time zone like Europe/London";
+    if (starts && ends && !next.arrivalZone && zonedTimeToInstant(ends, endZone) <= zonedTimeToInstant(starts, zone)) {
       next.ends = "The end must be after the start";
     }
     if (location.trim() && !/^https?:\/\/\S+$/i.test(location.trim())) {
@@ -93,8 +116,9 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
       kind,
       title: title.trim(),
       startsAt: zonedTimeToInstant(starts, zone),
-      endsAt: ends ? zonedTimeToInstant(ends, zone) : null,
+      endsAt: ends ? zonedTimeToInstant(ends, endZone) : null,
       tz: zone,
+      endTz: endZone === zone ? null : endZone,
       locationUrl: location.trim() || null,
       visibility: audience === "private" ? "private" : "shared",
       groupItem: audience === "group",
@@ -153,7 +177,34 @@ export function ItemForm({ initial, tz, onSubmit, onCancel }: ItemFormProps) {
           {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={ends} onChange={(e) => setEnds(e.target.value)} className={inputClass} />}
         </Field>
       </div>
-      <p className="-mt-3 text-xs text-muted">Times are in {zone}.</p>
+      <p className="-mt-3 text-xs text-muted">
+        {travels && endZone !== zone ? `Starts in ${zone} time, ends in ${endZone} time.` : `Times are in ${zone}.`}
+      </p>
+      {travels && (
+        <Field label="Arrival time zone" error={errors.arrivalZone}>
+          {(p) => (
+            <>
+              <input
+                id={p.id}
+                list={`${p.id}-zones`}
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={p.invalid}
+                aria-describedby={p.describedBy}
+                value={arrivalZone}
+                onChange={(e) => setArrivalZone(e.target.value)}
+                className={inputClass}
+              />
+              <datalist id={`${p.id}-zones`}>
+                {zoneNames().map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <span className="text-xs text-muted">Where it lands, if that is in a different time zone. The end time above is in this zone.</span>
+            </>
+          )}
+        </Field>
+      )}
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-semibold">Who is it for?</legend>

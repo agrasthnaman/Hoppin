@@ -37,7 +37,7 @@ export interface ConflictNotice {
   at: number;
 }
 
-const FIELDS: EditableField[] = ["kind", "title", "startsAt", "endsAt", "tz", "locationUrl", "visibility", "groupItem", "notes"];
+const FIELDS: EditableField[] = ["kind", "title", "startsAt", "endsAt", "tz", "endTz", "locationUrl", "visibility", "groupItem", "notes"];
 
 const same = (a: unknown, b: unknown) => (a ?? null) === (b ?? null);
 
@@ -48,6 +48,7 @@ export function valuesOf(item: Item): ItemValues {
     startsAt: item.startsAt,
     endsAt: item.endsAt,
     tz: item.tz,
+    endTz: item.endTz ?? null,
     locationUrl: item.locationUrl,
     visibility: item.visibility,
     groupItem: item.groupItem,
@@ -71,6 +72,7 @@ export function applyValues(item: Item, values: ItemValues): Item {
     startsAt: values.startsAt,
     endsAt: values.endsAt,
     tz: values.tz,
+    endTz: values.endTz ?? null,
     locationUrl: values.locationUrl,
     visibility: values.visibility,
     groupItem: values.groupItem,
@@ -146,6 +148,7 @@ const FIELD_LABEL: Record<EditableField, string> = {
   startsAt: "start time",
   endsAt: "end time",
   tz: "time zone",
+  endTz: "arrival time zone",
   locationUrl: "location link",
   visibility: "visibility",
   groupItem: "audience",

@@ -38,6 +38,7 @@ export interface ItemRow {
   starts_at: string;
   ends_at: string | null;
   tz: string;
+  end_tz?: string | null;
   title: string;
   location_url: string | null;
   details: Record<string, unknown> | null;
@@ -80,6 +81,7 @@ export function itemFromRow(row: ItemRow): Item {
     startsAt: iso(row.starts_at),
     endsAt: row.ends_at ? iso(row.ends_at) : null,
     tz: row.tz,
+    endTz: row.end_tz ?? null,
     title: row.title,
     locationUrl: row.location_url,
     details: row.details ?? {},
