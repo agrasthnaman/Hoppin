@@ -2,7 +2,7 @@ import type { RedeemResult } from "@hoppin/core";
 import { useEffect, useRef, useState } from "react";
 import { AuthForm, type AuthFormApi } from "../components/AuthForm";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
+import { AuthStage } from "./AuthStage";
 
 export interface JoinFlowProps {
   token: string;
@@ -71,9 +71,16 @@ export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, a
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
-      <h1 className="font-display text-4xl font-extrabold">Join the trip</h1>
-      <Card>{body}</Card>
-    </main>
+    <AuthStage>
+      <h1 className="auth-title" data-silk-anchor>
+        Join the trip
+      </h1>
+      <p className="auth-lede" data-silk-anchor>
+        An invite got you this far. Make an account, or hop in if you already have one.
+      </p>
+      <div className="auth-card" data-silk-anchor>
+        {body}
+      </div>
+    </AuthStage>
   );
 }

@@ -18,6 +18,37 @@ describe("trips list", () => {
   });
 });
 
+describe("a new person with no trip", () => {
+  it("welcomes them on a first day, with a way to start or join", async () => {
+    const fake = fakeServices({ trips: [] });
+    const { router } = renderApp("/trips", fake.services);
+    expect(await screen.findByRole("heading", { name: "Welcome to Hoppin" })).toBeInTheDocument();
+    expect(screen.getByText("Wednesday")).toBeInTheDocument();
+    expect(screen.getByText("Days")).toBeInTheDocument();
+    expect(screen.getByText("Money")).toBeInTheDocument();
+    expect(screen.getByText("Docs")).toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Start a trip" }));
+    const dialog = await screen.findByRole("dialog", { name: "New trip" });
+    expect(fake.services.actions.listTrips).toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    const token = "ab".repeat(32);
+    await userEvent.type(screen.getByLabelText("Invite link"), `https://hoppin.app/join/${token}`);
+    await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/join/${token}`));
+  });
+
+  it("rejects a paste that is not an invite link", async () => {
+    renderApp("/trips", fakeServices({ trips: [] }).services);
+    await userEvent.type(await screen.findByLabelText("Invite link"), "see you there");
+    await userEvent.click(screen.getByRole("button", { name: "Join the trip" }));
+    expect(screen.getByText(/doesn't look like an invite link/)).toBeInTheDocument();
+  });
+});
+
 describe("creating a trip", () => {
   async function openForm() {
     const fake = fakeServices();
@@ -76,22 +107,26 @@ describe("creating an account", () => {
   it("lets a new organizer sign up with a name and email", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in", services);
-    await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Join the waitlist" }));
+    expect(screen.getByRole("heading", { name: "Join the waitlist" })).toBeInTheDocument();
+    expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
     await userEvent.type(screen.getByLabelText("Your name"), "Neha");
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
-    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
     expect(services.auth.signUp).toHaveBeenCalledWith({ email: "neha@example.com", name: "Neha", password: "a long enough password", redirectTo: `${window.location.origin}/` });
-    expect(await screen.findByText(/Check your email/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "You're on the list" })).toBeInTheDocument();
+    expect(screen.getByText(/Welcome to the waitlist/)).toBeInTheDocument();
+    expect(screen.getByText(/neha@example.com/)).toBeInTheDocument();
   });
 
   it("needs a name, and can go back to signing in", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in", services);
-    await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Join the waitlist" }));
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
-    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
     expect(screen.getByText("Enter your name")).toBeInTheDocument();
     expect(services.auth.signUp).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "I already have an account" }));

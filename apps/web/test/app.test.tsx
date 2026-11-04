@@ -20,7 +20,7 @@ describe("sign in and gating", () => {
   it("sends signed-out visitors to sign in, remembering where they were going", async () => {
     const { services } = fakeServices({ session: null });
     const { router } = renderApp("/trips/t1/days", services);
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hop back in" })).toBeInTheDocument();
     expect(router.state.location.search).toContain("next=%2Ftrips%2Ft1%2Fdays");
   });
 
@@ -37,7 +37,7 @@ describe("sign in and gating", () => {
     const { services } = fakeServices();
     const { router } = renderApp("/sign-in", services);
     await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/today"));
-    expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Hop back in" })).toBeNull();
   });
 
   it("sends an already signed-in person to the page they were trying to open", async () => {
@@ -49,11 +49,11 @@ describe("sign in and gating", () => {
   it("ignores a 'next' address that points to another site when creating an account", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/sign-in?next=%2F%2Fevil.example", services);
-    await userEvent.click(await screen.findByRole("button", { name: "New here? Create an account" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Join the waitlist" }));
     await userEvent.type(screen.getByLabelText("Your name"), "A");
     await userEvent.type(screen.getByLabelText("Email"), "a@b.co");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
-    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
     expect(services.auth.signUp).toHaveBeenCalledWith(expect.objectContaining({ redirectTo: `${window.location.origin}/` }));
   });
 
@@ -74,8 +74,10 @@ describe("sign in and gating", () => {
     await userEvent.type(await screen.findByLabelText("Email"), "new@b.co");
     await userEvent.type(screen.getByLabelText("Password"), "whatever password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(await screen.findByText(/confirmation link to new@b.co/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Send a new link" }));
+    expect(await screen.findByRole("heading", { name: "You're on the list" })).toBeInTheDocument();
+    expect(screen.getByText(/Welcome to the waitlist/)).toBeInTheDocument();
+    expect(screen.getByText(/invite is on its way to new@b.co/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send another invite" }));
     expect(services.auth.resendConfirmation).toHaveBeenCalledWith({ email: "new@b.co", redirectTo: `${window.location.origin}/` });
     expect(await screen.findByText(/old one no longer works/)).toBeInTheDocument();
   });
@@ -126,11 +128,20 @@ describe("trips home", () => {
   it("says what to do when there are no trips", async () => {
     const { services } = fakeServices({ trips: [] });
     renderApp("/", services);
-    expect(await screen.findByText(/ask the organizer to send you an invite link/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome to Hoppin" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start a trip" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Join the trip" })).toBeInTheDocument();
   });
 });
 
 describe("trip gate", () => {
+  it("welcomes a brand new trip on its days page", async () => {
+    renderApp("/trips/t1/days", fakeServices({ snapshot: snapshot({ items: [], documents: [] }) }).services);
+    expect(await screen.findByRole("heading", { name: "This day is waiting" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add plan" })).toBeInTheDocument();
+    expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
+  });
+
   it("loads the trip and opens today while the trip is happening", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1", services);
@@ -305,7 +316,7 @@ describe("more screen", () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/more", services);
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hop back in" })).toBeInTheDocument();
     expect(services.auth.signOut).toHaveBeenCalled();
     expect(await getLocalTrip(services.db, "t1")).toBeNull();
   });
