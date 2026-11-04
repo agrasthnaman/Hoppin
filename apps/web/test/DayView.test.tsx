@@ -73,7 +73,7 @@ describe("DayView", () => {
     await userEvent.click(screen.getByRole("button", { name: "R: Museum" }));
     const dialog = screen.getByRole("dialog", { name: "Museum" });
     expect(within(dialog).getByText(/Riya/)).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: /Open location/ })).toHaveAttribute("href", "https://maps.example/museum");
+    expect(within(dialog).getByRole("link", { name: /Get directions/ })).toHaveAttribute("href", "https://maps.example/museum");
     await userEvent.click(within(dialog).getByRole("button", { name: "I'm in" }));
     expect(onJoin).toHaveBeenCalledWith(museum.id);
   });
@@ -99,6 +99,60 @@ describe("DayView", () => {
 
   it("has no accessibility violations", async () => {
     const { container } = setup();
+    expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
+  });
+});
+
+describe("DayView cards", () => {
+  const stay = item({
+    title: "Alaya Resort Ubud",
+    kind: "stay",
+    startsAt: at("12:30"),
+    endsAt: new Date("2026-12-04T11:00:00+05:30").toISOString(),
+    locationUrl: "https://maps.example/alaya",
+  });
+  const show = (date: string, items: Item[]) => {
+    const layout = buildDay(items, ME, date, IST);
+    return render(<DayView date={date} tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} />);
+  };
+
+  it("pins the stay at the top of the day in its own colour, ahead of the plans", () => {
+    show("2026-12-01", [lunch, tour, stay]);
+    const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(regions).toEqual(["Alaya Resort Ubud", "Old town tour", "Lunch"]);
+    expect(screen.getByRole("region", { name: "Alaya Resort Ubud" }).firstElementChild).toHaveClass("bg-info-bg");
+    expect(within(screen.getByRole("region", { name: "Alaya Resort Ubud" })).getByText("Where you're staying")).toBeInTheDocument();
+  });
+
+  it("the stay says check-in on the first day, which night it is in between, and check-out on the last", () => {
+    const { unmount } = show("2026-12-01", [stay]);
+    expect(screen.getByText("Check-in 12:30")).toBeInTheDocument();
+    unmount();
+    const second = show("2026-12-02", [stay]);
+    expect(screen.getByText("Night 2 of 3")).toBeInTheDocument();
+    second.unmount();
+    show("2026-12-04", [stay]);
+    expect(screen.getByText("Check-out 11:00")).toBeInTheDocument();
+  });
+
+  it("a card with a map link has Get directions on it, without opening the plan", () => {
+    show("2026-12-01", [lunch, tour, stay]);
+    expect(within(screen.getByRole("region", { name: "Old town tour" })).getByRole("link", { name: "Get directions to Old town tour" })).toHaveAttribute("href", "https://maps.example/old-town");
+    expect(within(screen.getByRole("region", { name: "Alaya Resort Ubud" })).getByRole("link", { name: "Get directions to Alaya Resort Ubud" })).toHaveAttribute("href", "https://maps.example/alaya");
+    expect(within(screen.getByRole("region", { name: "Lunch" })).queryByRole("link", { name: /Get directions/ })).toBeNull();
+  });
+
+  it("every card names its kind with an icon tag", () => {
+    const flight = item({ title: "DPS to SIN", kind: "flight", startsAt: at("18:00") });
+    const ferry = item({ title: "Fast boat", kind: "transport", startsAt: at("09:00") });
+    show("2026-12-01", [flight, ferry, tour]);
+    expect(within(screen.getByRole("region", { name: "DPS to SIN" })).getByText("Flight")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Fast boat" })).getByText("Transport")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Old town tour" })).getByText("Activity")).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations with a stay, flight and directions on the page", async () => {
+    const { container } = show("2026-12-02", [stay, tour, item({ title: "DPS to SIN", kind: "flight", startsAt: at("18:00") })]);
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 });
