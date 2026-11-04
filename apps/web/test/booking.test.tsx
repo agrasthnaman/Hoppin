@@ -179,21 +179,21 @@ describe("BookingDetail", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ title: "DEL to GOI (moved)", tz: IST }));
 
-    await userEvent.upload(screen.getByLabelText("Add a document"), pdf());
+    await userEvent.upload(screen.getByLabelText("Add documents"), pdf());
     expect(onUpload).toHaveBeenCalledWith(expect.any(File), "shared");
   });
 
   it("attaches a personal document when chosen", async () => {
     const { onUpload } = setup();
     await userEvent.click(screen.getByRole("radio", { name: /Only me and the organizer/ }));
-    await userEvent.upload(screen.getByLabelText("Add a document"), pdf());
+    await userEvent.upload(screen.getByLabelText("Add documents"), pdf());
     expect(onUpload).toHaveBeenCalledWith(expect.any(File), "personal");
   });
 
   it("hides edit and upload controls from a member who may not edit", () => {
     setup({ item: { ...flight, ownerId: "riya" } });
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.queryByLabelText("Add a document")).toBeNull();
+    expect(screen.queryByLabelText("Add documents")).toBeNull();
     expect(screen.getByRole("heading", { name: "DEL to GOI" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open ticket.pdf" })).toBeInTheDocument();
   });
@@ -209,14 +209,14 @@ describe("BookingDetail", () => {
   it("refuses a file that is not a PDF or image, and says why", async () => {
     const { onUpload } = setup();
     const user = userEvent.setup({ applyAccept: false });
-    await user.upload(screen.getByLabelText("Add a document"), new File(["x"], "virus.exe", { type: "application/x-msdownload" }));
+    await user.upload(screen.getByLabelText("Add documents"), new File(["x"], "virus.exe", { type: "application/x-msdownload" }));
     expect(screen.getByRole("alert")).toHaveTextContent("PDF or an image");
     expect(onUpload).not.toHaveBeenCalled();
   });
 
   it("tells the user when the upload fails", async () => {
     setup({ onUpload: vi.fn().mockRejectedValue(new Error("storage down")) });
-    await userEvent.upload(screen.getByLabelText("Add a document"), pdf());
+    await userEvent.upload(screen.getByLabelText("Add documents"), pdf());
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't upload");
   });
 
@@ -341,5 +341,45 @@ describe("flight across time zones", () => {
     await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T10:00");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ tz: IST, endTz: null }));
+  });
+});
+
+describe("several documents for one booking", () => {
+  const two = [new File(["a"], "ticket.pdf", { type: "application/pdf" }), new File(["b"], "invoice.pdf", { type: "application/pdf" })];
+
+  it("the booking page uploads every file chosen at once", async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined);
+    render(<BookingDetail item={flight} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={onUpload} onOpenDocument={vi.fn()} />);
+    await userEvent.upload(screen.getByLabelText("Add documents"), two);
+    await vi.waitFor(() => expect(onUpload).toHaveBeenCalledTimes(2));
+    expect(onUpload.mock.calls.map((call) => (call[0] as File).name)).toEqual(["ticket.pdf", "invoice.pdf"]);
+  });
+
+  it("one failed upload does not stop the others, and the message names the one that failed", async () => {
+    const onUpload = vi.fn().mockRejectedValueOnce(new Error("down")).mockResolvedValue(undefined);
+    render(<BookingDetail item={flight} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={onUpload} onOpenDocument={vi.fn()} />);
+    await userEvent.upload(screen.getByLabelText("Add documents"), two);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't upload ticket.pdf");
+    expect(onUpload).toHaveBeenCalledTimes(2);
+  });
+
+  it("the new-booking form lists the chosen files, lets one be removed, and sends the rest", async () => {
+    const onSubmit = vi.fn();
+    render(<ItemForm tz={IST} onSubmit={onSubmit} onCancel={() => {}} />);
+    await userEvent.type(screen.getByLabelText("Title"), "Goa trip flight");
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T10:00");
+    await userEvent.upload(screen.getByLabelText("Booking documents"), two);
+    const list = screen.getByRole("list", { name: "Chosen documents" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    await userEvent.click(within(list).getByRole("button", { name: "Remove ticket.pdf" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ title: "Goa trip flight" }), [two[1]]);
+  });
+
+  it("choosing more files later adds to the list instead of replacing it", async () => {
+    render(<ItemForm tz={IST} onSubmit={vi.fn()} onCancel={() => {}} />);
+    await userEvent.upload(screen.getByLabelText("Booking documents"), two[0]!);
+    await userEvent.upload(screen.getByLabelText("Booking documents"), two[1]!);
+    expect(within(screen.getByRole("list", { name: "Chosen documents" })).getAllByRole("listitem")).toHaveLength(2);
   });
 });

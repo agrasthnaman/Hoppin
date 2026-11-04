@@ -14,6 +14,7 @@ import { Button } from "../components/ui/Button";
 import { SpiderCursor as SilkSpiderCursor } from "../components/ui/SpiderCursor";
 import { Sheet } from "../components/ui/Sheet";
 import { swipeDay, swipeDirection } from "../lib/gestures";
+import { uploadEach } from "../lib/upload-many";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -125,10 +126,10 @@ export function DaysScreen() {
         <ItemForm
           tz={clock.timeZone}
           onCancel={() => setAdding(false)}
-          onSubmit={async (values, file) => {
+          onSubmit={async (values, files) => {
             const id = await trip.addItem(values); // saved on this device first; sent as soon as there is a connection
-            if (file) {
-              await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: id, scope: "shared", kind: "document" });
+            if (files?.length) {
+              await uploadEach(files, (file) => actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: id, scope: "shared", kind: "document" }));
               await trip.refresh();
             }
             setAdding(false);

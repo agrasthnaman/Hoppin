@@ -1,5 +1,6 @@
 import { canEdit, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
 import { ChevronDown, FileText, Plus } from "lucide-react";
+import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { peopleFrom } from "../app/people";
@@ -10,7 +11,7 @@ import { PageHeading } from "../components/PageHeading";
 import { Button } from "../components/ui/Button";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
-import { inputClass } from "../lib/forms";
+import { inputClass, selectClass } from "../lib/forms";
 import { getDeviceKey } from "../offline/crypto";
 import { getLocalDocument } from "../offline/sync";
 
@@ -81,6 +82,26 @@ export default function Docs() {
     }
   }
 
+  async function addToBooking(item: Item, event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target;
+    const files = Array.from(input.files ?? []);
+    input.value = "";
+    if (files.length === 0) return;
+    setUploadError(null);
+    const problem = firstFileProblem(files);
+    if (problem) {
+      setUploadError(problem);
+      return;
+    }
+    setUploading(true);
+    const failed = await uploadEach(files, (file) =>
+      actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: item.id, scope: "shared", kind: "document" }),
+    );
+    await trip.refresh().catch(() => {});
+    if (failed.length > 0) setUploadError(uploadFailure(failed));
+    setUploading(false);
+  }
+
   async function addPersonal(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;
     const file = input.files?.[0];
@@ -126,7 +147,8 @@ export default function Docs() {
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium sm:w-44">
               Who booked it
-              <select className={inputClass} value={person} onChange={(event) => setPerson(event.target.value)}>
+              <span className="relative block">
+              <select className={selectClass} value={person} onChange={(event) => setPerson(event.target.value)}>
                 <option value="all">Everyone</option>
                 {bookers.map((booker) => (
                   <option key={booker.id} value={booker.id}>
@@ -134,6 +156,8 @@ export default function Docs() {
                   </option>
                 ))}
               </select>
+              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
+              </span>
             </label>
           </div>
         )}
@@ -217,6 +241,23 @@ export default function Docs() {
                             </button>
                           </div>
                         ))}
+                        <label
+                          className={`inline-flex min-h-11 w-fit cursor-pointer items-center gap-1 rounded-full px-3 text-sm font-semibold text-link focus-within:outline-2 focus-within:outline-accent hover:bg-raised ${
+                            online && !uploading ? "" : "pointer-events-none opacity-50"
+                          }`}
+                        >
+                          <Plus aria-hidden="true" className="size-4" />
+                          {attached.length === 0 ? "Add files" : "Add more files"}
+                          <input
+                            type="file"
+                            multiple
+                            aria-label={`Add files to ${item.title}`}
+                            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
+                            disabled={!online || uploading}
+                            onChange={(event) => void addToBooking(item, event)}
+                            className="sr-only"
+                          />
+                        </label>
                       </li>
                     );
                   })}
@@ -292,16 +333,13 @@ export default function Docs() {
         <ItemForm
           tz={clock.timeZone}
           onCancel={() => setAdding(false)}
-          onSubmit={async (values, file) => {
+          onSubmit={async (values, files) => {
             const id = await trip.addItem(values);
             setAdding(false);
-            if (!file) return;
-            try {
-              await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: id, scope: "shared", kind: "document" });
-              await trip.refresh();
-            } catch {
-              setUploadError(`The booking is saved. Couldn't upload ${file.name}. Open the booking and try again.`);
-            }
+            if (!files?.length) return;
+            const failed = await uploadEach(files, (file) => actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: id, scope: "shared", kind: "document" }));
+            await trip.refresh();
+            if (failed.length > 0) setUploadError(`The booking is saved. Couldn't upload ${failed.join(", ")}. Open the booking and try again.`);
           }}
         />
       </Sheet>

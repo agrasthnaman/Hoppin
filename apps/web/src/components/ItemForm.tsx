@@ -1,8 +1,9 @@
-import { instantToZonedInput, validateDocumentFile, zonedTimeToInstant, type Item, type ItemKind, type ItemValues } from "@hoppin/core";
+import { instantToZonedInput, zonedTimeToInstant, type Item, type ItemKind, type ItemValues } from "@hoppin/core";
 import { BedDouble, Bus, Lock, MapPin, PartyPopper, Plane, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { useId, useState, type ChangeEvent, type FormEvent } from "react";
 import { useOnline } from "../hooks/useOnline";
 import { inputClass } from "../lib/forms";
+import { firstFileProblem, mergeFiles } from "../lib/upload-many";
 import { Button } from "./ui/Button";
 
 export type ItemFormValues = ItemValues;
@@ -14,8 +15,8 @@ export interface ItemFormProps {
   prefill?: { title?: string; kind?: ItemKind; notes?: string };
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
-  /** `document` is set only when creating a booking and a file was chosen. */
-  onSubmit: (values: ItemFormValues, document?: File | null) => void | Promise<void>;
+  /** `documents` is set only when creating a booking and at least one file was chosen. */
+  onSubmit: (values: ItemFormValues, documents?: File[]) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -82,7 +83,7 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
   const [audience, setAudience] = useState<Audience>(
     initial ? (initial.visibility === "private" ? "private" : initial.groupItem ? "group" : "optional") : "group",
   );
-  const [document, setDocument] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -105,10 +106,8 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
     if (location.trim() && !/^https?:\/\/\S+$/i.test(location.trim())) {
       next.location = "Enter a link starting with http:// or https://";
     }
-    if (document) {
-      const problem = validateDocumentFile(document);
-      if (problem) next.document = problem;
-    }
+    const fileProblem = firstFileProblem(documents);
+    if (fileProblem) next.document = fileProblem;
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -127,7 +126,7 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
       notes: notes.trim(),
     } as const;
     try {
-      if (document) await onSubmit(values, document);
+      if (documents.length > 0) await onSubmit(values, documents);
       else await onSubmit(values);
     } catch (error) {
       // A clash with someone else's edit has its own explanation; anything else is a generic retry.
@@ -233,22 +232,42 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
       {!initial && (
         <div className="flex flex-col gap-1">
           <label htmlFor={documentId} className="text-sm font-semibold">
-            Booking document
+            Booking documents
           </label>
           <input
             id={documentId}
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
+            multiple
             disabled={!online}
             onChange={(event: ChangeEvent<HTMLInputElement>) => {
-              setDocument(event.target.files?.[0] ?? null);
+              const chosen = Array.from(event.target.files ?? []);
+              setDocuments((current) => mergeFiles(current, chosen));
               setErrors((current) => ({ ...current, document: "" }));
+              event.target.value = ""; // so the same file can be picked again after removing it
             }}
             className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-fg"
           />
           <span className="text-xs text-muted">
-            {online ? "Optional. Anyone in the group can open it from Docs." : "Connect to the internet to attach a document. You can still save the booking."}
+            {online ? "Optional. Add as many as you need (ticket, invoice, visa). Anyone in the group can open them from Docs." : "Connect to the internet to attach documents. You can still save the booking."}
           </span>
+          {documents.length > 0 && (
+            <ul aria-label="Chosen documents" className="mt-1 flex flex-col gap-1">
+              {documents.map((file) => (
+                <li key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center gap-2 rounded-full bg-raised py-1 pl-4 pr-1 text-sm">
+                  <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${file.name}`}
+                    onClick={() => setDocuments((current) => current.filter((existing) => existing !== file))}
+                    className="min-h-9 rounded-full px-3 text-xs font-semibold text-link hover:bg-surface focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {errors.document && <span className="text-sm text-danger-fg">{errors.document}</span>}
         </div>
       )}

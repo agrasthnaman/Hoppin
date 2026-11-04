@@ -2,3 +2,6 @@
 export const inputClass =
   "min-h-12 w-full rounded-2xl border border-line bg-raised px-4 text-base text-fg placeholder:text-muted " +
   "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
+
+/** A drop-down with the browser's arrow hidden: draw `ChevronDown` over its right end (see Docs) so it lines up everywhere. */
+export const selectClass = `${inputClass} appearance-none pr-11`;

@@ -285,7 +285,7 @@ describe("days screen", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T19:30");
-    await userEvent.upload(within(dialog).getByLabelText("Booking document"), new File(["x"], "dinner.pdf", { type: "application/pdf" }));
+    await userEvent.upload(within(dialog).getByLabelText("Booking documents"), new File(["x"], "dinner.pdf", { type: "application/pdf" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(services.actions.createItem).toHaveBeenCalled());
     const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3] as string;
@@ -396,6 +396,20 @@ describe("bookings and my documents", () => {
     expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
   });
 
+  it("each booking on Docs can take more files, and says Add more files once it has one", async () => {
+    const { services } = fakeServices({ snapshot: bookingsSnapshot() });
+    renderApp("/trips/t1/docs", services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    expect(within(bookings).getByLabelText("Add files to Goa flight").closest("label")).toHaveTextContent("Add more files");
+    expect(within(bookings).getByLabelText("Add files to Night flight").closest("label")).toHaveTextContent("Add files");
+    await userEvent.upload(within(bookings).getByLabelText("Add files to Goa flight"), [
+      new File(["a"], "seat.pdf", { type: "application/pdf" }),
+      new File(["b"], "bag.pdf", { type: "application/pdf" }),
+    ]);
+    await waitFor(() => expect(services.actions.uploadDocument).toHaveBeenCalledTimes(2));
+    expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: "f1", scope: "shared", kind: "document" });
+  });
+
   it("filters bookings by who booked them and by title", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
@@ -429,7 +443,7 @@ describe("bookings and my documents", () => {
     await userEvent.click(within(dialog).getByRole("radio", { name: "Stay" }));
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach house");
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T15:00");
-    await userEvent.upload(within(dialog).getByLabelText("Booking document"), new File(["x"], "stay.pdf", { type: "application/pdf" }));
+    await userEvent.upload(within(dialog).getByLabelText("Booking documents"), new File(["x"], "stay.pdf", { type: "application/pdf" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(services.actions.createItem).toHaveBeenCalled());
     const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3] as string;
@@ -493,7 +507,7 @@ describe("item screen", () => {
   it("uploads a document against the item", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/items/i1", services);
-    await userEvent.upload(await screen.findByLabelText("Add a document"), new File(["x"], "pass.pdf", { type: "application/pdf" }));
+    await userEvent.upload(await screen.findByLabelText("Add documents"), new File(["x"], "pass.pdf", { type: "application/pdf" }));
     await waitFor(() =>
       expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: "i1", scope: "shared", kind: "document" }),
     );
