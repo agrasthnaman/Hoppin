@@ -1,7 +1,8 @@
-import { canEdit, formatTimeRange, validateDocumentFile, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
+import { canEdit, formatTimeRange, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import type { Person } from "./DayView";
+import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
 import { DocumentList } from "./DocumentList";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { Button } from "./ui/Button";
@@ -38,24 +39,19 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
 
   async function pick(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;
-    const file = input.files?.[0];
-    if (!file) return;
+    const files = Array.from(input.files ?? []);
+    input.value = "";
+    if (files.length === 0) return;
     setUploadError(null);
-    const problem = validateDocumentFile(file);
+    const problem = firstFileProblem(files);
     if (problem) {
       setUploadError(problem);
-      input.value = "";
       return;
     }
     setUploading(true);
-    try {
-      await onUpload(file, scope);
-    } catch {
-      setUploadError(`Couldn't upload ${file.name}. Please try again.`);
-    } finally {
-      setUploading(false);
-      input.value = "";
-    }
+    const failed = await uploadEach(files, (file) => onUpload(file, scope));
+    if (failed.length > 0) setUploadError(uploadFailure(failed));
+    setUploading(false);
   }
 
   return (
@@ -122,17 +118,18 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
             </fieldset>
             <div className="flex flex-col gap-1">
               <label htmlFor="doc-file" className="text-sm font-medium">
-                Add a document
+                Add documents
               </label>
               <input
                 id="doc-file"
                 type="file"
+                multiple
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
                 disabled={uploading}
                 onChange={(e) => void pick(e)}
                 className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-fg"
               />
-              <span className="text-xs text-muted">PDF or image, up to 25 MB.</span>
+              <span className="text-xs text-muted">PDF or image, up to 25 MB each. You can choose several at once.</span>
             </div>
             {uploading && <p role="status" className="text-sm text-muted">Uploading…</p>}
             {uploadError && (
