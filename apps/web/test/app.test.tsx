@@ -349,6 +349,16 @@ describe("bookings and my documents", () => {
     expect(within(bookings).queryByText("Riya's note")).toBeNull();
   });
 
+  it("each booking you may change has an Edit button that opens the booking form; other people's bookings do not", async () => {
+    renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
+    const bookings = await screen.findByRole("region", { name: "Bookings" });
+    expect(within(bookings).getByRole("button", { name: "Edit Goa flight" })).toBeInTheDocument();
+    expect(within(bookings).queryByRole("button", { name: "Edit Beach house" })).toBeNull();
+    await userEvent.click(within(bookings).getByRole("button", { name: "Edit Goa flight" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit booking" });
+    expect(within(dialog).getByLabelText("Title")).toHaveValue("Goa flight");
+  });
+
   it("filters bookings by who booked them and by title", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });

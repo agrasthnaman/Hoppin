@@ -94,7 +94,7 @@ export function MarkPaid({ payment, base, view, viewerId, people, onConfirm, onC
         This only records it in Hoppin. No money moves through the app.
         {!online && <span className="mt-1 block font-semibold">You're offline: it's saved here and sent when you're back online.</span>}
       </p>
-      <div className="sticky bottom-0 -mx-5 flex gap-2 border-t border-line bg-surface px-5 pb-1 pt-3">
+      <div className="sticky bottom-0 z-20 -mx-5 flex gap-2 border-t border-line bg-surface px-5 pb-1 pt-3">
         <Button type="submit" disabled={saving} className="flex-1">
           <Check aria-hidden="true" className="size-4" />
           Yes, mark as paid
