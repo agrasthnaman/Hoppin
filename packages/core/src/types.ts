@@ -13,6 +13,8 @@ export interface Item {
   startsAt: string;
   endsAt: string | null;
   tz: string;
+  /** Zone the end time is local to, when it differs from `tz` (a flight that lands in another zone). Missing or null means `tz`. */
+  endTz?: string | null;
   title: string;
   locationUrl: string | null;
   details: Record<string, unknown>;
@@ -78,6 +80,8 @@ export interface ItemValues {
   startsAt: string;
   endsAt: string | null;
   tz: string;
+  /** Zone the end time is entered in, when it differs from `tz`. */
+  endTz?: string | null;
   locationUrl: string | null;
   visibility: Visibility;
   groupItem: boolean;

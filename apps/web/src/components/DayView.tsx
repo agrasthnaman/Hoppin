@@ -39,7 +39,7 @@ const ITEM = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transiti
 const UNKNOWN: Person = { name: "Someone", color: "#475569" };
 
 function timeLabel(item: Item): string {
-  return formatTimeRange(item.startsAt, item.endsAt, item.tz);
+  return formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz);
 }
 
 /** "Wednesday" and "4 November", shown as a small line above a big one. */

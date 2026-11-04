@@ -353,3 +353,23 @@ describe("deleting a trip", () => {
     expect(log.rows.map((r) => r.op)).toEqual(["insert", "delete"]);
   });
 });
+
+describe("arrival time zone", () => {
+  it("existing items have no arrival zone, so they keep showing in their own zone", async () => {
+    const rows = await db.query("select end_tz from items");
+    expect(rows.rows.length).toBeGreaterThan(0);
+    expect(rows.rows.every((row) => (row as { end_tz: string | null }).end_tz === null)).toBe(true);
+  });
+
+  it("the organizer can store a flight with two zones", async () => {
+    await asUser(db, id.organizer, (tx) =>
+      tx.query(
+        `insert into items (trip_id, owner_id, kind, visibility, group_item, starts_at, ends_at, tz, end_tz, title)
+         values ($1, $2, 'flight', 'shared', true, '2026-12-01T17:30:00Z', '2026-12-02T04:30:00Z', 'Asia/Kolkata', 'Europe/London', 'DEL to LHR')`,
+        [id.trip, id.organizer],
+      ),
+    );
+    const saved = await db.query("select tz, end_tz from items where title = 'DEL to LHR'");
+    expect(saved.rows).toEqual([{ tz: "Asia/Kolkata", end_tz: "Europe/London" }]);
+  });
+});

@@ -92,3 +92,32 @@ describe("formatTimeRange", () => {
     expect(range("2026-12-01T17:30:00.000Z", "2026-12-01T21:30:00.000Z")).toBe("23:00 – 2 Dec 03:00");
   });
 });
+
+describe("formatTimeRange across time zones", () => {
+  // Delhi 23:00 IST on 1 Dec is 17:30 UTC; the plane lands 04:30 GMT on 2 Dec.
+  const depart = zonedTimeToInstant("2026-12-01T23:00", "Asia/Kolkata");
+  const land = zonedTimeToInstant("2026-12-02T04:30", "Europe/London");
+
+  it("shows departure in the first zone and arrival in the arrival zone", () => {
+    expect(formatTimeRange(depart, land, "Asia/Kolkata", "Europe/London")).toBe("23:00 – 2 Dec 04:30");
+  });
+
+  it("without an arrival zone the old behaviour is kept (arrival shown in the departure zone)", () => {
+    expect(formatTimeRange(depart, land, "Asia/Kolkata")).toBe("23:00 – 2 Dec 10:00");
+    expect(formatTimeRange(depart, land, "Asia/Kolkata", null)).toBe("23:00 – 2 Dec 10:00");
+  });
+
+  it("a flight that lands the same calendar day shows no date", () => {
+    const early = zonedTimeToInstant("2026-12-02T01:00", "Asia/Kolkata");
+    expect(formatTimeRange(early, land, "Asia/Kolkata", "Europe/London")).toBe("01:00 – 04:30");
+  });
+
+  it("round-trips across a daylight-saving change in the arrival zone", () => {
+    // London clocks go forward on 29 Mar 2026: 01:30 GMT does not exist, 02:30 BST is 01:30 UTC.
+    const before = zonedTimeToInstant("2026-03-28T22:00", "Asia/Kolkata");
+    const after = zonedTimeToInstant("2026-03-29T06:00", "Europe/London");
+    expect(instantToZonedInput(after, "Europe/London")).toBe("2026-03-29T06:00");
+    expect(formatTimeRange(before, after, "Asia/Kolkata", "Europe/London")).toBe("22:00 – 29 Mar 06:00");
+    expect(Date.parse(after)).toBeGreaterThan(Date.parse(before));
+  });
+});

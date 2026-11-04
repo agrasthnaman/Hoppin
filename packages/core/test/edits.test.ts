@@ -47,7 +47,7 @@ const edit = (over: Partial<UpdateEdit> = {}): UpdateEdit => ({
 describe("valuesOf, diffItem and applyValues", () => {
   it("reads an item as form values, with notes from the details", () => {
     expect(valuesOf(item())).toEqual({
-      kind: "activity", title: "Museum", startsAt: "2026-12-01T04:30:00.000Z", endsAt: null, tz: "Asia/Kolkata",
+      kind: "activity", title: "Museum", startsAt: "2026-12-01T04:30:00.000Z", endsAt: null, tz: "Asia/Kolkata", endTz: null,
       locationUrl: null, visibility: "shared", groupItem: false, notes: "old",
     });
   });
@@ -184,5 +184,27 @@ describe("describeNotice", () => {
     expect(describeNotice({ ...base, kind: "lost" })).toBe(
       'Someone else changed the start time of "Museum" after you, so your change wasn\'t applied. It\'s saved as a draft.',
     );
+  });
+});
+
+describe("arrival time zone", () => {
+  it("is carried in values and counts as a change when it differs", () => {
+    const flight = item({ kind: "flight" });
+    expect(valuesOf(flight).endTz).toBeNull();
+    expect(diffItem(flight, { ...valuesOf(flight), endTz: "Europe/London" })).toEqual([
+      { field: "endTz", value: "Europe/London", baseValue: null },
+    ]);
+  });
+
+  it("missing and null mean the same, so no change is reported", () => {
+    const flight = item({ kind: "flight" });
+    expect(diffItem(flight, { ...valuesOf(flight), endTz: undefined })).toEqual([]);
+  });
+
+  it("applyValues sets and clears it", () => {
+    const flight = item({ kind: "flight" });
+    const set = applyValues(flight, { ...valuesOf(flight), endTz: "Europe/London" });
+    expect(set.endTz).toBe("Europe/London");
+    expect(applyValues(set, { ...valuesOf(set), endTz: null }).endTz).toBeNull();
   });
 });

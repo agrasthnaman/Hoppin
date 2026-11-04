@@ -156,7 +156,7 @@ export default function Docs() {
                           <Link to={`/trips/${trip.tripId}/items/${item.id}`} className="font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent">
                             {item.title}
                           </Link>
-                          <p className="text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz)}</p>
+                          <p className="text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
                           <p className="text-xs text-muted">
                             <Link
                               to={`/trips/${trip.tripId}/days?date=${day.date}`}

@@ -76,13 +76,15 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 /**
  * "10:00 – 12:30" for something within one day, "14:00 – 5 Dec 11:00" when it ends on a later day (a stay),
- * or just "10:00" with no end. Days are counted in the given time zone.
+ * or just "10:00" with no end. The start is shown in `tz` and the end in `endTz` (the same zone unless the item ends
+ * somewhere else, like a flight). A later day is the end's own calendar day compared with the start's.
  */
-export function formatTimeRange(startIso: string, endIso: string | null, tz: string): string {
+export function formatTimeRange(startIso: string, endIso: string | null, tz: string, endTz?: string | null): string {
+  const endZone = endTz ?? tz;
   const start = formatTime(startIso, tz);
   if (!endIso) return start;
   const startDay = instantToZonedInput(startIso, tz).slice(0, 10);
-  const endLocal = instantToZonedInput(endIso, tz);
-  if (endLocal.slice(0, 10) === startDay) return `${start} – ${formatTime(endIso, tz)}`;
-  return `${start} – ${Number(endLocal.slice(8, 10))} ${MONTHS[Number(endLocal.slice(5, 7)) - 1]} ${formatTime(endIso, tz)}`;
+  const endLocal = instantToZonedInput(endIso, endZone);
+  if (endLocal.slice(0, 10) === startDay) return `${start} – ${formatTime(endIso, endZone)}`;
+  return `${start} – ${Number(endLocal.slice(8, 10))} ${MONTHS[Number(endLocal.slice(5, 7)) - 1]} ${formatTime(endIso, endZone)}`;
 }

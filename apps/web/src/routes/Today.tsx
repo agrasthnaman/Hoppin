@@ -49,7 +49,7 @@ function Plan({
           {item.title}
         </Link>
       </h2>
-      <p className="text-sm font-medium">{formatTimeRange(item.startsAt, item.endsAt, item.tz)}</p>
+      <p className="text-sm font-medium">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
       {notes && <p className="text-sm">{notes}</p>}
       {item.locationUrl && <MapLink href={item.locationUrl} onHero={onHero} />}
     </section>
