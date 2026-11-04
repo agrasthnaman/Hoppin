@@ -16,6 +16,9 @@ export interface TripRow {
   name: string;
   start_date: string | null;
   end_date: string | null;
+  destination?: string | null;
+  destination_lat?: number | null;
+  destination_lon?: number | null;
 }
 export interface MemberRow {
   trip_id: string;
@@ -63,7 +66,11 @@ export interface DocumentRow {
 const iso = (value: string) => new Date(value).toISOString();
 
 export function tripFromRow(row: TripRow): TripSnapshot["trip"] {
-  return { id: row.id, name: row.name, startDate: row.start_date, endDate: row.end_date };
+  const destination =
+    row.destination && typeof row.destination_lat === "number" && typeof row.destination_lon === "number"
+      ? { name: row.destination, lat: row.destination_lat, lon: row.destination_lon }
+      : null;
+  return { id: row.id, name: row.name, startDate: row.start_date, endDate: row.end_date, destination };
 }
 
 export function memberFromRow(row: MemberRow, displayName: string): MemberInfo {

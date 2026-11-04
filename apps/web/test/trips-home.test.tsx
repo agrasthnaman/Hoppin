@@ -86,7 +86,7 @@ describe("creating a trip", () => {
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2027-01-10");
     await userEvent.type(within(dialog).getByLabelText("Ends"), "2027-01-14");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create trip" }));
-    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Hampi", startDate: "2027-01-10", endDate: "2027-01-14" }));
+    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Hampi", startDate: "2027-01-10", endDate: "2027-01-14", destination: null }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/trips/new-trip/days"));
   });
 
@@ -106,7 +106,7 @@ describe("creating a trip", () => {
     await userEvent.type(title, "Morning flight");
     await userEvent.type(within(dialog).getByLabelText("Trip name"), "Goa");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create trip" }));
-    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Goa", startDate: "2026-12-12", endDate: "2026-12-15" }));
+    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Goa", startDate: "2026-12-12", endDate: "2026-12-15", destination: null }));
     await waitFor(() => expect(services.actions.createItem).toHaveBeenCalledWith("new-trip", "me", expect.objectContaining({ kind: "flight", title: "Morning flight" }), expect.any(String)));
     expect(services.actions.createItem).toHaveBeenCalledWith("new-trip", "me", expect.objectContaining({ kind: "stay", title: "Beach House Calangute" }), expect.any(String));
     const itemId = (services.actions.createItem.mock.calls as unknown[][])[0]?.[3];
@@ -132,7 +132,7 @@ describe("creating a trip", () => {
     const { services, dialog } = await openForm();
     await userEvent.type(within(dialog).getByLabelText("Trip name"), "Someday");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create trip" }));
-    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Someday", startDate: null, endDate: null }));
+    await waitFor(() => expect(services.actions.createTrip).toHaveBeenCalledWith({ name: "Someday", startDate: null, endDate: null, destination: null }));
   });
 
   it("explains what is wrong and does not create", async () => {

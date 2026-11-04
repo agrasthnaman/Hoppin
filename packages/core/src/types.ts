@@ -1,6 +1,13 @@
 export type ItemKind = "flight" | "stay" | "activity" | "transport" | "plan";
 export type Visibility = "private" | "shared";
 
+/** Where a trip goes, with the coordinates looked up once for it (used for the weather). */
+export interface TripDestination {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
 /** A trip item (mirrors the `items` table). Times are ISO instants; `tz` is the IANA zone local to the item's location. */
 export interface Item {
   id: string;
@@ -54,7 +61,7 @@ export interface MemberInfo extends MemberRef {
 
 /** Everything the app keeps on the device for one trip, so it works with no signal. */
 export interface TripSnapshot {
-  trip: { id: string; name: string; startDate: string | null; endDate: string | null };
+  trip: { id: string; name: string; startDate: string | null; endDate: string | null; destination?: TripDestination | null };
   members: MemberInfo[];
   items: Item[];
   rsvps: { itemId: string; userId: string }[];

@@ -8,6 +8,7 @@ import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
 import { AppearanceCard } from "../components/AppearanceCard";
 import { JoinTripForm } from "../components/JoinTripForm";
+import { DestinationCard } from "../components/DestinationCard";
 import { DraftList } from "../components/DraftList";
 import { HomeCurrencyCard } from "../components/HomeCurrencyCard";
 import { Button } from "../components/ui/Button";
@@ -20,7 +21,7 @@ import { wipeTrip } from "../offline/sync";
 /** Offline controls and sign out. */
 export function MoreScreen() {
   const trip = useTripData();
-  const { clock, actions, db } = useServices();
+  const { clock, actions, db, geocoder } = useServices();
   const navigate = useNavigate();
   const online = useOnline();
   const [leaving, setLeaving] = useState(false);
@@ -122,6 +123,17 @@ export function MoreScreen() {
 
         return (
           <>
+            {isOrganizer && (
+              <DestinationCard
+                current={trip.snapshot.trip.destination}
+                online={online}
+                lookup={(query) => geocoder.find(query)}
+                onSave={async (destination) => {
+                  await actions.setTripDestination(trip.tripId, destination);
+                  await trip.refresh();
+                }}
+              />
+            )}
             <Card className="flex flex-col gap-3">
               <h3 className="font-semibold">This trip</h3>
               {!online && <p className="text-sm text-muted">Connect to the internet to leave or delete a trip.</p>}

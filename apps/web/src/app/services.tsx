@@ -1,4 +1,4 @@
-import type { DocumentScope, DocumentSource, InviteApi, Item, TripDocument, TripSource } from "@hoppin/core";
+import type { DocumentScope, DocumentSource, InviteApi, Item, TripDestination, TripDocument, TripSource } from "@hoppin/core";
 import { createContext, useContext, type ReactNode } from "react";
 import type { ItemFormValues } from "../components/ItemForm";
 import { createAuthApi, type AuthApi } from "../lib/auth-api";
@@ -9,6 +9,7 @@ import { createTripSource } from "../data/trip-source";
 import { createItem, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
+import { createOpenMeteoGeocoder, createOpenMeteoWeather, createWeatherService, createWeatherStore, type Geocoder, type WeatherService } from "../providers/weather";
 import type { SessionClient } from "./session";
 
 /** Everything the screens do to the outside world. Real implementations use Supabase; tests pass fakes. */
@@ -21,7 +22,9 @@ export interface Actions {
   documentUrl(doc: TripDocument): Promise<string>;
   listTrips(): Promise<{ id: string; name: string; startDate?: string | null; endDate?: string | null }[]>;
   /** Creates a trip with the signed-in person as organizer. Returns its id. */
-  createTrip(trip: { name: string; startDate: string | null; endDate: string | null }): Promise<string>;
+  createTrip(trip: { name: string; startDate: string | null; endDate: string | null; destination?: TripDestination | null }): Promise<string>;
+  /** Organizer only: sets or clears where the trip goes (the weather follows it). */
+  setTripDestination(tripId: string, destination: TripDestination | null): Promise<void>;
   /** Organizer only: invite links that are still usable (not stopped, not expired). */
   listInvites(tripId: string): Promise<{ id: string; token: string; createdAt: string; expiresAt: string }[]>;
   /** Organizer only: lets a member edit other people's plans, or stops that. */
@@ -51,6 +54,10 @@ export interface Services {
   clock: { now(): number; timeZone: string };
   /** Exchange rates, cached on the device for offline use. */
   rates: RateService;
+  /** Forecasts for a day at the trip's destination, kept on the device for offline use. */
+  weather: WeatherService;
+  /** Turns a typed place name into coordinates, once, when a destination is set. */
+  geocoder: Geocoder;
 }
 
 const ServicesContext = createContext<Services | null>(null);
@@ -110,10 +117,26 @@ export function createServices(client: any): Services {
           endDate: t.end_date,
         }));
       },
-      createTrip: async ({ name, startDate, endDate }) => {
-        const { data, error } = await client.rpc("create_trip", { p_name: name, p_start: startDate, p_end: endDate });
+      createTrip: async ({ name, startDate, endDate, destination }) => {
+        const { data, error } = await client.rpc("create_trip", {
+          p_name: name,
+          p_start: startDate,
+          p_end: endDate,
+          p_destination: destination?.name ?? null,
+          p_destination_lat: destination?.lat ?? null,
+          p_destination_lon: destination?.lon ?? null,
+        });
         if (error) throw new Error(error.message);
         return data as string;
+      },
+      setTripDestination: async (tripId, destination) => {
+        const { data, error } = await client
+          .from("trips")
+          .update({ destination: destination?.name ?? null, destination_lat: destination?.lat ?? null, destination_lon: destination?.lon ?? null })
+          .eq("id", tripId)
+          .select();
+        if (error) throw new Error(error.message);
+        if (!data || data.length === 0) throw new Error("Could not change the destination");
       },
       listInvites: async (tripId) => {
         const { data, error } = await client.from("invites").select("id, token, created_at, expires_at, revoked_at").eq("trip_id", tripId);
@@ -172,5 +195,7 @@ export function createServices(client: any): Services {
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),
+    weather: createWeatherService({ provider: createOpenMeteoWeather(), store: createWeatherStore() }),
+    geocoder: createOpenMeteoGeocoder(),
   };
 }

@@ -53,6 +53,7 @@ describe("row mappers", () => {
       name: "Goa",
       startDate: "2026-12-01",
       endDate: null,
+      destination: null,
     });
     expect(memberFromRow({ trip_id: "t1", user_id: "u1", role: "organizer", status: "approved", can_edit_all: false }, "Neha")).toEqual({
       userId: "u1",
@@ -103,7 +104,7 @@ describe("assembleSnapshot", () => {
     const snap = assembleSnapshot(base);
     expect(snap.items.map((i) => i.id)).toEqual(["a", "b"]);
     expect(snap.rsvps).toEqual([{ itemId: "a", userId: "u2" }]);
-    expect(snap.trip).toEqual({ id: "t1", name: "Goa", startDate: null, endDate: null });
+    expect(snap.trip).toEqual({ id: "t1", name: "Goa", startDate: null, endDate: null, destination: null });
   });
 });
 
