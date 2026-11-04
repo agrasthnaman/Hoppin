@@ -81,6 +81,7 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       resendConfirmation: vi.fn(async () => {}),
       requestPasswordReset: vi.fn(async () => {}),
       updatePassword: vi.fn(async () => {}),
+      verifyEmailLink: vi.fn(async () => {}),
       signOut: vi.fn(async () => {
         session = null;
         listener("SIGNED_OUT", null);

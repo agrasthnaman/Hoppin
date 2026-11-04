@@ -1,5 +1,8 @@
 import { validatePassword } from "@hoppin/core";
 
+/** The kinds of emailed link that come back to the app. */
+export type EmailLinkType = "signup" | "recovery" | "invite";
+
 type ServerError = { code?: string; message: string; status?: number } | null;
 
 /** The slice of the Supabase auth client used here, so it can be faked in tests. */
@@ -14,10 +17,11 @@ export interface PasswordClient {
     resend(args: { type: "signup"; email: string; options: { emailRedirectTo: string } }): PromiseLike<{ error: ServerError }>;
     resetPasswordForEmail(email: string, options: { redirectTo: string }): PromiseLike<{ error: ServerError }>;
     updateUser(attrs: { password: string }): PromiseLike<{ error: ServerError }>;
+    verifyOtp(args: { token_hash: string; type: EmailLinkType }): PromiseLike<{ error: ServerError }>;
   };
 }
 
-export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "other";
+export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "other";
 
 /** An auth failure the screens can explain in plain words. */
 export class AuthError extends Error {
@@ -75,6 +79,16 @@ export function createAuthApi(client: PasswordClient) {
     async requestPasswordReset(args: { email: string; redirectTo: string }): Promise<void> {
       const { error } = await client.auth.resetPasswordForEmail(args.email, { redirectTo: args.redirectTo });
       if (error) throw toAuthError(error);
+    },
+
+    /**
+     * Confirms the token from an emailed link (which points at our own address, not the auth provider's). This
+     * signs the person in. It is only done when the page runs, so mail scanners that merely fetch the link
+     * cannot use it up.
+     */
+    async verifyEmailLink(args: { tokenHash: string; type: EmailLinkType }): Promise<void> {
+      const { error } = await client.auth.verifyOtp({ token_hash: args.tokenHash, type: args.type });
+      if (error) throw error.status === 429 ? toAuthError(error) : new AuthError("invalid-link", error.message);
     },
 
     /** Sets a new password for whoever is signed in (the reset link signs them in first). */

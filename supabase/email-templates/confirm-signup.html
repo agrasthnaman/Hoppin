@@ -18,12 +18,12 @@
           </tr>
           <tr>
             <td style="padding-top:24px;">
-              <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#ff6b4a;color:#1a100c;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:700;font-size:16px;padding:12px 22px;border-radius:999px;">Open my invite</a>
+              <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}" style="display:inline-block;background:#ff6b4a;color:#1a100c;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:700;font-size:16px;padding:12px 22px;border-radius:999px;">Open my invite</a>
             </td>
           </tr>
           <tr>
             <td style="padding-top:22px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#d5defa;">
-              Button not working? Copy this link into your browser:<br>{{ .ConfirmationURL }}
+              Button not working? Copy this link into your browser:<br><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}" style="color:#ffd2c6;text-decoration:underline;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}</a>
             </td>
           </tr>
           <tr>

@@ -193,6 +193,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       resendConfirmation: async () => {},
       requestPasswordReset: async () => {},
       updatePassword: async () => {},
+      verifyEmailLink: async () => setSignedIn(true),
       signOut: async () => setSignedIn(false),
     },
     invites: {

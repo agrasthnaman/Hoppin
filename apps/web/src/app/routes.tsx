@@ -5,6 +5,7 @@ import { ItemScreen } from "../routes/ItemScreen";
 import { JoinRoute } from "../routes/JoinRoute";
 import { MembersScreen } from "../routes/MembersScreen";
 import { MoreScreen } from "../routes/MoreScreen";
+import { ConfirmEmail } from "../routes/ConfirmEmail";
 import { ResetPassword } from "../routes/ResetPassword";
 import { RequireSession } from "../routes/RequireSession";
 import { SignIn } from "../routes/SignIn";
@@ -23,6 +24,7 @@ export function createAppRoutes(): RouteObject[] {
     { path: "/", element: <HomeGate /> },
     { path: "/welcome", element: <WelcomePage /> },
     { path: "/sign-in", element: <SignIn /> },
+    { path: "/auth/confirm", element: <ConfirmEmail /> },
     { path: "/reset-password", element: <ResetPassword /> },
     { path: "/join/:token", element: <JoinRoute /> },
     { path: "/gallery", lazy: async () => ({ Component: (await import("../Gallery")).Gallery }) }, // design-system preview

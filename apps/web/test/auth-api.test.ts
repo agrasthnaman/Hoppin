@@ -10,6 +10,7 @@ function client(over: Record<string, unknown> = {}) {
       resend: vi.fn().mockResolvedValue({ error: null }),
       resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       updateUser: vi.fn().mockResolvedValue({ error: null }),
+      verifyOtp: vi.fn().mockResolvedValue({ error: null }),
       ...over,
     },
   };
@@ -92,5 +93,18 @@ describe("updatePassword", () => {
     const c = client();
     await expect(createAuthApi(c).updatePassword("tiny")).rejects.toMatchObject({ code: "weak-password" });
     expect(c.auth.updateUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("verifyEmailLink", () => {
+  it("confirms the token from an emailed link, which signs the person in", async () => {
+    const c = client();
+    await createAuthApi(c).verifyEmailLink({ tokenHash: "abc123", type: "signup" });
+    expect(c.auth.verifyOtp).toHaveBeenCalledWith({ token_hash: "abc123", type: "signup" });
+  });
+
+  it("reports a used or expired link as an invalid link", async () => {
+    const c = client({ verifyOtp: vi.fn().mockResolvedValue({ error: { code: "otp_expired", message: "Email link is invalid or has expired", status: 403 } }) });
+    await expect(createAuthApi(c).verifyEmailLink({ tokenHash: "x", type: "recovery" })).rejects.toMatchObject({ code: "invalid-link" });
   });
 });
