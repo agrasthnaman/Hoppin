@@ -1,4 +1,4 @@
-import type { Item, MembershipStatus, TripSnapshot } from "@hoppin/core";
+import type { Item, MembershipStatus, TripDestination, TripSnapshot } from "@hoppin/core";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
@@ -6,6 +6,7 @@ import { createAppRoutes } from "../src/app/routes";
 import { ServicesProvider, type Services } from "../src/app/services";
 import type { SessionClient } from "../src/app/session";
 import { openOfflineDb } from "../src/offline/db";
+import type { WeatherResult } from "../src/providers/weather";
 import { MotionRoot } from "../src/lib/motion";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -106,6 +107,7 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       documentUrl: vi.fn(async () => "https://signed.example/doc"),
       listTrips: vi.fn(async () => opts.trips ?? [{ id: "t1", name: "Goa", startDate: "2026-12-01", endDate: "2026-12-05" }]),
       createTrip: vi.fn(async () => "new-trip"),
+      setTripDestination: vi.fn(async () => {}),
       listInvites: vi.fn(async () => opts.invites ?? []),
       setEditRights: vi.fn(async () => {}),
       getProfile: vi.fn(async () => ({ displayName: "Aman" })),
@@ -116,6 +118,8 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       deleteAccount: vi.fn(async () => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
+    weather: { forDay: vi.fn(async (_place: { lat: number; lon: number }, _date: string): Promise<WeatherResult> => ({ status: "unavailable" })) },
+    geocoder: { find: vi.fn(async (_query: string): Promise<TripDestination | null> => null) },
     rates: {
       source: "European Central Bank",
       quote: vi.fn(async (from: string, to: string, date?: string) => ({ from, to, date: date ?? "2026-12-02", rate: from === to ? 1 : 2, fetchedAt: NOW, old: false })),

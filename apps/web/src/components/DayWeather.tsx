@@ -1,0 +1,50 @@
+import { formatTime, type TripDestination } from "@hoppin/core";
+import { CloudSun } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useServices } from "../app/services";
+import type { WeatherResult } from "../providers/weather";
+
+/** The day's forecast at the trip's destination, under the day strip. Shows nothing when there is none to show. */
+export function DayWeather({ destination, date }: { destination: TripDestination | null | undefined; date: string }) {
+  const { weather, clock } = useServices();
+  const [result, setResult] = useState<{ key: string; value: WeatherResult } | null>(null);
+  const lat = destination?.lat;
+  const lon = destination?.lon;
+  const key = `${lat}|${lon}|${date}`;
+
+  useEffect(() => {
+    if (lat === undefined || lon === undefined) return;
+    let alive = true;
+    weather.forDay({ lat, lon }, date).then(
+      (value) => alive && setResult({ key, value }),
+      () => alive && setResult({ key, value: { status: "unavailable" } }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [weather, lat, lon, date, key]);
+
+  if (!destination || result?.key !== key || result.value.status === "unavailable") return null;
+  const box = "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card bg-raised px-4 py-3 text-sm";
+  if (result.value.status === "not-yet") {
+    return (
+      <section aria-label="Weather" className={`${box} text-muted`}>
+        <CloudSun aria-hidden="true" className="size-5 shrink-0" />
+        <span>Weather in {destination.name}: not available yet</span>
+      </section>
+    );
+  }
+  const { forecast, fetchedAt, old } = result.value;
+  const updated = formatTime(new Date(fetchedAt).toISOString(), clock.timeZone);
+  return (
+    <section aria-label="Weather" className={box}>
+      <CloudSun aria-hidden="true" className="size-5 shrink-0 text-muted" />
+      <span className="font-semibold">
+        {forecast.hi}° / {forecast.lo}°
+      </span>
+      <span>{forecast.summary}</span>
+      <span className="text-muted">{destination.name}</span>
+      <span className="text-xs text-muted">{old ? `Saved forecast, updated ${updated}` : `Updated ${updated}`}</span>
+    </section>
+  );
+}

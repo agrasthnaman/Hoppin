@@ -373,3 +373,34 @@ describe("arrival time zone", () => {
     expect(saved.rows).toEqual([{ tz: "Asia/Kolkata", end_tz: "Europe/London" }]);
   });
 });
+
+describe("trip destination", () => {
+  it("new trips can be made with or without a destination, and old three-argument calls still work", async () => {
+    await asUser(db, id.alice, (tx) => tx.query("select create_trip('Goa 2026', null, null, 'Goa, India', 15.49, 73.83)"));
+    await asUser(db, id.alice, (tx) => tx.query("select create_trip('Plain', null, null)"));
+    const rows = await db.query("select name, destination, destination_lat, destination_lon from trips where name in ('Goa 2026', 'Plain') order by name");
+    expect(rows.rows).toEqual([
+      { name: "Goa 2026", destination: "Goa, India", destination_lat: 15.49, destination_lon: 73.83 },
+      { name: "Plain", destination: null, destination_lat: null, destination_lon: null },
+    ]);
+  });
+
+  it("existing trips have no destination", async () => {
+    const rows = await db.query("select destination from trips");
+    expect(rows.rows.every((row) => (row as { destination: string | null }).destination === null)).toBe(true);
+  });
+
+  it("a destination needs its coordinates, and they must be real", async () => {
+    await expect(db.query("update trips set destination = 'Goa' where id = $1", [id.trip])).rejects.toThrow();
+    await expect(db.query("update trips set destination = 'Goa', destination_lat = 95, destination_lon = 10 where id = $1", [id.trip])).rejects.toThrow();
+    await expect(db.query("update trips set destination = '  ', destination_lat = 10, destination_lon = 10 where id = $1", [id.trip])).rejects.toThrow();
+  });
+
+  it("only the organizer can change it", async () => {
+    const set = "update trips set destination = 'Goa, India', destination_lat = 15.49, destination_lon = 73.83 where id = $1 returning id";
+    expect(await changed(id.alice, set, [id.trip])).toBe(0);
+    expect(await changed(id.organizer, set, [id.trip])).toBe(1);
+    const trip = await db.query("select destination from trips where id = $1", [id.trip]);
+    expect(trip.rows).toEqual([{ destination: "Goa, India" }]);
+  });
+});
