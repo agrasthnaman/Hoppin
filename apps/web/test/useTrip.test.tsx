@@ -1,7 +1,7 @@
 import type { DocumentSource, Item, ItemValues, SnapshotResult, TripDocument, TripSnapshot, TripSource } from "@hoppin/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useTrip } from "../src/app/useTrip";
+import { FRESH_EVERY_MS, useTrip } from "../src/app/useTrip";
 import { openOfflineDb, type OfflineDb } from "../src/offline/db";
 import type { Writer } from "../src/offline/outbox";
 import { getLocalTrip } from "../src/offline/sync";
@@ -122,6 +122,71 @@ describe("useTrip", () => {
       await r.current.refresh();
     });
     expect(fetchSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  function setHidden(hidden: boolean) {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }
+
+  it("refreshes once when the page becomes visible again, so a friend's plan shows up", async () => {
+    const { result: r } = render();
+    await waitFor(() => expect(r.current.syncing).toBe(false));
+    fetchSnapshot.mockClear();
+    setHidden(true);
+    expect(fetchSnapshot).not.toHaveBeenCalled();
+
+    result = { status: "ok", snapshot: { ...snapshot(), items: [museum, { ...museum, id: "i2", ownerId: "riya", title: "Beach dinner" }] } };
+    setHidden(false);
+    await waitFor(() => expect(r.current.snapshot?.items.some((item) => item.title === "Beach dinner")).toBe(true));
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+    setHidden(false);
+  });
+
+  it("does not refresh while the page is hidden, offline, or a form is open", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result: r } = render();
+      await waitFor(() => expect(r.current.syncing).toBe(false));
+      fetchSnapshot.mockClear();
+
+      setHidden(true);
+      await act(() => vi.advanceTimersByTimeAsync(FRESH_EVERY_MS * 2));
+      expect(fetchSnapshot).not.toHaveBeenCalled();
+
+      setHidden(false);
+      await waitFor(() => expect(fetchSnapshot).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(r.current.syncing).toBe(false));
+      fetchSnapshot.mockClear();
+      setOnline(false);
+      await act(() => vi.advanceTimersByTimeAsync(FRESH_EVERY_MS));
+      expect(fetchSnapshot).not.toHaveBeenCalled();
+
+      setOnline(true);
+      const dialog = document.createElement("div");
+      dialog.setAttribute("role", "dialog");
+      document.body.append(dialog);
+      await act(() => vi.advanceTimersByTimeAsync(FRESH_EVERY_MS));
+      expect(fetchSnapshot).not.toHaveBeenCalled();
+      dialog.remove();
+    } finally {
+      setHidden(false);
+      vi.useRealTimers();
+    }
+  });
+
+  it("while the page stays open, a friend's new plan appears on its own", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { result: r } = render();
+      await waitFor(() => expect(r.current.syncing).toBe(false));
+      fetchSnapshot.mockClear();
+      result = { status: "ok", snapshot: { ...snapshot(), items: [museum, { ...museum, id: "i2", ownerId: "riya", title: "Beach dinner" }] } };
+      await act(() => vi.advanceTimersByTimeAsync(FRESH_EVERY_MS));
+      await waitFor(() => expect(r.current.snapshot?.items.some((item) => item.title === "Beach dinner")).toBe(true));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

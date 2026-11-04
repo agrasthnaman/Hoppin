@@ -1,4 +1,6 @@
-import { useId, useState, type FormEvent } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { draftBookingsFromText, tripSpan, type DraftBooking } from "../lib/booking-draft";
 import { inputClass } from "../lib/forms";
 import { Button } from "./ui/Button";
 
@@ -6,11 +8,29 @@ export interface NewTrip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  bookings: EditableBooking[];
 }
+
+export type EditableBooking = DraftBooking & { file: File };
 
 export interface CreateTripFormProps {
   onSubmit: (trip: NewTrip) => Promise<void>;
   onCancel: () => void;
+}
+
+async function readBookings(files: File[]): Promise<EditableBooking[]> {
+  const { readPdfText } = await import("../lib/pdf-text");
+  const drafts: EditableBooking[] = [];
+  for (const file of files) {
+    let text = "";
+    try {
+      text = await readPdfText(await file.arrayBuffer());
+    } catch {
+      text = "";
+    }
+    for (const booking of draftBookingsFromText(file.name, text)) drafts.push({ ...booking, file });
+  }
+  return drafts;
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: (id: string, describedBy?: string) => React.ReactNode }) {
@@ -30,14 +50,30 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   );
 }
 
-/** Name and optional dates for a new trip. The person creating it becomes its organizer. */
+/** Opens on a name and dates. A highlighted tab below switches to drafting the trip from booking PDFs. The person creating it becomes its organizer. */
 export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
+  const filesId = useId();
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [datesTouched, setDatesTouched] = useState(false);
+  const [bookings, setBookings] = useState<EditableBooking[]>([]);
+  const [reading, setReading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; end?: string }>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [path, setPath] = useState<"manual" | "documents">("manual");
+
+  useEffect(() => {
+    if (datesTouched || bookings.length === 0) return;
+    const span = tripSpan(bookings);
+    if (span.startDate) setStart(span.startDate);
+    if (span.endDate) setEnd(span.endDate);
+  }, [bookings, datesTouched]);
+
+  function editBooking(index: number, patch: Partial<DraftBooking>) {
+    setBookings((current) => current.map((booking, i) => (i === index ? { ...booking, ...patch } : booking)));
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -50,7 +86,7 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
     setSaving(true);
     setFailed(false);
     try {
-      await onSubmit({ name: name.trim(), startDate: start || null, endDate: end || null });
+      await onSubmit({ name: name.trim(), startDate: start || null, endDate: end || null, bookings });
     } catch {
       setFailed(true);
     } finally {
@@ -58,8 +94,22 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
     }
   }
 
+  function backToNameAndDates() {
+    setPath("manual");
+    setBookings([]);
+    if (!datesTouched) {
+      setStart("");
+      setEnd("");
+    }
+  }
+
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      {path === "documents" && (
+        <p className="text-sm text-muted">
+          Upload your ticket and hotel PDFs. Tickets set the dates. Hotel bookings add the stay and the place. Correct the draft before creating the trip.
+        </p>
+      )}
       <Field label="Trip name" error={errors.name}>
         {(id, d) => (
           <input
@@ -74,12 +124,120 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
         )}
       </Field>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Starts">{(id) => <input id={id} type="date" value={start} onChange={(e) => setStart(e.target.value)} className={inputClass} />}</Field>
+        <Field label="Starts">
+          {(id) => (
+            <input
+              id={id}
+              type="date"
+              value={start}
+              onChange={(e) => {
+                setDatesTouched(true);
+                setStart(e.target.value);
+              }}
+              className={inputClass}
+            />
+          )}
+        </Field>
         <Field label="Ends" error={errors.end}>
-          {(id, d) => <input id={id} type="date" aria-describedby={d} aria-invalid={errors.end ? true : undefined} value={end} onChange={(e) => setEnd(e.target.value)} className={inputClass} />}
+          {(id, d) => (
+            <input
+              id={id}
+              type="date"
+              aria-describedby={d}
+              aria-invalid={errors.end ? true : undefined}
+              value={end}
+              onChange={(e) => {
+                setDatesTouched(true);
+                setEnd(e.target.value);
+              }}
+              className={inputClass}
+            />
+          )}
         </Field>
       </div>
-      <p className="-mt-3 text-xs text-muted">Dates are optional. You can start adding plans without them.</p>
+      <p className="-mt-3 text-xs text-muted">
+        {path === "documents" ? "Dates fill in from the tickets. Change anything that looks wrong." : "Dates are optional. You can start adding plans without them."}
+      </p>
+      {path === "documents" && (
+      <>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={filesId} className="text-sm font-semibold">
+          Booking PDFs
+        </label>
+        <input
+          id={filesId}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          disabled={reading || saving}
+          onChange={(event) => {
+            const picked = [...(event.target.files ?? [])];
+            event.target.value = "";
+            if (picked.length === 0) return;
+            setReading(true);
+            void readBookings(picked)
+              .then((drafts) => setBookings((current) => [...current, ...drafts]))
+              .finally(() => setReading(false));
+          }}
+          className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-fg"
+        />
+        <span className="text-xs text-muted">Add each booking. Ones already here stay in the list. Tickets set the dates. A villa or hotel adds the stay and the place.</span>
+      </div>
+      {reading && (
+        <p role="status" className="text-sm text-muted">
+          Reading bookings…
+        </p>
+      )}
+      {bookings.map((booking, index) => (
+        <fieldset key={`${booking.fileName}-${index}`} className="flex flex-col gap-2 rounded-card border border-line p-3">
+          <legend className="px-1 text-sm font-semibold">{booking.kind === "flight" ? "Flight" : booking.kind === "stay" ? "Stay" : "Booking"}</legend>
+          {booking.unread && <p className="text-sm text-muted">Couldn't read {booking.fileName}. Fill in what you know.</p>}
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            Title
+            <input
+              aria-label={`${booking.fileName} title`}
+              value={booking.title}
+              onChange={(event) => editBooking(index, { title: event.target.value })}
+              className={inputClass}
+            />
+          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-semibold">
+              Day
+              <input
+                type="date"
+                aria-label={`${booking.fileName} day`}
+                value={booking.startsOn ?? ""}
+                onChange={(event) => editBooking(index, { startsOn: event.target.value || null })}
+                className={inputClass}
+              />
+            </label>
+            {booking.kind === "stay" && (
+              <label className="flex flex-col gap-1 text-sm font-semibold">
+                Until
+                <input
+                  type="date"
+                  aria-label={`${booking.fileName} until`}
+                  value={booking.endsOn ?? ""}
+                  onChange={(event) => editBooking(index, { endsOn: event.target.value || null })}
+                  className={inputClass}
+                />
+              </label>
+            )}
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            Place
+            <input
+              aria-label={`${booking.fileName} place`}
+              value={booking.place ?? ""}
+              onChange={(event) => editBooking(index, { place: event.target.value || null })}
+              className={inputClass}
+            />
+          </label>
+        </fieldset>
+      ))}
+      </>
+      )}
       {failed && (
         <p role="alert" className="text-sm text-danger-fg">
           Couldn't create the trip. Check your connection and try again.
@@ -89,10 +247,30 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
         <Button type="submit" disabled={saving} className="flex-1">
           Create trip
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
+        {path === "documents" ? (
+          <Button type="button" variant="ghost" onClick={backToNameAndDates}>
+            Back
+          </Button>
+        ) : (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
       </div>
+      {path === "manual" && (
+        <button
+          type="button"
+          aria-label="From booking documents"
+          onClick={() => setPath("documents")}
+          className="flex w-full items-center gap-3 rounded-card bg-highlight px-4 py-3 text-left text-highlight-fg hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">From booking documents</span>
+            <span className="mt-1 block text-sm">Upload tickets and hotel bookings, and Hoppin drafts the trip.</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+        </button>
+      )}
     </form>
   );
 }

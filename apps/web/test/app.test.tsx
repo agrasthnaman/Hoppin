@@ -286,6 +286,7 @@ describe("docs and money", () => {
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByRole("link", { name: "Old town tour" })).toHaveAttribute("href", "/trips/t1/items/i1");
     expect(within(row as HTMLElement).getByRole("link", { name: "Wednesday 2 December" })).toHaveAttribute("href", "/trips/t1/days?date=2026-12-02");
+    expect(within(row as HTMLElement).getByText("10:00 – 12:00")).toBeInTheDocument();
     expect(within(row as HTMLElement).getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
   });
 
@@ -294,6 +295,7 @@ describe("docs and money", () => {
     expect(await screen.findByText("Nothing personal saved yet.")).toBeInTheDocument();
     const bookings = screen.getByRole("region", { name: "Bookings" });
     expect(within(bookings).queryByRole("button", { name: /^Open / })).toBeNull();
+    expect(within(bookings).getAllByText("No confirmation saved").length).toBeGreaterThan(0);
   });
 
   it("shows that nothing is owed yet, and where amounts are converted", async () => {
@@ -317,6 +319,7 @@ describe("bookings and my documents", () => {
   function bookingsSnapshot() {
     return snapshot({
       items: [
+        item({ id: "f2", title: "Night flight", kind: "flight", startsAt: at("21:00") }),
         item({ id: "f1", title: "Goa flight", kind: "flight", startsAt: at("08:00") }),
         item({ id: "s1", title: "Beach house", kind: "stay", ownerId: "riya", startsAt: at("15:00") }),
         item({ id: "secret", title: "Riya's note", kind: "plan", visibility: "private", ownerId: "riya", startsAt: at("18:00") }),
@@ -337,6 +340,9 @@ describe("bookings and my documents", () => {
     expect(within(bookings).getByRole("heading", { name: "Stays" })).toBeInTheDocument();
     expect(within(bookings).getByRole("heading", { name: "Plans" })).toBeInTheDocument();
     expect(within(bookings).getByRole("link", { name: "Goa flight" })).toHaveAttribute("href", "/trips/t1/items/f1");
+    const flightLinks = within(bookings).getAllByRole("link", { name: /flight/i });
+    expect(flightLinks.map((link) => link.textContent)).toEqual(["Goa flight", "Night flight"]);
+    expect(within(bookings).getByText("08:00")).toBeInTheDocument();
     expect(within(bookings).getByRole("link", { name: "Beach house" })).toBeInTheDocument();
     expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
     expect(within(bookings).queryByText("Riya's note")).toBeNull();

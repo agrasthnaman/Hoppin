@@ -52,6 +52,20 @@ describe("Sheet", () => {
     expect(screen.getByRole("dialog", { name: "Above the nav" })).toHaveClass("z-[60]");
   });
 
+  it("stays open when the file window sends a click outside", async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Sheet open onOpenChange={onOpenChange} title="New trip">
+        <input type="file" aria-label="Booking PDFs" />
+      </Sheet>,
+    );
+    await userEvent.click(screen.getByLabelText("Booking PDFs"));
+    const backdrop = document.querySelector(".z-\\[55\\]");
+    if (!(backdrop instanceof Element)) throw new Error("missing backdrop");
+    await userEvent.click(backdrop);
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("renders nothing when closed", () => {
     render(
       <Sheet open={false} onOpenChange={() => {}} title="Hidden">

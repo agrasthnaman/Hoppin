@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
 import { CreateTripForm } from "../components/CreateTripForm";
+import { bookingItemValues } from "../lib/booking-draft";
 import { JoinTripForm } from "../components/JoinTripForm";
 import { Button } from "../components/ui/Button";
 import { SpiderCursor as SilkSpiderCursor } from "../components/ui/SpiderCursor";
@@ -18,7 +19,8 @@ type Trips = { id: string; name: string; startDate?: string | null; endDate?: st
 
 /** The person's trips, and creating a new one (the creator becomes its organizer). */
 export function TripsHome() {
-  const { actions } = useServices();
+  const services = useServices();
+  const { actions } = services;
   const signOut = useSignOut();
   const navigate = useNavigate();
   const online = useOnline();
@@ -41,7 +43,22 @@ export function TripsHome() {
       <CreateTripForm
         onCancel={() => setCreating(false)}
         onSubmit={async (trip) => {
-          const id = await actions.createTrip(trip);
+          const id = await actions.createTrip({ name: trip.name, startDate: trip.startDate, endDate: trip.endDate });
+          const { data } = await services.sessionClient.auth.getSession();
+          const ownerId = data.session?.user.id;
+          if (ownerId) {
+            for (const booking of trip.bookings) {
+              const values = bookingItemValues(booking, trip.startDate, services.clock.timeZone);
+              if (!values) continue;
+              try {
+                const itemId = crypto.randomUUID();
+                await actions.createItem(id, ownerId, values, itemId);
+                await actions.uploadDocument(booking.file, { tripId: id, ownerId, itemId, scope: "shared", kind: "document" });
+              } catch {
+                // The trip is saved. The organizer can fix a booking the file did not read.
+              }
+            }
+          }
           setCreating(false);
           navigate(`/trips/${id}/days`);
         }}

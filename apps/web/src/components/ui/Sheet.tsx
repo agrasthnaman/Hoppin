@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, m, useDragControls } from "motion/react";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useIsDesktop } from "../../hooks/useIsDesktop";
 import { shouldDismissSheet } from "../../lib/gestures";
 import { spring } from "../../lib/motion";
@@ -21,6 +21,27 @@ export interface SheetProps {
 export function Sheet({ open, onOpenChange, title, description, children }: SheetProps) {
   const desktop = useIsDesktop();
   const controls = useDragControls();
+  const pickingFile = useRef(false);
+  useEffect(() => {
+    if (!open) return;
+    const note = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("input[type='file']")) pickingFile.current = true;
+    };
+    const release = () => {
+      window.setTimeout(() => {
+        pickingFile.current = false;
+      }, 400);
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("change", release, true);
+    document.addEventListener("cancel", release, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("change", release, true);
+      document.removeEventListener("cancel", release, true);
+    };
+  }, [open]);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
@@ -29,7 +50,14 @@ export function Sheet({ open, onOpenChange, title, description, children }: Shee
             <Dialog.Overlay asChild forceMount>
               <m.div className="fixed inset-0 z-[55] bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             </Dialog.Overlay>
-            <Dialog.Content asChild forceMount>
+            <Dialog.Content
+              asChild
+              forceMount
+              onPointerDownOutside={(event) => {
+                if (!pickingFile.current) return;
+                event.preventDefault();
+              }}
+            >
               <m.div
                 className="fixed inset-x-0 bottom-0 z-[60] max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-surface p-5 pt-2 text-fg shadow-card
                   md:inset-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl md:pt-5"

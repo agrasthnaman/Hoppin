@@ -1,4 +1,4 @@
-import { localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
+import { formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
 import { FileText, Plus } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
@@ -141,7 +141,7 @@ export default function Docs() {
           <p>No bookings match.</p>
         ) : (
           KIND_ORDER.map((kind) => {
-            const group = shown.filter((item) => item.kind === kind);
+            const group = shown.filter((item) => item.kind === kind).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
             if (group.length === 0) return null;
             return (
               <div key={kind} className="flex flex-col gap-2">
@@ -156,6 +156,7 @@ export default function Docs() {
                           <Link to={`/trips/${trip.tripId}/items/${item.id}`} className="font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent">
                             {item.title}
                           </Link>
+                          <p className="text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz)}</p>
                           <p className="text-xs text-muted">
                             <Link
                               to={`/trips/${trip.tripId}/days?date=${day.date}`}
@@ -167,6 +168,7 @@ export default function Docs() {
                             {people[item.ownerId]?.name ?? "Someone"}
                           </p>
                         </div>
+                        {attached.length === 0 && <p className="text-sm text-muted">No confirmation saved</p>}
                         {attached.map((doc) => (
                           <div key={doc.id} className="flex items-center gap-3">
                             <FileText aria-hidden="true" className="size-5 shrink-0 text-muted" />

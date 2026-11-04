@@ -154,7 +154,7 @@ export default function Landing() {
         </footer>
       </section>
 
-      <SilkSpiderCursor bounceColor="#0d22ee" shadowColor="#000a3a" seedWebs={14} />
+      <SilkSpiderCursor bounceColor="#0d22ee" shadowColor="#000a3a" seedWebs={14} zIndex={50} />
     </main>
   );
 }

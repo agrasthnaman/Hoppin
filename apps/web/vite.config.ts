@@ -4,6 +4,8 @@ import { VitePWA } from "vite-plugin-pwa";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // These are loaded the moment a booking PDF is chosen. Bundling them up front keeps that first choice from restarting the page.
+  optimizeDeps: { include: ["pdfjs-dist", "tesseract.js"] },
   plugins: [
     react(),
     tailwindcss(),
@@ -32,7 +34,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,webmanifest,woff2}"],
         // Only the Latin fonts are stored for offline use; other alphabets fall back to the phone's own font.
-        globIgnores: ["**/*cyrillic*", "**/*greek*", "**/*vietnamese*", "**/*italic*", "**/Landing-*", "**/Gallery-*", "**/silk-spider-cursor-*"], // the landing page and the design preview are big and not needed offline
+        globIgnores: ["**/*cyrillic*", "**/*greek*", "**/*vietnamese*", "**/*italic*", "**/Landing-*", "**/Gallery-*", "**/silk-spider-cursor-*", "**/pdf-*", "**/pdf.worker*", "**/worker.min-*"], // the landing page and the design preview are big and not needed offline
         navigateFallback: "/index.html", // any address inside the app loads the app, also offline
         cleanupOutdatedCaches: true,
       },

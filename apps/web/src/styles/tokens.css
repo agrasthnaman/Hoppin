@@ -90,3 +90,16 @@ body {
 .on-cream .text-link { color: #0d22ee; }
 .on-cream .text-danger-fg { color: #7f1d1d; }
 .on-cream button.bg-transparent:hover { background-color: rgb(16 20 40 / 0.06); }
+
+/* The mascot walks behind the controls, so a field stays readable while you type. */
+button,
+input,
+textarea,
+select,
+.auth-card,
+.trips-join,
+.trips-card,
+.first-day-card {
+  position: relative;
+  z-index: 2;
+}
