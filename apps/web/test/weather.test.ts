@@ -38,7 +38,29 @@ describe("Open-Meteo place lookup", () => {
   it("finds a place, sending only the typed name", async () => {
     const fetch = vi.fn((_url: string) => json({ results: [{ name: "Goa", country: "India", latitude: 15.49, longitude: 73.83 }] }));
     expect(await createOpenMeteoGeocoder({ fetch }).find(" Goa ")).toEqual({ name: "Goa, India", lat: 15.49, lon: 73.83 });
-    expect(Object.fromEntries(new URL(String(fetch.mock.calls[0]![0])).searchParams)).toMatchObject({ name: "Goa", count: "1" });
+    expect(Object.fromEntries(new URL(String(fetch.mock.calls[0]![0])).searchParams)).toMatchObject({ name: "Goa", count: "10" });
+  });
+
+  it("picks the island people mean, not a small town that shares the name (Bali)", async () => {
+    const fetch = () =>
+      json({
+        results: [
+          { name: "Bāli", admin1: "West Bengal", country: "India", population: 296973, latitude: 22.65, longitude: 88.34 },
+          { name: "Bali", admin1: "Bali", country: "Indonesia", population: 4225384, latitude: -8.34, longitude: 115.09 },
+          { name: "Balikpapan", admin1: "East Kalimantan", country: "Indonesia", population: 695287, latitude: -1.27, longitude: 116.83 },
+        ],
+      });
+    expect(await createOpenMeteoGeocoder({ fetch }).find("Bali")).toEqual({ name: "Bali, Indonesia", lat: -8.34, lon: 115.09 });
+  });
+
+  it("names the region when it tells places apart, so a wrong guess is easy to spot", async () => {
+    const fetch = () => json({ results: [{ name: "Portland", admin1: "Oregon", country: "United States", population: 650000, latitude: 45.5, longitude: -122.6 }] });
+    expect((await createOpenMeteoGeocoder({ fetch }).find("Portland"))?.name).toBe("Portland, Oregon, United States");
+  });
+
+  it("falls back to the top result when no name matches exactly", async () => {
+    const fetch = () => json({ results: [{ name: "Calangute", admin1: "Goa", country: "India", latitude: 15.54, longitude: 73.76 }] });
+    expect((await createOpenMeteoGeocoder({ fetch }).find("Calangut"))?.name).toBe("Calangute, Goa, India");
   });
 
   it("returns null when nothing matches or the text is too short, and throws when unreachable", async () => {
