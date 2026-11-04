@@ -4,6 +4,16 @@ import { describe, expect, it } from "vitest";
 
 const read = (name: string) => readFileSync(join(process.cwd(), "email-templates", name), "utf8");
 
+describe("confirm signup email", () => {
+  const html = read("confirm-signup.html");
+
+  it("welcomes them onto the list and calls the link an invite", () => {
+    expect(html).toContain("You're on the list");
+    expect(html).toContain("Open my invite");
+    expect(html).toContain("Welcome to the waitlist");
+  });
+});
+
 describe.each(["confirm-signup.html", "recovery.html"])("email template %s", (name) => {
   const html = read(name);
 

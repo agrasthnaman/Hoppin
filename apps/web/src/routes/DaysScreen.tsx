@@ -10,6 +10,7 @@ import { DayStrip } from "../components/DayStrip";
 import { DayView } from "../components/DayView";
 import { ItemForm } from "../components/ItemForm";
 import { Button } from "../components/ui/Button";
+import { SpiderCursor as SilkSpiderCursor } from "../components/ui/SpiderCursor";
 import { Sheet } from "../components/ui/Sheet";
 import { swipeDay, swipeDirection } from "../lib/gestures";
 
@@ -38,8 +39,17 @@ export function DaysScreen() {
       : (layout.blocks.find((b) => b.kind !== "stay") ?? layout.blocks[0])?.id ?? null;
 
   const arrow = "inline-flex size-11 items-center justify-center rounded-full bg-raised hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent";
+  const quiet = snapshot.items.length === 0;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="relative flex flex-col gap-4">
+      {quiet && (
+        <section className="rounded-card bg-hero p-5 text-hero-fg" data-silk-anchor>
+          <p className="text-sm font-semibold text-hero-muted">Welcome</p>
+          <h2 className="font-display text-3xl font-extrabold leading-none">This day is waiting</h2>
+          <p className="mt-2 text-hero-muted">Add the first plan. The group sees it as soon as you do.</p>
+          <SilkSpiderCursor bounceColor="#0d22ee" shadowColor="#000a3a" silkColor="#f6f3ec" seedWebs={6} />
+        </section>
+      )}
       {hasDates ? (
         <DayStrip start={snapshot.trip.startDate} end={snapshot.trip.endDate} selected={date} />
       ) : (

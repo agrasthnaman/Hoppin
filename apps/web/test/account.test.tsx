@@ -73,7 +73,7 @@ describe("account screen", () => {
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
     await waitFor(() => expect(services.actions.deleteAccount).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hop back in" })).toBeInTheDocument();
     expect(await services.db.trips.count()).toBe(0);
   });
 
@@ -92,13 +92,13 @@ describe("account screen", () => {
     await userEvent.type(within(dialog).getByLabelText(/Type delete to confirm/), "delete");
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete my account" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent('You are the only organizer of "Goa"');
-    expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Hop back in" })).toBeNull();
   });
 
   it("signs out from here too", async () => {
     const { services } = await open();
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hop back in" })).toBeInTheDocument();
     expect(services.auth.signOut).toHaveBeenCalled();
   });
 

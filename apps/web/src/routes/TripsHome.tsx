@@ -6,12 +6,12 @@ import { useServices } from "../app/services";
 import { useSignOut } from "../app/useSignOut";
 import { CreateTripForm } from "../components/CreateTripForm";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
 import { cn } from "../lib/cn";
 import { springSoft } from "../lib/motion";
 import { formatDateRange } from "../lib/dates";
+import { FirstDay } from "./FirstDay";
 
 // Trip cards take turns with the palette's big colour block, the soft pop tint and a plain card.
 const TRIP_LOOKS = [
@@ -42,6 +42,28 @@ export function TripsHome() {
     };
   }, [actions]);
 
+  const sheet = (
+    <Sheet open={creating} onOpenChange={setCreating} title="New trip">
+      <CreateTripForm
+        onCancel={() => setCreating(false)}
+        onSubmit={async (trip) => {
+          const id = await actions.createTrip(trip);
+          setCreating(false);
+          navigate(`/trips/${id}/days`);
+        }}
+      />
+    </Sheet>
+  );
+
+  if (Array.isArray(trips) && trips.length === 0) {
+    return (
+      <>
+        <FirstDay online={online} onStart={() => setCreating(true)} onJoin={(token) => navigate(`/join/${token}`)} />
+        {sheet}
+      </>
+    );
+  }
+
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -63,7 +85,6 @@ export function TripsHome() {
       {!online && <p className="text-sm text-muted">Connect to the internet to create a trip.</p>}
       {trips === null && <p role="status">Loading…</p>}
       {trips === "error" && <p>Couldn't load your trips. Check your connection and try again.</p>}
-      {Array.isArray(trips) && trips.length === 0 && <p className="text-muted">No trips yet. Create one, or ask the organizer to send you an invite link.</p>}
       {Array.isArray(trips) && trips.length > 0 && (
         <m.ul className="flex flex-col gap-3" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
           {trips.map((trip, i) => {
@@ -91,16 +112,7 @@ export function TripsHome() {
         </Button>
       </div>
 
-      <Sheet open={creating} onOpenChange={setCreating} title="New trip">
-        <CreateTripForm
-          onCancel={() => setCreating(false)}
-          onSubmit={async (trip) => {
-            const id = await actions.createTrip(trip);
-            setCreating(false);
-            navigate(`/trips/${id}/days`);
-          }}
-        />
-      </Sheet>
+      {sheet}
     </main>
   );
 }

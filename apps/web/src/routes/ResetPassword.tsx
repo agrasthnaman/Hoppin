@@ -5,9 +5,9 @@ import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { AuthError } from "../lib/auth-api";
 import { inputClass } from "../lib/forms";
+import { AuthStage } from "./AuthStage";
 import { HomeLink } from "./HomeLink";
 
 /**
@@ -89,9 +89,14 @@ export function ResetPassword() {
     );
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
-      <h1 className="font-display text-4xl font-extrabold">Choose a new password</h1>
-      <Card>{body}</Card>
-    </main>
+    <AuthStage>
+      <h1 className="auth-title" data-silk-anchor>
+        Choose a new password
+      </h1>
+      <p className="auth-lede">One new password, then you're back on the trip.</p>
+      <div className="auth-card" data-silk-anchor>
+        {body}
+      </div>
+    </AuthStage>
   );
 }

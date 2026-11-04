@@ -77,11 +77,11 @@ describe("demo mode", () => {
     const services = demo();
     renderApp("/trips/demo-goa/more", services);
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hop back in" })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Email"), "aman@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "demo password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    await waitFor(() => expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Hop back in" })).toBeNull());
   });
 });
 

@@ -31,7 +31,7 @@ const file = (name) => readFileSync(new URL(`../supabase/email-templates/${name}
 let body;
 if (mode === "templates") {
   body = {
-    mailer_subjects_confirmation: "Welcome to Hoppin: confirm your email",
+    mailer_subjects_confirmation: "You're on the list. Your Hoppin invite",
     mailer_templates_confirmation_content: file("confirm-signup.html"),
     mailer_subjects_recovery: "Choose a new Hoppin password",
     mailer_templates_recovery_content: file("recovery.html"),

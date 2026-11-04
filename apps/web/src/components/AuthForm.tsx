@@ -35,12 +35,12 @@ function Field({ label, hint, error, ...input }: { label: string; hint?: string;
   );
 }
 
-function explain(error: unknown, mode: Mode): string {
+function explain(error: unknown, mode: Mode, purpose: "waitlist" | "trip"): string {
   const code = error instanceof AuthError ? error.code : "other";
   if (code === "invalid-credentials") return "Wrong email or password.";
   if (code === "rate-limited") return "Too many emails right now. Please try again in a little while.";
   if (code === "weak-password" && error instanceof Error) return error.message;
-  if (mode === "signup") return "Couldn't create the account. Please try again.";
+  if (mode === "signup") return purpose === "waitlist" ? "Couldn't join the waitlist. Please try again." : "Couldn't create the account. Please try again.";
   if (mode === "forgot") return "Couldn't send the link. Please try again.";
   return "Couldn't sign in. Please try again.";
 }
@@ -54,6 +54,8 @@ export function AuthForm({
   confirmRedirectTo,
   resetRedirectTo,
   initialMode = "signin",
+  purpose = "trip",
+  titled = false,
 }: {
   api: AuthFormApi;
   /** Where the confirmation link brings the person back to. */
@@ -61,6 +63,10 @@ export function AuthForm({
   /** Where the reset link brings the person to (the reset-password page). */
   resetRedirectTo: string;
   initialMode?: Mode;
+  /** Public sign-in frames a new account as joining the waitlist. A trip invite stays a normal account. */
+  purpose?: "waitlist" | "trip";
+  /** Draw the landing-page headline. The trip join page brings its own. */
+  titled?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
@@ -105,7 +111,7 @@ export function AuthForm({
       }
     } catch (error) {
       if (error instanceof AuthError && error.code === "email-not-confirmed") setSent({ kind: "confirm", email: trimmed });
-      else setFailure(explain(error, mode));
+      else setFailure(explain(error, mode, purpose));
     } finally {
       setBusy(false);
     }
@@ -119,38 +125,58 @@ export function AuthForm({
       await api.resendConfirmation({ email: sent.email, redirectTo: confirmRedirectTo });
       setResent(true);
     } catch (error) {
-      setFailure(explain(error, "signup"));
+      setFailure(explain(error, "signup", purpose));
     } finally {
       setBusy(false);
     }
   }
 
-  if (sent) {
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="text-lg font-semibold">Check your email</p>
-        {sent.kind === "confirm" ? (
-          <>
-            <p className="text-muted">
-              We sent a confirmation link to {sent.email}. It works once and expires in 24 hours. After you open it, sign in with your password.
-            </p>
-            {resent && <p role="status">A new link is on its way. The old one no longer works.</p>}
-            {failure && <Banner kind="conflict" text={failure} />}
-            <Button type="button" variant="ghost" disabled={busy} onClick={resend}>
-              Send a new link
-            </Button>
-          </>
-        ) : (
-          <p className="text-muted">If {sent.email} has an account, we sent a link to choose a new password. It works once and expires in 24 hours.</p>
-        )}
-        <Button type="button" variant="ghost" onClick={() => { setSent(null); setResent(false); switchTo("signin"); }}>
-          Back to sign in
-        </Button>
-      </div>
-    );
-  }
+  const joinLabel = purpose === "waitlist" ? "Join the waitlist" : "Create account";
+  const headline = sent
+    ? sent.kind === "confirm" && purpose === "waitlist"
+      ? "You're on the list"
+      : "Check your email"
+    : mode === "signup"
+      ? joinLabel
+      : mode === "forgot"
+        ? "Reset your password"
+        : "Hop back in";
+  const lede = sent
+    ? null
+    : mode === "signup" && purpose === "waitlist"
+      ? "We're letting people in a few at a time. Leave your name and an invite lands in your inbox."
+      : mode === "signin"
+        ? "The group trip is still here. Hop back in with your email."
+        : mode === "forgot"
+          ? "We'll email a link to choose a new password."
+          : null;
 
-  return (
+  const fields = sent ? (
+    <div className="flex flex-col gap-3">
+      {!titled && <p className="text-lg font-semibold">{sent.kind === "confirm" && purpose === "waitlist" ? "You're on the list" : "Check your email"}</p>}
+      {sent.kind === "confirm" ? (
+        <>
+          <p className="text-muted">
+            {purpose === "waitlist"
+              ? `Welcome to the waitlist. An invite is on its way to ${sent.email}. It works once and expires in 24 hours. Open it, then hop in with your password.`
+              : `We sent a confirmation link to ${sent.email}. It works once and expires in 24 hours. After you open it, sign in with your password.`}
+          </p>
+          {resent && (
+            <p role="status">{purpose === "waitlist" ? "A fresh invite is on its way. The old one no longer works." : "A new link is on its way. The old one no longer works."}</p>
+          )}
+          {failure && <Banner kind="conflict" text={failure} />}
+          <Button type="button" variant="ghost" disabled={busy} onClick={resend}>
+            {purpose === "waitlist" ? "Send another invite" : "Send a new link"}
+          </Button>
+        </>
+      ) : (
+        <p className="text-muted">If {sent.email} has an account, we sent a link to choose a new password. It works once and expires in 24 hours.</p>
+      )}
+      <Button type="button" variant="ghost" onClick={() => { setSent(null); setResent(false); switchTo("signin"); }}>
+        Back to sign in
+      </Button>
+    </div>
+  ) : (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       {mode === "signup" && <Field label="Your name" name="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />}
       <Field label="Email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
@@ -168,7 +194,7 @@ export function AuthForm({
       )}
       {failure && <Banner kind="conflict" text={failure} />}
       <Button type="submit" disabled={busy}>
-        {mode === "signup" ? "Create account" : mode === "forgot" ? "Email me a reset link" : "Sign in"}
+        {mode === "signup" ? joinLabel : mode === "forgot" ? "Email me a reset link" : "Sign in"}
       </Button>
       {mode === "signin" && (
         <>
@@ -176,7 +202,7 @@ export function AuthForm({
             Forgot password?
           </Button>
           <Button type="button" variant="ghost" onClick={() => switchTo("signup")}>
-            New here? Create an account
+            {purpose === "waitlist" ? "New here? Join the waitlist" : "New here? Create an account"}
           </Button>
         </>
       )}
@@ -191,5 +217,25 @@ export function AuthForm({
         </Button>
       )}
     </form>
+  );
+
+  return (
+    <>
+      {titled && (
+        <>
+          <h1 className="auth-title" data-silk-anchor>
+            {headline}
+          </h1>
+          {lede && (
+            <p className="auth-lede" data-silk-anchor>
+              {lede}
+            </p>
+          )}
+        </>
+      )}
+      <div className={titled ? "auth-card" : undefined} {...(titled ? { "data-silk-anchor": "" } : {})}>
+        {fields}
+      </div>
+    </>
   );
 }
