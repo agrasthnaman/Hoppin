@@ -42,8 +42,9 @@ export function TripsHome() {
     <Sheet open={creating} onOpenChange={setCreating} title="New trip">
       <CreateTripForm
         onCancel={() => setCreating(false)}
+        lookup={(query) => services.geocoder.find(query)}
         onSubmit={async (trip) => {
-          const id = await actions.createTrip({ name: trip.name, startDate: trip.startDate, endDate: trip.endDate });
+          const id = await actions.createTrip({ name: trip.name, startDate: trip.startDate, endDate: trip.endDate, destination: trip.destination });
           const { data } = await services.sessionClient.auth.getSession();
           const ownerId = data.session?.user.id;
           if (ownerId) {

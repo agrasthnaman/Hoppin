@@ -1,6 +1,9 @@
 import {
   addDays,
   applyValues,
+  applyVote,
+  canManagePoll,
+  validatePollDraft,
   changedFields,
   itemFromValues,
   localDate,
@@ -10,15 +13,19 @@ import {
   type Item,
   type ItemValues,
   type MemberInfo,
+  type Poll,
   type RateProvider,
   type SnapshotResult,
+  type TripDestination,
   type TripDocument,
   type TripGuest,
+  type Vote,
 } from "@hoppin/core";
 import type { Services } from "../app/services";
 import { ConflictError } from "../data/writes";
 import { openOfflineDb } from "../offline/db";
 import { createRateService, createRateStore, RatesUnavailableError } from "../providers/rates";
+import { createWeatherService, createWeatherStore, type Geocoder, type WeatherProvider } from "../providers/weather";
 
 /** A pretend server living in memory, so the whole app can be tried with no accounts, no email and no network. */
 export interface DemoOptions {
@@ -41,11 +48,14 @@ interface DemoTrip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  destination?: TripDestination | null;
   members: MemberInfo[];
   items: Item[];
   rsvps: { itemId: string; userId: string }[];
   documents: TripDocument[];
   invites: Invite[];
+  polls: Poll[];
+  votes: Vote[];
   baseCurrency?: string | null;
   guests?: TripGuest[];
   expenses?: ExpenseRecord[];
@@ -78,6 +88,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     name: "Goa",
     startDate: base,
     endDate: addDays(base, 4),
+    destination: { name: "Goa, India", lat: 15.49, lon: 73.83 },
     members: [member(ME, "Aman", { role: "organizer" }), member("demo-riya", "Riya"), member("demo-neha", "Neha", { canEditAll: true }), member("demo-kabir", "Kabir", { status: "pending" })],
     items: [
       item("g-flight", "demo-goa", ME, { kind: "flight", title: "Delhi to Goa (IndiGo 6E 123)", startsAt: at(0, "06:30"), endsAt: at(0, "09:00"), locationUrl: "https://maps.google.com/?q=Goa+Airport", details: { notes: "Gate B12. Bags close 45 minutes before." } }),
@@ -96,6 +107,16 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     rsvps: [{ itemId: "g-museum", userId: "demo-neha" }],
     documents: [{ id: "d-pass", tripId: "demo-goa", itemId: "g-flight", ownerId: ME, scope: "shared", storagePath: "demo-goa/demo-me/d-pass-boarding-passes.pdf", kind: "ticket", fileName: "boarding-passes.pdf" }],
     invites: [],
+    polls: [
+      {
+        id: "demo-poll-beach", tripId: "demo-goa", createdBy: "demo-riya", question: "Which beach for Thursday?", multiple: false, closed: false, createdAt: stamp(),
+        options: [{ id: "demo-beach-baga", label: "Baga" }, { id: "demo-beach-palolem", label: "Palolem" }, { id: "demo-beach-anjuna", label: "Anjuna" }],
+      },
+    ],
+    votes: [
+      { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-riya" },
+      { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-neha" },
+    ],
     baseCurrency: "INR",
     guests: [{ id: "g-zoya", tripId: "demo-goa", name: "Zoya", addedBy: "demo-neha" }],
     expenses: [],
@@ -129,6 +150,8 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     rsvps: [],
     documents: [],
     invites: [],
+    polls: [],
+    votes: [],
   };
   const trips: DemoTrip[] = [goa, manali];
   const find = (tripId: string) => trips.find((t) => t.id === tripId);
@@ -214,11 +237,13 @@ export function createDemoServices(options: DemoOptions = {}): Services {
         return structuredClone({
           status: "ok",
           snapshot: {
-            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, baseCurrency: t.baseCurrency ?? null },
+            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, destination: t.destination ?? null, baseCurrency: t.baseCurrency ?? null },
             members: t.members,
             items: t.items.filter((i) => i.visibility === "shared" || i.ownerId === ME),
             rsvps: t.rsvps,
             documents: t.documents,
+            polls: t.polls,
+            votes: t.votes.filter((v) => t.members.some((m) => m.userId === v.userId && m.status === "approved")),
             guests: t.guests ?? [],
             expenses: t.expenses ?? [],
             expenseHistory: t.expenseHistory ?? [],
@@ -284,6 +309,40 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       createItem: writer.createItem,
       updateItem: writer.updateItem,
       setRsvp: writer.setRsvp,
+      async createPoll(tripId, question, multiple, options) {
+        const t = find(tripId);
+        if (!t || meIn(t)?.status !== "approved") throw new Error("only members of this trip can ask a question");
+        const problem = validatePollDraft(question, options);
+        if (problem) throw new Error(problem);
+        const id = `demo-poll-${(counter += 1)}`;
+        const labels = options.map((o) => o.trim()).filter(Boolean);
+        t.polls.push({
+          id, tripId, createdBy: ME, question: question.trim(), multiple, closed: false, createdAt: stamp(),
+          options: labels.map((label, i) => ({ id: `${id}-o${i}`, label })),
+        });
+        return id;
+      },
+      async castVote(pollId, optionIds) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        if (!t || !poll) throw new Error("poll not found");
+        t.votes = applyVote(t.votes, poll, ME, optionIds);
+      },
+      async closePoll(pollId) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        const me = t && meIn(t);
+        if (!t || !poll || !me || !canManagePoll(poll, ME, me.role)) throw new Error("only the person who asked or an organizer can close this poll");
+        poll.closed = true;
+      },
+      async deletePoll(pollId) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        const me = t && meIn(t);
+        if (!t || !poll || !me || !canManagePoll(poll, ME, me.role)) throw new Error("Could not delete the poll");
+        t.polls = t.polls.filter((p) => p.id !== pollId);
+        t.votes = t.votes.filter((v) => v.pollId !== pollId);
+      },
       saveExpense: writer.saveExpense,
       deleteExpense: writer.deleteExpense,
       addGuest: writer.addGuest,
@@ -302,10 +361,13 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       async listTrips() {
         return trips.filter((t) => meIn(t)?.status === "approved").map((t) => ({ id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate }));
       },
-      async createTrip({ name, startDate, endDate }) {
+      async createTrip({ name, startDate, endDate, destination }) {
         const id = `demo-${(counter += 1)}`;
-        trips.unshift({ id, name, startDate, endDate, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [] });
+        trips.unshift({ id, name, startDate, endDate, destination: destination ?? null, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [], polls: [], votes: [] });
         return id;
+      },
+      async setTripDestination(tripId, destination) {
+        guardOrganizer(tripId).destination = destination;
       },
       async listInvites(tripId) {
         const now = Date.now();
@@ -360,8 +422,33 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     },
     clock: { now: () => (options.today ? Date.parse(zonedTimeToInstant(`${today}T12:00`, timeZone)) : Date.now()), timeZone },
     rates: createRateService({ provider: demoRates, store: createRateStore(null), source: "Sample" }),
+    weather: createWeatherService({ provider: demoWeather, store: createWeatherStore(null), now: () => Date.now() }),
+    geocoder: demoGeocoder,
   };
 }
+
+// Sample weather and places, so demo mode never touches the network.
+const SAMPLE_WEATHER = [
+  { hi: 31, lo: 24, summary: "Mostly clear" },
+  { hi: 30, lo: 23, summary: "Partly cloudy" },
+  { hi: 29, lo: 24, summary: "Showers" },
+  { hi: 32, lo: 25, summary: "Clear" },
+];
+const demoWeather: WeatherProvider = {
+  async forecast(_lat, _lon, date) {
+    return SAMPLE_WEATHER[Number(date.slice(-2)) % SAMPLE_WEATHER.length]!;
+  },
+};
+const SAMPLE_PLACES: Record<string, TripDestination> = {
+  goa: { name: "Goa, India", lat: 15.49, lon: 73.83 },
+  manali: { name: "Manali, India", lat: 32.24, lon: 77.19 },
+  london: { name: "London, United Kingdom", lat: 51.51, lon: -0.13 },
+};
+const demoGeocoder: Geocoder = {
+  async find(query) {
+    return SAMPLE_PLACES[query.trim().toLowerCase().split(",")[0]!.trim()] ?? null;
+  },
+};
 
 // Sample rates (units per US dollar), so demo mode never touches the network.
 const PER_USD: Record<string, number> = { USD: 1, EUR: 0.89, GBP: 0.76, INR: 94.75, JPY: 152.4, AUD: 1.52, CAD: 1.39, SGD: 1.29, THB: 32.6, CHF: 0.8 };

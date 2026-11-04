@@ -1,6 +1,13 @@
 export type ItemKind = "flight" | "stay" | "activity" | "transport" | "plan";
 export type Visibility = "private" | "shared";
 
+/** Where a trip goes, with the coordinates looked up once for it (used for the weather). */
+export interface TripDestination {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
 /** A trip item (mirrors the `items` table). Times are ISO instants; `tz` is the IANA zone local to the item's location. */
 export interface Item {
   id: string;
@@ -13,6 +20,8 @@ export interface Item {
   startsAt: string;
   endsAt: string | null;
   tz: string;
+  /** Zone the end time is local to, when it differs from `tz` (a flight that lands in another zone). Missing or null means `tz`. */
+  endTz?: string | null;
   title: string;
   locationUrl: string | null;
   details: Record<string, unknown>;
@@ -50,6 +59,34 @@ export interface MemberInfo extends MemberRef {
   displayName: string;
 }
 
+/** One choice in a poll. Options keep the order they were written in. */
+export interface PollOption {
+  id: string;
+  label: string;
+}
+
+/** A question the group answers by voting (mirrors the `polls` and `poll_options` tables). */
+export interface Poll {
+  id: string;
+  tripId: string;
+  /** Null once the person who asked has deleted their account. */
+  createdBy: string | null;
+  question: string;
+  /** Members may choose several options. Otherwise each member chooses one. */
+  multiple: boolean;
+  /** Closed polls take no more votes. */
+  closed: boolean;
+  createdAt: string;
+  options: PollOption[];
+}
+
+/** One member's choice of one option. */
+export interface Vote {
+  pollId: string;
+  optionId: string;
+  userId: string;
+}
+
 /** Everything the app keeps on the device for one trip, so it works with no signal. */
 export interface TripSnapshot {
   trip: {
@@ -57,6 +94,7 @@ export interface TripSnapshot {
     name: string;
     startDate: string | null;
     endDate: string | null;
+    destination?: TripDestination | null;
     /** The one currency every bill is added up in. Set by the trip's first expense; absent on copies saved before expenses existed. */
     baseCurrency?: string | null;
   };
@@ -64,6 +102,9 @@ export interface TripSnapshot {
   items: Item[];
   rsvps: { itemId: string; userId: string }[];
   documents: TripDocument[];
+  /** Missing on copies saved before polls existed. */
+  polls?: Poll[];
+  votes?: Vote[];
   /** Absent on copies saved before expenses existed. */
   guests?: TripGuest[];
   expenses?: ExpenseRecord[];
@@ -89,6 +130,8 @@ export interface ItemValues {
   startsAt: string;
   endsAt: string | null;
   tz: string;
+  /** Zone the end time is entered in, when it differs from `tz`. */
+  endTz?: string | null;
   locationUrl: string | null;
   visibility: Visibility;
   groupItem: boolean;

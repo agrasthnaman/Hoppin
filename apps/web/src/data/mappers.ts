@@ -9,6 +9,7 @@ import {
   type ItemKind,
   type MemberInfo,
   type MembershipStatus,
+  type Poll,
   type TripDocument,
   type TripSnapshot,
   type Visibility,
@@ -20,6 +21,9 @@ export interface TripRow {
   name: string;
   start_date: string | null;
   end_date: string | null;
+  destination?: string | null;
+  destination_lat?: number | null;
+  destination_lon?: number | null;
   base_currency?: string | null;
 }
 export interface MemberRow {
@@ -43,6 +47,7 @@ export interface ItemRow {
   starts_at: string;
   ends_at: string | null;
   tz: string;
+  end_tz?: string | null;
   title: string;
   location_url: string | null;
   details: Record<string, unknown> | null;
@@ -67,11 +72,16 @@ export interface DocumentRow {
 const iso = (value: string) => new Date(value).toISOString();
 
 export function tripFromRow(row: TripRow): TripSnapshot["trip"] {
+  const destination =
+    row.destination && typeof row.destination_lat === "number" && typeof row.destination_lon === "number"
+      ? { name: row.destination, lat: row.destination_lat, lon: row.destination_lon }
+      : null;
   return {
     id: row.id,
     name: row.name,
     startDate: row.start_date,
     endDate: row.end_date,
+    destination,
     ...(row.base_currency !== undefined ? { baseCurrency: row.base_currency } : {}),
   };
 }
@@ -91,6 +101,7 @@ export function itemFromRow(row: ItemRow): Item {
     startsAt: iso(row.starts_at),
     endsAt: row.ends_at ? iso(row.ends_at) : null,
     tz: row.tz,
+    endTz: row.end_tz ?? null,
     title: row.title,
     locationUrl: row.location_url,
     details: row.details ?? {},
@@ -110,6 +121,46 @@ export function documentFromRow(row: DocumentRow): TripDocument {
     kind: row.kind,
     fileName: fileNameFromPath(row.storage_path),
   };
+}
+
+export interface PollRow {
+  id: string;
+  trip_id: string;
+  created_by: string | null;
+  question: string;
+  multiple: boolean;
+  closed_at: string | null;
+  created_at: string;
+}
+export interface PollOptionRow {
+  id: string;
+  poll_id: string;
+  label: string;
+  position: number;
+}
+export interface PollVoteRow {
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+}
+
+/** Polls with their options in the order they were written. Oldest poll first. */
+export function pollsFromRows(polls: PollRow[], options: PollOptionRow[]): Poll[] {
+  return polls
+    .map((row) => ({
+      id: row.id,
+      tripId: row.trip_id,
+      createdBy: row.created_by,
+      question: row.question,
+      multiple: row.multiple,
+      closed: row.closed_at !== null,
+      createdAt: iso(row.created_at),
+      options: options
+        .filter((o) => o.poll_id === row.id)
+        .sort((a, b) => a.position - b.position)
+        .map((o) => ({ id: o.id, label: o.label })),
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 export interface GuestRow {
@@ -200,6 +251,9 @@ export interface SnapshotRows {
   items: ItemRow[];
   rsvps: RsvpRow[];
   documents: DocumentRow[];
+  polls?: PollRow[];
+  pollOptions?: PollOptionRow[];
+  pollVotes?: PollVoteRow[];
   guests?: GuestRow[];
   expenses?: ExpenseRow[];
   shares?: ExpenseShareRow[];
@@ -219,6 +273,12 @@ export function assembleSnapshot(rows: SnapshotRows): TripSnapshot {
     items,
     rsvps: rows.rsvps.map((r) => ({ itemId: r.item_id, userId: r.user_id })),
     documents: rows.documents.map(documentFromRow),
+    ...(rows.polls
+      ? {
+          polls: pollsFromRows(rows.polls, rows.pollOptions ?? []),
+          votes: (rows.pollVotes ?? []).map((v) => ({ pollId: v.poll_id, optionId: v.option_id, userId: v.user_id })),
+        }
+      : {}),
   };
   if (!rows.expenses) return snapshot;
   const sharesBy = new Map<string, ExpenseShareRow[]>();

@@ -33,7 +33,7 @@ It runs in plain Node, not the simulated browser (jsdom corrupts file uploads). 
 ## Applying a new migration to a Supabase project
 Paste the file into the project's SQL editor, or send it through the Management API `database/query` endpoint with an access token. Run migrations in filename order. Test them first against the in-memory database (`npm test -w supabase`).
 
-**Pending on dev: `005_expenses.sql`** (issue #20: expenses, splits, guests and the Money screen). Apply it **before** publishing a build that includes the Money screen: the app reads the new tables when it loads a trip, so a new build against a database without them cannot load trips. It only depends on `001`, so applying it after `010` is fine (tested both ways).
+**Pending on dev: `005_expenses.sql`** (issue #20: expenses, splits, guests and the Money screen). Apply it **before** publishing a build that includes the Money screen: the app reads the new tables when it loads a trip, so a new build against a database without them cannot load trips. It only depends on `001`, so applying it after the later migrations (up to `013`) is fine (tested both ways).
 
 ## Known limits and to do
 - **Email:** Supabase's built-in email is limited to **2 messages per hour** (and the free plan cannot change the email design), so a group cannot sign in with it. Before real use, follow [email-setup.md](email-setup.md).

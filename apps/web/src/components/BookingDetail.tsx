@@ -34,7 +34,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
   const mayEdit = canEdit(item, member);
   const notes = typeof item.details.notes === "string" ? item.details.notes : "";
   const date = new Intl.DateTimeFormat("en-GB", { timeZone: item.tz, weekday: "long", day: "numeric", month: "long" }).format(new Date(item.startsAt));
-  const time = formatTimeRange(item.startsAt, item.endsAt, item.tz);
+  const time = formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz);
 
   async function pick(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;
@@ -76,6 +76,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
         </div>
         <p className="text-sm text-muted">{date}</p>
         <p>{time}</p>
+        {item.endTz && item.endTz !== item.tz && <p className="text-xs text-muted">Starts in {item.tz} time, ends in {item.endTz} time.</p>}
         {item.ownerId !== member.userId && <p className="text-sm text-muted">Added by {people[item.ownerId]?.name ?? "someone"}</p>}
         {item.locationUrl && (
           <a href={item.locationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-link underline">

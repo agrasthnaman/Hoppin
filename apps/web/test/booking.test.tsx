@@ -286,3 +286,60 @@ describe("ItemForm: choosing what kind of plan it is", () => {
     expect(screen.getByText("Times are in Asia/Kolkata.")).toBeInTheDocument();
   });
 });
+
+describe("flight across time zones", () => {
+  // Delhi 23:00 IST on 1 Dec, landing 04:30 GMT on 2 Dec.
+  const delhiLondon: Item = { ...flight, startsAt: "2026-12-01T17:30:00.000Z", endsAt: "2026-12-02T04:30:00.000Z", tz: IST, endTz: "Europe/London", title: "DEL to LHR" };
+
+  it("the booking shows the departure in IST and the arrival in London time", () => {
+    render(<BookingDetail item={delhiLondon} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={vi.fn()} onOpenDocument={vi.fn()} />);
+    expect(screen.getByText("23:00 – 2 Dec 04:30")).toBeInTheDocument();
+    expect(screen.getByText("Starts in Asia/Kolkata time, ends in Europe/London time.")).toBeInTheDocument();
+  });
+
+  it("the form keeps the arrival zone and shows the end time in it", () => {
+    render(<ItemForm initial={delhiLondon} tz={IST} onSubmit={vi.fn()} onCancel={() => {}} />);
+    expect(screen.getByLabelText("Arrival time zone")).toHaveValue("Europe/London");
+    expect(screen.getByLabelText("Ends")).toHaveValue("2026-12-02T04:30");
+  });
+
+  it("saves a flight with two zones: start in the departure zone, end in the arrival zone", async () => {
+    const onSubmit = vi.fn();
+    render(<ItemForm tz={IST} onSubmit={onSubmit} onCancel={() => {}} />);
+    await userEvent.type(screen.getByLabelText("Title"), "DEL to LHR");
+    await userEvent.click(screen.getByRole("radio", { name: "Flight" }));
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T23:00");
+    await userEvent.type(screen.getByLabelText("Ends"), "2026-12-02T04:30");
+    const zone = screen.getByLabelText("Arrival time zone");
+    await userEvent.clear(zone);
+    await userEvent.type(zone, "Europe/London");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ startsAt: "2026-12-01T17:30:00.000Z", endsAt: "2026-12-02T04:30:00.000Z", tz: IST, endTz: "Europe/London" }),
+    );
+  });
+
+  it("rejects an arrival zone that does not exist", async () => {
+    const onSubmit = vi.fn();
+    render(<ItemForm tz={IST} onSubmit={onSubmit} onCancel={() => {}} />);
+    await userEvent.type(screen.getByLabelText("Title"), "DEL to LHR");
+    await userEvent.click(screen.getByRole("radio", { name: "Flight" }));
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T23:00");
+    const zone = screen.getByLabelText("Arrival time zone");
+    await userEvent.clear(zone);
+    await userEvent.type(zone, "Mars/Olympus");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Enter a time zone like Europe/London")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("only flights and transport ask for an arrival zone, and the same zone is saved as none", async () => {
+    const onSubmit = vi.fn();
+    render(<ItemForm tz={IST} onSubmit={onSubmit} onCancel={() => {}} />);
+    expect(screen.queryByLabelText("Arrival time zone")).toBeNull();
+    await userEvent.type(screen.getByLabelText("Title"), "Museum");
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-01T10:00");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ tz: IST, endTz: null }));
+  });
+});

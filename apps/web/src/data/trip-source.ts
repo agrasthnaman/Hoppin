@@ -8,6 +8,9 @@ import {
   type GuestRow,
   type ItemRow,
   type MemberRow,
+  type PollOptionRow,
+  type PollRow,
+  type PollVoteRow,
   type ProfileRow,
   type RsvpRow,
   type TripRow,
@@ -42,10 +45,13 @@ export function createTripSource(client: ReadClient): TripSource {
       const [trip] = await read<TripRow>(client.from("trips").select().eq("id", tripId));
       if (!trip) return { status: "no-access" };
 
-      const [members, items, documents, guests, expenses, shares, expenseLog] = await Promise.all([
+      const [members, items, documents, polls, pollOptions, pollVotes, guests, expenses, shares, expenseLog] = await Promise.all([
         read<MemberRow>(client.from("members").select().eq("trip_id", tripId)),
         read<ItemRow>(client.from("items").select().eq("trip_id", tripId)),
         read<DocumentRow>(client.from("documents").select().eq("trip_id", tripId)),
+        read<PollRow>(client.from("polls").select().eq("trip_id", tripId)),
+        read<PollOptionRow>(client.from("poll_options").select().eq("trip_id", tripId)),
+        read<PollVoteRow>(client.from("poll_votes").select().eq("trip_id", tripId)),
         read<GuestRow>(client.from("trip_guests").select().eq("trip_id", tripId)),
         read<ExpenseRow>(client.from("expenses").select().eq("trip_id", tripId)),
         read<ExpenseShareRow>(client.from("expense_shares").select().eq("trip_id", tripId)),
@@ -55,7 +61,10 @@ export function createTripSource(client: ReadClient): TripSource {
         members.length ? read<ProfileRow>(client.from("profiles").select().in("user_id", members.map((m) => m.user_id))) : [],
         items.length ? read<RsvpRow>(client.from("rsvps").select().in("item_id", items.map((i) => i.id))) : [],
       ]);
-      return { status: "ok", snapshot: assembleSnapshot({ trip, members, profiles, items, rsvps, documents, guests, expenses, shares, expenseLog }) };
+      return {
+        status: "ok",
+        snapshot: assembleSnapshot({ trip, members, profiles, items, rsvps, documents, polls, pollOptions, pollVotes, guests, expenses, shares, expenseLog }),
+      };
     },
   };
 }

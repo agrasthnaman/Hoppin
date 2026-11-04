@@ -28,7 +28,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 ## Files that cause merge conflicts (be careful)
 - `apps/web/src/app/routes.tsx`: the route table. Add your one line at the end of the list and rebase often.
 - `packages/core/src/types.ts` and `packages/core/src/index.ts`: only append. Do not reorder or rename existing exports.
-- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 006 notifications, 011 and up free (005 expenses and 010 account are taken). Never edit a migration that is already applied (001, 007, 008, 009, 010): add a new one. Add a test in `supabase/test/` first.
+- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 006 notifications, 014 and up free (005 expenses, 010 account, 011 arrival time zone, 012 polls and 013 trip destination are taken). Never edit a migration that is already applied (001, 007, 008, 009, 010): add a new one. Add a test in `supabase/test/` first.
 - `apps/web/src/app/services.tsx` (the `Actions` list) and `apps/web/test/helpers.tsx` (the fake services): add at the end.
 
 ## Get set up
@@ -50,3 +50,6 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 - Documents cannot be added offline (plans, edits, replies and money can).
 - The iPhone offline check (#16) has not been done on a real phone.
 - Email sending is limited until a custom email service is set up (#1).
+
+## Weather and privacy
+Each day shows a forecast for the trip's destination (set when creating the trip, or by an organizer under More). The place name you type is sent once to Open-Meteo's free search to get its coordinates, which are saved with the trip; after that only the coordinates and the date are sent to Open-Meteo for the forecast. No names, emails or trip details leave the app. Forecasts are kept on the device so the last one still shows offline ("Saved forecast, updated 14:05"); days more than 16 days ahead say "not available yet". A trip without a destination shows no weather. Migration `013_trip_destination.sql` adds the destination columns and must be applied before the app that sends them is deployed.

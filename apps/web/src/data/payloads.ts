@@ -18,6 +18,7 @@ export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormV
     starts_at: values.startsAt,
     ends_at: values.endsAt,
     tz: values.tz,
+    end_tz: values.endTz ?? null,
     title: values.title,
     location_url: values.locationUrl,
     details: details({}, values.notes),

@@ -1,6 +1,6 @@
 import { inputClass } from "../lib/forms";
 import { formatSyncedAgo, localDate } from "@hoppin/core";
-import { UserRound, Users } from "lucide-react";
+import { UserRound, Users, Vote } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
@@ -8,6 +8,7 @@ import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
 import { AppearanceCard } from "../components/AppearanceCard";
 import { JoinTripForm } from "../components/JoinTripForm";
+import { DestinationCard } from "../components/DestinationCard";
 import { DraftList } from "../components/DraftList";
 import { HomeCurrencyCard } from "../components/HomeCurrencyCard";
 import { Button } from "../components/ui/Button";
@@ -20,7 +21,7 @@ import { wipeTrip } from "../offline/sync";
 /** Offline controls and sign out. */
 export function MoreScreen() {
   const trip = useTripData();
-  const { clock, actions, db } = useServices();
+  const { clock, actions, db, geocoder } = useServices();
   const navigate = useNavigate();
   const online = useOnline();
   const [leaving, setLeaving] = useState(false);
@@ -60,6 +61,10 @@ export function MoreScreen() {
         <Link to={`/trips/${trip.tripId}/members`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <Users aria-hidden="true" className="size-5 text-muted" />
           Members
+        </Link>
+        <Link to={`/trips/${trip.tripId}/polls`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
+          <Vote aria-hidden="true" className="size-5 text-muted" />
+          Polls
         </Link>
         <Link to="/account" className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <UserRound aria-hidden="true" className="size-5 text-muted" />
@@ -122,6 +127,17 @@ export function MoreScreen() {
 
         return (
           <>
+            {isOrganizer && (
+              <DestinationCard
+                current={trip.snapshot.trip.destination}
+                online={online}
+                lookup={(query) => geocoder.find(query)}
+                onSave={async (destination) => {
+                  await actions.setTripDestination(trip.tripId, destination);
+                  await trip.refresh();
+                }}
+              />
+            )}
             <Card className="flex flex-col gap-3">
               <h3 className="font-semibold">This trip</h3>
               {!online && <p className="text-sm text-muted">Connect to the internet to leave or delete a trip.</p>}

@@ -32,6 +32,7 @@ describe("row mappers", () => {
       startsAt: "2026-12-01T04:30:00.000Z",
       endsAt: "2026-12-03T06:00:00.000Z",
       tz: "Asia/Kolkata",
+      endTz: null,
       title: "Beach hotel",
       locationUrl: "https://x.example",
       details: { notes: "n" },
@@ -52,6 +53,7 @@ describe("row mappers", () => {
       name: "Goa",
       startDate: "2026-12-01",
       endDate: null,
+      destination: null,
     });
     expect(memberFromRow({ trip_id: "t1", user_id: "u1", role: "organizer", status: "approved", can_edit_all: false }, "Neha")).toEqual({
       userId: "u1",
@@ -102,7 +104,7 @@ describe("assembleSnapshot", () => {
     const snap = assembleSnapshot(base);
     expect(snap.items.map((i) => i.id)).toEqual(["a", "b"]);
     expect(snap.rsvps).toEqual([{ itemId: "a", userId: "u2" }]);
-    expect(snap.trip).toEqual({ id: "t1", name: "Goa", startDate: null, endDate: null });
+    expect(snap.trip).toEqual({ id: "t1", name: "Goa", startDate: null, endDate: null, destination: null });
   });
 });
 
@@ -129,6 +131,7 @@ describe("item write payloads", () => {
       starts_at: "2026-12-01T04:30:00.000Z",
       ends_at: null,
       tz: "Asia/Kolkata",
+      end_tz: null,
       title: "Museum",
       location_url: "https://maps.example/museum",
       details: { notes: "Bring tickets" },
@@ -165,5 +168,28 @@ describe("item server time and chosen ids", () => {
     const values: ItemFormValues = { kind: "activity", title: "Dinner", startsAt: "2026-12-01T14:00:00.000Z", endsAt: null, tz: "Asia/Kolkata", locationUrl: null, visibility: "shared", groupItem: false, notes: "" };
     expect(itemInsertRow("t1", "u1", values, "chosen-id").id).toBe("chosen-id");
     expect(itemInsertRow("t1", "u1", values)).not.toHaveProperty("id");
+  });
+});
+
+describe("arrival time zone", () => {
+  it("is read from the row and written back", () => {
+    expect(itemFromRow(row({ end_tz: "Europe/London" })).endTz).toBe("Europe/London");
+    const values: ItemFormValues = { kind: "flight", title: "DEL to LHR", startsAt: "2026-12-01T17:30:00.000Z", endsAt: "2026-12-02T04:30:00.000Z", tz: "Asia/Kolkata", endTz: "Europe/London", locationUrl: null, visibility: "shared", groupItem: true, notes: "" };
+    expect(itemInsertRow("t1", "u1", values).end_tz).toBe("Europe/London");
+  });
+});
+
+describe("trip destination", () => {
+  it("is read from the row when the name and both coordinates are there", () => {
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null, destination: "Goa, India", destination_lat: 15.49, destination_lon: 73.83 }).destination).toEqual({
+      name: "Goa, India",
+      lat: 15.49,
+      lon: 73.83,
+    });
+  });
+
+  it("is none when any part is missing", () => {
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null, destination: "Goa", destination_lat: null, destination_lon: 73.83 }).destination).toBeNull();
+    expect(tripFromRow({ id: "t1", name: "Goa", start_date: null, end_date: null }).destination).toBeNull();
   });
 });
