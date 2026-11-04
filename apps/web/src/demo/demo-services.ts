@@ -1,15 +1,20 @@
 import {
   addDays,
   applyValues,
+  applyVote,
+  canManagePoll,
+  validatePollDraft,
   itemFromValues,
   localDate,
   zonedTimeToInstant,
   type Item,
   type ItemValues,
   type MemberInfo,
+  type Poll,
   type RateProvider,
   type SnapshotResult,
   type TripDocument,
+  type Vote,
 } from "@hoppin/core";
 import type { Services } from "../app/services";
 import { ConflictError } from "../data/writes";
@@ -42,6 +47,8 @@ interface DemoTrip {
   rsvps: { itemId: string; userId: string }[];
   documents: TripDocument[];
   invites: Invite[];
+  polls: Poll[];
+  votes: Vote[];
 }
 
 const ME = "demo-me";
@@ -88,6 +95,16 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     rsvps: [{ itemId: "g-museum", userId: "demo-neha" }],
     documents: [{ id: "d-pass", tripId: "demo-goa", itemId: "g-flight", ownerId: ME, scope: "shared", storagePath: "demo-goa/demo-me/d-pass-boarding-passes.pdf", kind: "ticket", fileName: "boarding-passes.pdf" }],
     invites: [],
+    polls: [
+      {
+        id: "demo-poll-beach", tripId: "demo-goa", createdBy: "demo-riya", question: "Which beach for Thursday?", multiple: false, closed: false, createdAt: stamp(),
+        options: [{ id: "demo-beach-baga", label: "Baga" }, { id: "demo-beach-palolem", label: "Palolem" }, { id: "demo-beach-anjuna", label: "Anjuna" }],
+      },
+    ],
+    votes: [
+      { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-riya" },
+      { pollId: "demo-poll-beach", optionId: "demo-beach-palolem", userId: "demo-neha" },
+    ],
   };
   files.set("d-pass", { bytes: new TextEncoder().encode("Sample boarding passes (demo file)").buffer as ArrayBuffer, type: "text/plain" });
 
@@ -105,6 +122,8 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     rsvps: [],
     documents: [],
     invites: [],
+    polls: [],
+    votes: [],
   };
   const trips: DemoTrip[] = [goa, manali];
   const find = (tripId: string) => trips.find((t) => t.id === tripId);
@@ -164,6 +183,8 @@ export function createDemoServices(options: DemoOptions = {}): Services {
             items: t.items.filter((i) => i.visibility === "shared" || i.ownerId === ME),
             rsvps: t.rsvps,
             documents: t.documents,
+            polls: t.polls,
+            votes: t.votes.filter((v) => t.members.some((m) => m.userId === v.userId && m.status === "approved")),
           },
         }) as SnapshotResult;
       },
@@ -226,6 +247,40 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       createItem: writer.createItem,
       updateItem: writer.updateItem,
       setRsvp: writer.setRsvp,
+      async createPoll(tripId, question, multiple, options) {
+        const t = find(tripId);
+        if (!t || meIn(t)?.status !== "approved") throw new Error("only members of this trip can ask a question");
+        const problem = validatePollDraft(question, options);
+        if (problem) throw new Error(problem);
+        const id = `demo-poll-${(counter += 1)}`;
+        const labels = options.map((o) => o.trim()).filter(Boolean);
+        t.polls.push({
+          id, tripId, createdBy: ME, question: question.trim(), multiple, closed: false, createdAt: stamp(),
+          options: labels.map((label, i) => ({ id: `${id}-o${i}`, label })),
+        });
+        return id;
+      },
+      async castVote(pollId, optionIds) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        if (!t || !poll) throw new Error("poll not found");
+        t.votes = applyVote(t.votes, poll, ME, optionIds);
+      },
+      async closePoll(pollId) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        const me = t && meIn(t);
+        if (!t || !poll || !me || !canManagePoll(poll, ME, me.role)) throw new Error("only the person who asked or an organizer can close this poll");
+        poll.closed = true;
+      },
+      async deletePoll(pollId) {
+        const t = trips.find((x) => x.polls.some((p) => p.id === pollId));
+        const poll = t?.polls.find((p) => p.id === pollId);
+        const me = t && meIn(t);
+        if (!t || !poll || !me || !canManagePoll(poll, ME, me.role)) throw new Error("Could not delete the poll");
+        t.polls = t.polls.filter((p) => p.id !== pollId);
+        t.votes = t.votes.filter((v) => v.pollId !== pollId);
+      },
       async uploadDocument(file, meta) {
         const t = find(meta.tripId);
         if (!t) throw new Error("trip not found");
@@ -243,7 +298,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       },
       async createTrip({ name, startDate, endDate }) {
         const id = `demo-${(counter += 1)}`;
-        trips.unshift({ id, name, startDate, endDate, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [] });
+        trips.unshift({ id, name, startDate, endDate, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [], polls: [], votes: [] });
         return id;
       },
       async listInvites(tripId) {

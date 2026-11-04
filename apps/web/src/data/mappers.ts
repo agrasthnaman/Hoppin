@@ -5,6 +5,7 @@ import {
   type ItemKind,
   type MemberInfo,
   type MembershipStatus,
+  type Poll,
   type TripDocument,
   type TripSnapshot,
   type Visibility,
@@ -103,6 +104,46 @@ export function documentFromRow(row: DocumentRow): TripDocument {
   };
 }
 
+export interface PollRow {
+  id: string;
+  trip_id: string;
+  created_by: string | null;
+  question: string;
+  multiple: boolean;
+  closed_at: string | null;
+  created_at: string;
+}
+export interface PollOptionRow {
+  id: string;
+  poll_id: string;
+  label: string;
+  position: number;
+}
+export interface PollVoteRow {
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+}
+
+/** Polls with their options in the order they were written. Oldest poll first. */
+export function pollsFromRows(polls: PollRow[], options: PollOptionRow[]): Poll[] {
+  return polls
+    .map((row) => ({
+      id: row.id,
+      tripId: row.trip_id,
+      createdBy: row.created_by,
+      question: row.question,
+      multiple: row.multiple,
+      closed: row.closed_at !== null,
+      createdAt: iso(row.created_at),
+      options: options
+        .filter((o) => o.poll_id === row.id)
+        .sort((a, b) => a.position - b.position)
+        .map((o) => ({ id: o.id, label: o.label })),
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
 export interface SnapshotRows {
   trip: TripRow;
   members: MemberRow[];
@@ -110,6 +151,9 @@ export interface SnapshotRows {
   items: ItemRow[];
   rsvps: RsvpRow[];
   documents: DocumentRow[];
+  polls?: PollRow[];
+  pollOptions?: PollOptionRow[];
+  pollVotes?: PollVoteRow[];
 }
 
 /** Builds the app's copy of a trip from the rows of one load. Organizer first, then members by name. */
@@ -125,5 +169,11 @@ export function assembleSnapshot(rows: SnapshotRows): TripSnapshot {
     items,
     rsvps: rows.rsvps.map((r) => ({ itemId: r.item_id, userId: r.user_id })),
     documents: rows.documents.map(documentFromRow),
+    ...(rows.polls
+      ? {
+          polls: pollsFromRows(rows.polls, rows.pollOptions ?? []),
+          votes: (rows.pollVotes ?? []).map((v) => ({ pollId: v.poll_id, optionId: v.option_id, userId: v.user_id })),
+        }
+      : {}),
   };
 }
