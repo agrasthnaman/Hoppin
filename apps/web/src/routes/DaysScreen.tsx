@@ -7,6 +7,7 @@ import { goingFrom, peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { DayStrip } from "../components/DayStrip";
+import { DayWeather } from "../components/DayWeather";
 import { DayView } from "../components/DayView";
 import { ItemForm } from "../components/ItemForm";
 import { Button } from "../components/ui/Button";
@@ -62,6 +63,8 @@ export function DaysScreen() {
           </Link>
         </div>
       )}
+
+      <DayWeather destination={snapshot.trip.destination} date={date} />
 
       <m.div
         className="min-h-[60dvh]" // the whole area is swipeable, even on a quiet day

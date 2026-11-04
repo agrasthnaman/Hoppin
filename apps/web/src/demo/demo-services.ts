@@ -13,6 +13,7 @@ import {
   type Poll,
   type RateProvider,
   type SnapshotResult,
+  type TripDestination,
   type TripDocument,
   type Vote,
 } from "@hoppin/core";
@@ -20,6 +21,7 @@ import type { Services } from "../app/services";
 import { ConflictError } from "../data/writes";
 import { openOfflineDb } from "../offline/db";
 import { createRateService, createRateStore, RatesUnavailableError } from "../providers/rates";
+import { createWeatherService, createWeatherStore, type Geocoder, type WeatherProvider } from "../providers/weather";
 
 /** A pretend server living in memory, so the whole app can be tried with no accounts, no email and no network. */
 export interface DemoOptions {
@@ -42,6 +44,7 @@ interface DemoTrip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  destination?: TripDestination | null;
   members: MemberInfo[];
   items: Item[];
   rsvps: { itemId: string; userId: string }[];
@@ -77,6 +80,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     name: "Goa",
     startDate: base,
     endDate: addDays(base, 4),
+    destination: { name: "Goa, India", lat: 15.49, lon: 73.83 },
     members: [member(ME, "Aman", { role: "organizer" }), member("demo-riya", "Riya"), member("demo-neha", "Neha", { canEditAll: true }), member("demo-kabir", "Kabir", { status: "pending" })],
     items: [
       item("g-flight", "demo-goa", ME, { kind: "flight", title: "Delhi to Goa (IndiGo 6E 123)", startsAt: at(0, "06:30"), endsAt: at(0, "09:00"), locationUrl: "https://maps.google.com/?q=Goa+Airport", details: { notes: "Gate B12. Bags close 45 minutes before." } }),
@@ -178,7 +182,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
         return structuredClone({
           status: "ok",
           snapshot: {
-            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate },
+            trip: { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, destination: t.destination ?? null },
             members: t.members,
             items: t.items.filter((i) => i.visibility === "shared" || i.ownerId === ME),
             rsvps: t.rsvps,
@@ -296,10 +300,13 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       async listTrips() {
         return trips.filter((t) => meIn(t)?.status === "approved").map((t) => ({ id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate }));
       },
-      async createTrip({ name, startDate, endDate }) {
+      async createTrip({ name, startDate, endDate, destination }) {
         const id = `demo-${(counter += 1)}`;
-        trips.unshift({ id, name, startDate, endDate, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [], polls: [], votes: [] });
+        trips.unshift({ id, name, startDate, endDate, destination: destination ?? null, members: [member(ME, "Aman", { role: "organizer" })], items: [], rsvps: [], documents: [], invites: [], polls: [], votes: [] });
         return id;
+      },
+      async setTripDestination(tripId, destination) {
+        guardOrganizer(tripId).destination = destination;
       },
       async listInvites(tripId) {
         const now = Date.now();
@@ -354,8 +361,33 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     },
     clock: { now: () => (options.today ? Date.parse(zonedTimeToInstant(`${today}T12:00`, timeZone)) : Date.now()), timeZone },
     rates: createRateService({ provider: demoRates, store: createRateStore(null), source: "Sample" }),
+    weather: createWeatherService({ provider: demoWeather, store: createWeatherStore(null), now: () => Date.now() }),
+    geocoder: demoGeocoder,
   };
 }
+
+// Sample weather and places, so demo mode never touches the network.
+const SAMPLE_WEATHER = [
+  { hi: 31, lo: 24, summary: "Mostly clear" },
+  { hi: 30, lo: 23, summary: "Partly cloudy" },
+  { hi: 29, lo: 24, summary: "Showers" },
+  { hi: 32, lo: 25, summary: "Clear" },
+];
+const demoWeather: WeatherProvider = {
+  async forecast(_lat, _lon, date) {
+    return SAMPLE_WEATHER[Number(date.slice(-2)) % SAMPLE_WEATHER.length]!;
+  },
+};
+const SAMPLE_PLACES: Record<string, TripDestination> = {
+  goa: { name: "Goa, India", lat: 15.49, lon: 73.83 },
+  manali: { name: "Manali, India", lat: 32.24, lon: 77.19 },
+  london: { name: "London, United Kingdom", lat: 51.51, lon: -0.13 },
+};
+const demoGeocoder: Geocoder = {
+  async find(query) {
+    return SAMPLE_PLACES[query.trim().toLowerCase().split(",")[0]!.trim()] ?? null;
+  },
+};
 
 // Sample rates (units per US dollar), so demo mode never touches the network.
 const PER_USD: Record<string, number> = { USD: 1, EUR: 0.89, GBP: 0.76, INR: 94.75, JPY: 152.4, AUD: 1.52, CAD: 1.39, SGD: 1.29, THB: 32.6, CHF: 0.8 };

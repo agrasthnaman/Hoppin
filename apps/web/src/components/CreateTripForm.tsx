@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useState, type FormEvent } from "react";
+import type { TripDestination } from "@hoppin/core";
 import { draftBookingsFromText, tripSpan, type DraftBooking } from "../lib/booking-draft";
 import { inputClass } from "../lib/forms";
 import { Button } from "./ui/Button";
@@ -8,6 +9,8 @@ export interface NewTrip {
   name: string;
   startDate: string | null;
   endDate: string | null;
+  /** Where the trip goes, looked up once (for the weather). Null when none was given or it could not be found. */
+  destination: TripDestination | null;
   bookings: EditableBooking[];
 }
 
@@ -16,6 +19,19 @@ export type EditableBooking = DraftBooking & { file: File };
 export interface CreateTripFormProps {
   onSubmit: (trip: NewTrip) => Promise<void>;
   onCancel: () => void;
+  /** Turns the typed destination into coordinates. Without it the destination field is not shown. */
+  lookup?: (query: string) => Promise<TripDestination | null>;
+}
+
+type Match = { query: string; result: TripDestination | null | "failed" };
+
+/** What to tell the person about the destination they typed. */
+export function destinationHint(query: string, match: Match | null): string | null {
+  if (query.length < 2) return null;
+  if (!match || match.query !== query) return "Looking up…";
+  if (match.result === "failed") return "Couldn't check that place right now. The trip will be made without weather.";
+  if (match.result === null) return "Couldn't find that place. The trip will be made without weather.";
+  return `Weather will follow ${match.result.name}.`;
 }
 
 async function readBookings(files: File[]): Promise<EditableBooking[]> {
@@ -51,9 +67,11 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 /** Opens on a name and dates. A highlighted tab below switches to drafting the trip from booking PDFs. The person creating it becomes its organizer. */
-export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
+export function CreateTripForm({ onSubmit, onCancel, lookup }: CreateTripFormProps) {
   const filesId = useId();
   const [name, setName] = useState("");
+  const [place, setPlace] = useState("");
+  const [match, setMatch] = useState<Match | null>(null);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [datesTouched, setDatesTouched] = useState(false);
@@ -63,6 +81,19 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [path, setPath] = useState<"manual" | "documents">("manual");
+
+  // Look the place up a moment after typing stops, so the person sees what the weather will follow.
+  useEffect(() => {
+    const query = place.trim();
+    if (!lookup || query.length < 2) return;
+    const timer = setTimeout(() => {
+      lookup(query).then(
+        (result) => setMatch({ query, result }),
+        () => setMatch({ query, result: "failed" }),
+      );
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [place, lookup]);
 
   useEffect(() => {
     if (datesTouched || bookings.length === 0) return;
@@ -86,7 +117,14 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
     setSaving(true);
     setFailed(false);
     try {
-      await onSubmit({ name: name.trim(), startDate: start || null, endDate: end || null, bookings });
+      // A destination that can't be found never stops the trip from being made; it just has no weather.
+      const query = place.trim();
+      let destination: TripDestination | null = null;
+      if (lookup && query) {
+        if (match?.query === query) destination = match.result === "failed" ? null : match.result;
+        else destination = await lookup(query).catch(() => null);
+      }
+      await onSubmit({ name: name.trim(), startDate: start || null, endDate: end || null, destination, bookings });
     } catch {
       setFailed(true);
     } finally {
@@ -123,6 +161,25 @@ export function CreateTripForm({ onSubmit, onCancel }: CreateTripFormProps) {
           />
         )}
       </Field>
+      {lookup && (
+        <Field label="Destination (optional)">
+          {(id) => (
+            <>
+              <input
+                id={id}
+                autoComplete="off"
+                placeholder="Goa, India"
+                value={place}
+                onChange={(e) => setPlace(e.target.value)}
+                className={inputClass}
+              />
+              <span role="status" className="text-xs text-muted">
+                {destinationHint(place.trim(), match) ?? "Shows the weather forecast for each day."}
+              </span>
+            </>
+          )}
+        </Field>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Starts">
           {(id) => (
