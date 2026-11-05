@@ -46,7 +46,7 @@ export default function Docs() {
   const [person, setPerson] = useState("all");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
-  const [folded, setFolded] = useState<Set<ItemKind>>(new Set());
+  const [folded, setFolded] = useState<Set<ItemKind>>(() => new Set(KIND_ORDER));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const gate = tripGate(trip);
@@ -169,12 +169,13 @@ export default function Docs() {
           KIND_ORDER.map((kind) => {
             const group = shown.filter((item) => item.kind === kind).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
             if (group.length === 0) return null;
+            const closed = needle.length === 0 && person === "all" && folded.has(kind);
             return (
               <div key={kind} className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold text-muted">
                   <button
                     type="button"
-                    aria-expanded={!folded.has(kind)}
+                    aria-expanded={!closed}
                     aria-controls={`group-${kind}`}
                     onClick={() =>
                       setFolded((current) => {
@@ -185,14 +186,14 @@ export default function Docs() {
                     }
                     className="flex min-h-11 w-full items-center gap-2 rounded-card px-1 text-left hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
                   >
-                    <ChevronDown aria-hidden="true" className={`size-4 shrink-0 transition-transform ${folded.has(kind) ? "-rotate-90" : ""}`} />
+                    <ChevronDown aria-hidden="true" className={`size-4 shrink-0 transition-transform ${closed ? "-rotate-90" : ""}`} />
                     {KIND_HEADING[kind]}
                     <span aria-hidden="true" className="rounded-full bg-raised px-2 py-0.5 text-xs font-medium">
                       {group.length}
                     </span>
                   </button>
                 </h3>
-                <ul id={`group-${kind}`} hidden={folded.has(kind)} className="grid items-start gap-2 sm:grid-cols-2">
+                <ul id={`group-${kind}`} hidden={closed} className="grid items-start gap-2 sm:grid-cols-2">
                   {group.map((item) => {
                     const day = dayOf(item);
                     const attached = visible.filter((doc) => doc.itemId === item.id);
