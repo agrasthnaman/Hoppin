@@ -1,5 +1,5 @@
 import { formatSyncedAgo, syncBanners, type SyncState } from "@hoppin/core";
-import { CalendarCheck, CalendarDays, FileText, Menu, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarCheck, CalendarDays, FileText, MapPin, Menu, Wallet, type LucideIcon } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { cn } from "../lib/cn";
@@ -46,7 +46,10 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
           "md:sticky md:inset-auto md:top-0 md:z-30 md:h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:self-start md:overflow-y-auto md:rounded-none md:p-4 md:pt-6 md:shadow-none",
       )}
     >
-      <p className="hp-mark mb-10 hidden px-4 text-3xl md:block">hoppin</p>
+      <p className="hp-mark mb-10 hidden px-4 md:flex">
+        <MapPin aria-hidden="true" size={22} strokeWidth={1.7} />
+        hoppin
+      </p>
       {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}

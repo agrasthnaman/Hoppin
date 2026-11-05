@@ -49,6 +49,7 @@ describe("AppShell navigation", () => {
     expect(within(nav).getByRole("link", { name: "Days" })).not.toHaveAttribute("aria-current");
     const mark = within(nav).getByText("hoppin");
     expect(mark).toHaveClass("hp-mark");
+    expect(mark.querySelector("svg")).not.toBeNull(); // the same map pin as the landing page logo
     expect(within(nav).queryByText("Goa")).toBeNull();
     expect(screen.getByText("Goa")).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "More" })).toHaveClass("md:mt-auto");
