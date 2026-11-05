@@ -53,6 +53,7 @@ export function valuesOf(item: Item): ItemValues {
     visibility: item.visibility,
     groupItem: item.groupItem,
     notes: typeof item.details.notes === "string" ? item.details.notes : "",
+    ...(typeof item.details.pollId === "string" ? { pollId: item.details.pollId } : {}),
   };
 }
 
@@ -76,8 +77,13 @@ export function applyValues(item: Item, values: ItemValues): Item {
     locationUrl: values.locationUrl,
     visibility: values.visibility,
     groupItem: values.groupItem,
-    details: values.notes ? { ...rest, notes: values.notes } : rest,
+    details: withPoll(values.notes ? { ...rest, notes: values.notes } : rest, values.pollId),
   };
+}
+
+function withPoll(details: Record<string, unknown>, pollId: string | undefined): Record<string, unknown> {
+  if (!pollId) return details;
+  return { ...details, pollId };
 }
 
 /** What to show for an item: the saved item with this device's waiting edits on top (oldest first). */
@@ -153,6 +159,7 @@ const FIELD_LABEL: Record<EditableField, string> = {
   visibility: "visibility",
   groupItem: "audience",
   notes: "notes",
+  pollId: "poll",
 };
 
 export function fieldLabel(field: EditableField): string {

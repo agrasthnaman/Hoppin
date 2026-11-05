@@ -25,7 +25,7 @@ describe("reset password page", () => {
   it("explains an expired or already-used link when nobody is signed in", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/reset-password", services);
-    expect(await screen.findByText(/expired or was already used/)).toBeInTheDocument();
+    expect(await screen.findByText(/already been used, or it is more than 24 hours old/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to sign in" })).toHaveAttribute("href", "/sign-in");
   });
 

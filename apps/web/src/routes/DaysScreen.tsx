@@ -94,6 +94,8 @@ export function DaysScreen() {
         onJoin={(id) => void trip.setGoing(id, true)}
         canEditItem={(item) => (member ? canEdit(item, member) : false)}
         onEdit={setEditing}
+        polls={snapshot.polls ?? []}
+        votes={snapshot.votes ?? []}
         headerAction={
           <Button onClick={() => setAdding(true)}>
             <Plus aria-hidden="true" className="size-4" />

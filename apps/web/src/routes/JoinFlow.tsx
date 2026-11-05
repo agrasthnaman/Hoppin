@@ -47,7 +47,7 @@ export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, a
     else if (join.kind === "error")
       body = (
         <div className="flex flex-col items-start gap-3">
-          <p>Something went wrong while joining.</p>
+          <p>We couldn't finish joining just now. Please try again.</p>
           <Button onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
         </div>
       );

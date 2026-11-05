@@ -82,6 +82,20 @@ export function canManagePoll(poll: Poll, userId: string, role: "organizer" | "m
  * Starting values for the plan that a poll's winner becomes: a shared group plan with the winning option as its
  * title. The time is chosen in the plan form, so only the parts a poll can know are filled in here.
  */
-export function winnerPlanDefaults(poll: Poll, winner: TallyLine): Pick<ItemValues, "title" | "kind" | "groupItem" | "visibility" | "notes"> {
-  return { title: winner.label, kind: "activity", groupItem: true, visibility: "shared", notes: poll.question };
+export function winnerPlanDefaults(poll: Poll, winner: TallyLine): Pick<ItemValues, "title" | "kind" | "groupItem" | "visibility" | "notes" | "pollId"> {
+  return { title: winner.label, kind: "activity", groupItem: true, visibility: "shared", notes: poll.question, pollId: poll.id };
+}
+
+/**
+ * The poll a calendar plan came from, if it has one. A plan saved with the poll's id is used first. A plan added
+ * before that link existed still matches when its notes are the question.
+ */
+export function pollOnPlan(item: { title: string; details: Record<string, unknown> }, polls: readonly Poll[]): Poll | null {
+  const id = item.details.pollId;
+  if (typeof id === "string") return polls.find((poll) => poll.id === id) ?? null;
+  const notes = typeof item.details.notes === "string" ? item.details.notes.trim() : "";
+  if (!notes) return null;
+  const sameQuestion = polls.filter((poll) => poll.question === notes);
+  if (sameQuestion.length === 1) return sameQuestion[0] ?? null;
+  return sameQuestion.find((poll) => poll.options.some((option) => option.label === item.title)) ?? null;
 }

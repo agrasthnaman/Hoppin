@@ -146,7 +146,7 @@ describe("winner becomes a plan", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add to the plan" })).toBeNull());
     // it is saved on this device first and sent at once because there is a connection
     await waitFor(() =>
-      expect(services.actions.createItem).toHaveBeenCalledWith("t1", "me", expect.objectContaining({ title: "Palolem", groupItem: true, visibility: "shared", notes: "Which beach?" }), expect.any(String)),
+      expect(services.actions.createItem).toHaveBeenCalledWith("t1", "me", expect.objectContaining({ title: "Palolem", groupItem: true, visibility: "shared", notes: "Which beach?", pollId: "p1" }), expect.any(String)),
     );
   });
 

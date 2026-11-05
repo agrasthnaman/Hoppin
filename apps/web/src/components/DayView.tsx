@@ -1,6 +1,6 @@
-import { formatTime, formatTimeRange, localDate, UNANCHORED, type DayLayout, type Item } from "@hoppin/core";
+import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, UNANCHORED, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
-import { BedDouble, MapPin, Navigation } from "lucide-react";
+import { BedDouble, MapPin, Navigation, Vote as VoteIcon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "../lib/cn";
 import { springSoft } from "../lib/motion";
@@ -35,6 +35,9 @@ export interface DayViewProps {
   /** Shows an Edit button on each plan this returns true for, and calls `onEdit` with it. */
   canEditItem?: (item: Item) => boolean;
   onEdit?: (item: Item) => void;
+  /** Polls in this trip, so a plan that came from one can show each option's votes. */
+  polls?: Poll[];
+  votes?: Vote[];
 }
 
 const LIST = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } } };
@@ -87,8 +90,43 @@ function Directions({ item, tone = "light" }: { item: Item; tone?: "light" | "da
   );
 }
 
+function PollTag({ onHero }: { onHero: boolean }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold", onHero ? "bg-white/20 text-hero-fg" : "bg-accent-soft text-accent-soft-fg")}>
+      <VoteIcon aria-hidden="true" className="size-3.5" />
+      Poll
+    </span>
+  );
+}
+
+/** The question and how many votes each option has, on the day the poll was added to. */
+function PollResults({ poll, votes, onHero }: { poll: Poll; votes: Vote[]; onHero: boolean }) {
+  const tally = tallyPoll(poll, votes);
+  const countOf = (optionId: string) => tally.find((line) => line.option === optionId)?.count ?? 0;
+  return (
+    <div className="mt-3 flex flex-col gap-1.5">
+      {poll.question && (
+        <p className={cn("text-sm", onHero ? "text-hero-muted" : "text-muted")}>{poll.question}</p>
+      )}
+      <ul className="flex flex-col gap-1">
+        {poll.options.map((option) => {
+          const count = countOf(option.id);
+          return (
+            <li key={option.id} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="font-semibold">{option.label}</span>
+              <span className={cn("shrink-0 tabular-nums", onHero ? "text-hero-muted" : "text-muted")}>
+                {count} {count === 1 ? "vote" : "votes"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit }: DayViewProps) {
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, polls = [], votes = [] }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
   const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
@@ -113,6 +151,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
   const stays = layout.blocks.filter((block) => block.kind === "stay");
   const others = layout.blocks.filter((block) => block.kind !== "stay");
   const editable = (item: Item) => !!onEdit && (canEditItem ? canEditItem(item) : true);
+  const pollOf = (item: Item) => pollOnPlan(item, polls);
   const editButton = (item: Item, tone: "light" | "dark" = "light") => (
     <button
       type="button"
@@ -156,6 +195,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
               </div>
               {editable(stay) && editButton(stay)}
             </div>
+            {pollOf(stay) && <PollResults poll={pollOf(stay)!} votes={votes} onHero={false} />}
             <div className="mt-1">
               <Directions item={stay} />
             </div>
@@ -172,13 +212,14 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2">
-                    <KindTag kind={block.kind} onHero={spotlight} />
+                    {pollOf(block) ? <PollTag onHero={spotlight} /> : <KindTag kind={block.kind} onHero={spotlight} />}
                     <span className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</span>
                   </p>
                   <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
                 </div>
                 {editable(block) && editButton(block, spotlight ? "dark" : "light")}
               </div>
+              {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={spotlight} />}
               {block.locationUrl && (
                 <div className="mt-1">
                   <Directions item={block} tone={spotlight ? "dark" : "light"} />
@@ -199,9 +240,10 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
 
       {layout.privateLines.map((line) => (
         <m.div key={line.id} variants={ITEM} className="flex flex-wrap items-center gap-x-3 rounded-card border border-dashed border-line p-3 text-muted">
-          <KindTag kind={line.kind} />
+          {pollOf(line) ? <PollTag onHero={false} /> : <KindTag kind={line.kind} />}
           <span className="text-sm">{formatTime(line.startsAt, line.tz)}</span>
           <span>{line.title}</span>
+          {pollOf(line) && <PollResults poll={pollOf(line)!} votes={votes} onHero={false} />}
           <Directions item={line} />
           <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-xs">Only you</span>
           {editable(line) && editButton(line)}
@@ -217,6 +259,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
       >
         {selected && (
           <div className="flex flex-col gap-4">
+            {pollOf(selected) && <PollResults poll={pollOf(selected)!} votes={votes} onHero={false} />}
             {selected.locationUrl && (
               <a
                 href={selected.locationUrl}

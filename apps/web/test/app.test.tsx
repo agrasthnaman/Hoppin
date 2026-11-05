@@ -65,7 +65,7 @@ describe("sign in and gating", () => {
     await userEvent.type(await screen.findByLabelText("Email"), "new@b.co");
     await userEvent.type(screen.getByLabelText("Password"), "whatever password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email or password");
+    expect(await screen.findByRole("alert")).toHaveTextContent("That email and password don't match");
   });
 
   it("asks someone with an unconfirmed email to confirm it, and can send a new link", async () => {

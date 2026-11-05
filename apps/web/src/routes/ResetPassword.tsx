@@ -35,7 +35,7 @@ export function ResetPassword() {
       await auth.updatePassword(password);
       setDone(true);
     } catch (e) {
-      setFailure(e instanceof AuthError && e.code === "weak-password" ? e.message : "Couldn't save the password. Please try again.");
+      setFailure(e instanceof AuthError && e.code === "weak-password" ? e.message : "We couldn't save your password just now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -46,8 +46,8 @@ export function ResetPassword() {
   else if (session.status === "signedOut")
     body = (
       <div className="flex flex-col items-start gap-3">
-        <p className="text-lg font-semibold">This link has expired or was already used</p>
-        <p className="text-muted">Reset links work once and expire after 24 hours. Ask for a new one from the sign-in page.</p>
+        <p className="text-lg font-semibold">This link has already been used, or it is more than 24 hours old.</p>
+        <p className="text-muted">No problem. Go to the sign-in page and choose "Forgot password" to get a fresh link.</p>
         <Link to="/sign-in" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
           Go to sign in
         </Link>
