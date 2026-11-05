@@ -190,9 +190,18 @@ describe("BookingDetail", () => {
     expect(onUpload).toHaveBeenCalledWith(expect.any(File), "personal");
   });
 
+  it("lets the booker remove their booking", async () => {
+    const onRemove = vi.fn(async () => {});
+    setup({ onRemove });
+    await userEvent.click(screen.getByRole("button", { name: "Delete DEL to GOI" }));
+    await userEvent.click(within(await screen.findByRole("dialog", { name: "Delete DEL to GOI?" })).getByRole("button", { name: "Delete it" }));
+    expect(onRemove).toHaveBeenCalled();
+  });
+
   it("hides edit and upload controls from a member who may not edit", () => {
-    setup({ item: { ...flight, ownerId: "riya" } });
+    setup({ item: { ...flight, ownerId: "riya" }, onRemove: vi.fn() });
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete DEL to GOI" })).toBeNull();
     expect(screen.queryByLabelText("Add documents")).toBeNull();
     expect(screen.getByRole("heading", { name: "DEL to GOI" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open ticket.pdf" })).toBeInTheDocument();

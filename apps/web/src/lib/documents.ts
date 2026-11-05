@@ -21,6 +21,11 @@ export interface DocumentClient {
     insert(row: Record<string, unknown>): {
       select(): { single(): PromiseLike<{ data: Record<string, unknown> | null; error: Failure }> };
     };
+    delete(): {
+      eq(column: string, value: string): {
+        select(): PromiseLike<{ data: unknown[] | null; error: Failure }>;
+      };
+    };
   };
 }
 
@@ -82,6 +87,15 @@ export async function uploadDocument(
     kind: meta.kind,
     fileName: fileNameFromPath(storagePath),
   };
+}
+
+/** Removes a document the person is allowed to delete: the file, then its record. */
+export async function deleteDocument(client: DocumentClient, doc: TripDocument): Promise<void> {
+  const removed = await client.storage.from(BUCKET).remove([doc.storagePath]);
+  if (removed.error) throw new Error(removed.error.message);
+  const deleted = await client.from("documents").delete().eq("id", doc.id).select();
+  if (deleted.error) throw new Error(deleted.error.message);
+  if (!deleted.data || deleted.data.length === 0) throw new Error("Could not remove the document");
 }
 
 /** A short-lived link to open a document (the storage rules decide whether this person may). */

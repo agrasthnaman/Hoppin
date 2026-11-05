@@ -11,8 +11,8 @@ import {
   type ExpenseRecord,
   type ExpenseShare,
 } from "@hoppin/core";
-import { Check, ChevronDown, CloudOff, Info, Trash2, UserPlus } from "lucide-react";
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, CloudOff, Info, Trash2, UserPlus } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { MoneyPerson } from "../../app/people";
 import { useOnline } from "../../hooks/useOnline";
 import { cn } from "../../lib/cn";
@@ -55,6 +55,61 @@ export interface ExpenseFormProps {
 }
 
 const labelOf = (p: MoneyPerson, viewerId: string) => (p.id === viewerId ? "You" : p.name);
+
+/** Whether a horizontal list has more people off the left or the right edge. */
+export function payerScrollEnds(scrollLeft: number, clientWidth: number, scrollWidth: number): { left: boolean; right: boolean } {
+  return {
+    left: scrollLeft > 4,
+    right: scrollLeft + clientWidth < scrollWidth - 4,
+  };
+}
+
+/** The people who might have paid, kept inside the card. A long list scrolls, with a chevron when more names are hidden. */
+function PayerStrip({ children }: { children: ReactNode }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [ends, setEnds] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const update = () => setEnds(payerScrollEnds(el.scrollLeft, el.clientWidth, el.scrollWidth));
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    observer?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [children]);
+
+  const nudge = (direction: -1 | 1) => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(140, el.clientWidth * 0.7), behavior: "smooth" });
+  };
+
+  // Same height as a payer chip (min-h-12), so the arrow sits on the person icon.
+  const chevron = "inline-flex h-12 w-8 shrink-0 items-center justify-center rounded-full text-fg focus-visible:outline-2 focus-visible:outline-accent";
+
+  return (
+    <div className="flex min-w-0 items-center">
+      {ends.left && (
+        <button type="button" aria-label="Earlier people" onClick={() => nudge(-1)} className={chevron}>
+          <ChevronLeft aria-hidden="true" className="size-5" />
+        </button>
+      )}
+      <div ref={scroller} data-payer-strip className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {children}
+      </div>
+      {ends.right && (
+        <button type="button" aria-label="More people" onClick={() => nudge(1)} className={chevron}>
+          <ChevronRight aria-hidden="true" className="size-5" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 /** Add or change an expense: how much (in any currency), what for, who paid, and who shares it. */
 export function ExpenseForm({ initial, people, viewerId, defaultCurrency, previewCurrency, pinnedCurrencies, today, onSubmit, onCancel, onDelete, onAddGuest }: ExpenseFormProps) {
@@ -238,11 +293,11 @@ export function ExpenseForm({ initial, people, viewerId, defaultCurrency, previe
         </div>
       </div>
 
-      <fieldset className="flex flex-col gap-1.5">
+      <fieldset className="flex min-w-0 flex-col gap-1.5">
         <legend id={ids.payer} className="mb-1.5 text-sm font-semibold">
           Who paid?
         </legend>
-        <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+        <PayerStrip>
           {people.map((p) => (
             <label
               key={p.id}
@@ -254,7 +309,7 @@ export function ExpenseForm({ initial, people, viewerId, defaultCurrency, previe
               {p.guest && <GuestTag />}
             </label>
           ))}
-        </div>
+        </PayerStrip>
       </fieldset>
 
       <fieldset id={ids.split} tabIndex={-1} className="flex flex-col gap-2 outline-none">

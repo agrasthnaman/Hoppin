@@ -1,5 +1,5 @@
-import { canEdit, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
-import { ChevronDown, FileText, Plus } from "lucide-react";
+import { canEdit, documentFileKind, documentTitle, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
+import { ChevronDown, FileText, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { openFile } from "../lib/open-file";
 import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
 import { useState, type ChangeEvent } from "react";
@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
+import { BinButton, ConfirmDelete } from "../components/ConfirmDelete";
 import { ItemForm } from "../components/ItemForm";
 import { PageHeading } from "../components/PageHeading";
 import { Button } from "../components/ui/Button";
@@ -46,9 +47,13 @@ export default function Docs() {
   const [person, setPerson] = useState("all");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [deleting, setDeleting] = useState<Item | null>(null);
   const [folded, setFolded] = useState<Set<ItemKind>>(() => new Set(KIND_ORDER));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [personalName, setPersonalName] = useState("");
+  const [personalFile, setPersonalFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
   const gate = tripGate(trip);
   if (gate || !trip.snapshot) return gate;
   const { snapshot } = trip;
@@ -102,26 +107,60 @@ export default function Docs() {
     setUploading(false);
   }
 
-  async function addPersonal(event: ChangeEvent<HTMLInputElement>) {
+  function choosePersonal(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;
-    const file = input.files?.[0];
-    if (!file) return;
+    const file = input.files?.[0] ?? null;
     setUploadError(null);
+    if (!file) {
+      setPersonalFile(null);
+      return;
+    }
     const problem = validateDocumentFile(file);
     if (problem) {
       setUploadError(problem);
+      setPersonalFile(null);
       input.value = "";
       return;
     }
+    setPersonalFile(file);
+  }
+
+  async function addPersonal() {
+    const name = personalName.trim();
+    if (!name) {
+      setUploadError("Enter a name for this document.");
+      return;
+    }
+    if (!personalFile) {
+      setUploadError("Choose a PDF or an image.");
+      return;
+    }
+    setUploadError(null);
     setUploading(true);
     try {
-      await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: null, scope: "personal", kind: "document" });
+      await actions.uploadDocument(personalFile, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: null, scope: "personal", kind: name });
       await trip.refresh();
+      setPersonalName("");
+      setPersonalFile(null);
+      setFileKey((key) => key + 1);
     } catch {
-      setUploadError(`Couldn't upload ${file.name}. Please try again.`);
+      setUploadError(`Couldn't upload ${personalFile.name}. Please try again.`);
     } finally {
       setUploading(false);
-      input.value = "";
+    }
+  }
+
+  async function removePersonal(doc: TripDocument) {
+    setUploadError(null);
+    setUploading(true);
+    try {
+      await actions.deleteDocument(doc);
+      await db.blobs.delete(doc.id);
+      await trip.refresh();
+    } catch {
+      setUploadError(`Couldn't remove ${documentTitle(doc)}. Please try again.`);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -209,14 +248,17 @@ export default function Docs() {
                             {item.title}
                           </Link>
                           {canEdit(item, member) && (
-                            <button
-                              type="button"
-                              aria-label={`Edit ${item.title}`}
-                              onClick={() => setEditing(item)}
-                              className="-mt-1 min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold text-link hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
-                            >
-                              Edit
-                            </button>
+                            <div className="-mt-1 flex shrink-0">
+                              <button
+                                type="button"
+                                aria-label={`Edit ${item.title}`}
+                                onClick={() => setEditing(item)}
+                                className="min-h-11 rounded-full px-3 text-sm font-semibold text-link hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+                              >
+                                Edit
+                              </button>
+                              <BinButton label={`Delete ${item.title}`} onClick={() => setDeleting(item)} />
+                            </div>
                           )}
                           </div>
                           <p className="truncate text-sm font-semibold">{formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz)}</p>
@@ -287,20 +329,42 @@ export default function Docs() {
           My documents
         </h2>
         <p className="text-sm text-muted">Passport and visa scans. Only you and the organizer can open them.</p>
-        {mine.length === 0 ? <p>Nothing personal saved yet.</p> : <FileList docs={mine} items={snapshot.items} tripId={trip.tripId} onOpen={open} />}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="personal-doc" className="text-sm font-medium">
-            Add a document
-          </label>
-          <input
-            id="personal-doc"
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
-            disabled={!online || uploading}
-            onChange={(event) => void addPersonal(event)}
-            className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-fg"
-          />
-          <span className="text-xs text-muted">{online ? "PDF or image, up to 25 MB." : "Connect to the internet to add a document."}</span>
+        {mine.length === 0 ? <p>Nothing personal saved yet.</p> : <FileList docs={mine} items={snapshot.items} tripId={trip.tripId} onOpen={open} onRemove={online ? removePersonal : undefined} />}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="personal-name" className="text-sm font-medium">
+              Name
+            </label>
+            <input
+              id="personal-name"
+              value={personalName}
+              maxLength={80}
+              placeholder="Passport"
+              disabled={!online || uploading}
+              onChange={(event) => setPersonalName(event.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="personal-doc" className="text-sm font-medium">
+              PDF or image
+            </label>
+            <input
+              key={fileKey}
+              id="personal-doc"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*"
+              disabled={!online || uploading}
+              onChange={choosePersonal}
+              className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-fg"
+            />
+            <span className="text-xs text-muted">{online ? "PDF or image, up to 25 MB." : "Connect to the internet to add or remove a document."}</span>
+          </div>
+          <div>
+            <Button disabled={!online || uploading} onClick={() => void addPersonal()}>
+              Add document
+            </Button>
+          </div>
         </div>
         {uploading && (
           <p role="status" className="text-sm text-muted">
@@ -319,6 +383,17 @@ export default function Docs() {
           Couldn't open {failed}. Check your connection and try again.
         </p>
       )}
+
+      <ConfirmDelete
+        name={deleting?.title ?? ""}
+        open={deleting !== null}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          const item = deleting;
+          setDeleting(null);
+          if (item) void trip.removeItem(item);
+        }}
+      />
 
       <Sheet open={editing !== null} onOpenChange={(open) => !open && setEditing(null)} title="Edit booking">
         {editing && (
@@ -352,29 +427,50 @@ export default function Docs() {
   );
 }
 
-function FileList({ docs, items, tripId, onOpen }: { docs: TripDocument[]; items: Item[]; tripId: string; onOpen: (doc: TripDocument) => void }) {
+function FileList({ docs, items, tripId, onOpen, onRemove }: { docs: TripDocument[]; items: Item[]; tripId: string; onOpen: (doc: TripDocument) => void; onRemove?: (doc: TripDocument) => void }) {
   return (
     <ul className="grid gap-2 sm:grid-cols-2">
       {docs.map((doc) => {
+        const personal = doc.scope === "personal";
         const plan = doc.itemId ? items.find((item) => item.id === doc.itemId) : undefined;
-        const kind = doc.scope === "personal" ? "Personal" : doc.kind.charAt(0).toUpperCase() + doc.kind.slice(1);
+        const title = personal ? documentTitle(doc) : doc.fileName;
+        const file = personal ? documentFileKind(doc.fileName) : null;
+        const kind = doc.kind.charAt(0).toUpperCase() + doc.kind.slice(1);
+        const FileIcon = file === "Image" ? ImageIcon : FileText;
         return (
           <li key={doc.id} className="flex min-w-0 items-center gap-3 rounded-card border border-line bg-surface p-3">
-            <FileText aria-hidden="true" className="size-5 shrink-0 text-muted" />
+            <FileIcon aria-hidden="true" className="size-5 shrink-0 text-muted" />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium" title={doc.fileName}>{doc.fileName}</p>
+              <p className="truncate font-medium" title={doc.fileName}>{title}</p>
               <p className="truncate text-xs text-muted">
-                {plan ? (
+                {personal ? (
+                  file
+                ) : plan ? (
                   <Link to={`/trips/${tripId}/items/${plan.id}`} className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
                     {plan.title}
                   </Link>
                 ) : (
                   "Not on a plan"
                 )}
-                {" · "}
-                {kind}
+                {!personal && (
+                  <>
+                    {" · "}
+                    {kind}
+                  </>
+                )}
               </p>
             </div>
+            {onRemove && personal && (
+              <button
+                type="button"
+                aria-label={`Remove ${title}`}
+                onClick={() => void onRemove(doc)}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold text-danger-fg hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <Trash2 aria-hidden="true" className="size-4" />
+                Remove
+              </button>
+            )}
             <button
               type="button"
               aria-label={`Open ${doc.fileName}`}

@@ -2,6 +2,7 @@ import {
   addDays,
   applyValues,
   applyVote,
+  canEdit,
   canManagePoll,
   validatePollDraft,
   changedFields,
@@ -183,6 +184,15 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       if (!stored || stored.version !== current.version) throw new ConflictError();
       Object.assign(stored, applyValues(stored, values), { version: stored.version + 1, updatedAt: stamp() });
     },
+    async deleteItem(itemId: string) {
+      const t = trips.find((x) => x.items.some((i) => i.id === itemId));
+      const item = t?.items.find((i) => i.id === itemId);
+      const me = t && meIn(t);
+      if (!t || !item || !me || !canEdit(item, me)) throw new Error("Could not remove the plan");
+      t.items = t.items.filter((i) => i.id !== itemId);
+      t.rsvps = t.rsvps.filter((r) => r.itemId !== itemId);
+      t.documents = t.documents.map((d) => (d.itemId === itemId ? { ...d, itemId: null } : d));
+    },
     async setRsvp(itemId: string, userId: string, going: boolean) {
       const t = trips.find((x) => x.items.some((i) => i.id === itemId));
       if (!t) return;
@@ -310,6 +320,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     actions: {
       createItem: writer.createItem,
       updateItem: writer.updateItem,
+      deleteItem: writer.deleteItem,
       setRsvp: writer.setRsvp,
       async createPoll(tripId, question, multiple, options) {
         const t = find(tripId);
@@ -348,6 +359,13 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       saveExpense: writer.saveExpense,
       deleteExpense: writer.deleteExpense,
       addGuest: writer.addGuest,
+      async deleteDocument(doc) {
+        const t = trips.find((x) => x.documents.some((d) => d.id === doc.id));
+        const found = t?.documents.find((d) => d.id === doc.id);
+        if (!t || !found || found.ownerId !== ME) throw new Error("Could not remove the document");
+        t.documents = t.documents.filter((d) => d.id !== doc.id);
+        files.delete(doc.id);
+      },
       async uploadDocument(file, meta) {
         const t = find(meta.tripId);
         if (!t) throw new Error("trip not found");

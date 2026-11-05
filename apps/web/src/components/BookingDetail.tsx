@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import type { Person } from "./DayView";
 import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
+import { BinButton, ConfirmDelete } from "./ConfirmDelete";
 import { DocumentList } from "./DocumentList";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { Button } from "./ui/Button";
@@ -15,6 +16,8 @@ export interface BookingDetailProps {
   documents: TripDocument[];
   people: Record<string, Person>;
   onSave: (values: ItemFormValues) => Promise<void>;
+  /** Removes this plan. Shown beside Edit for people who may change it. */
+  onRemove?: () => void | Promise<void>;
   onUpload: (file: File, scope: DocumentScope) => Promise<void>;
   onOpenDocument: (doc: TripDocument) => void | Promise<void>;
 }
@@ -26,8 +29,9 @@ function audienceLabel(item: Item): string {
 }
 
 /** One booking or plan: its details, its documents, and (only for people who may) edit and attach controls. */
-export function BookingDetail({ item, member, documents, people, onSave, onUpload, onOpenDocument }: BookingDetailProps) {
+export function BookingDetail({ item, member, documents, people, onSave, onUpload, onOpenDocument, onRemove }: BookingDetailProps) {
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [scope, setScope] = useState<DocumentScope>("shared");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -65,9 +69,12 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
             <h2 className="mt-2 font-display text-2xl font-extrabold">{item.title}</h2>
           </div>
           {mayEdit && !editing && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
+            <div className="flex shrink-0 gap-1">
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+              {onRemove && <BinButton label={`Delete ${item.title}`} onClick={() => setConfirming(true)} />}
+            </div>
           )}
         </div>
         <p className="text-sm text-muted">{date}</p>
@@ -140,6 +147,17 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
           </div>
         )}
       </section>
+      {onRemove && (
+        <ConfirmDelete
+          name={item.title}
+          open={confirming}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            void onRemove();
+          }}
+        />
+      )}
     </div>
   );
 }

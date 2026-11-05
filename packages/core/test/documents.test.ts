@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentPath, fileNameFromPath, MAX_DOCUMENT_BYTES, validateDocumentFile } from "../src/documents";
+import { documentFileKind, documentPath, documentTitle, fileNameFromPath, MAX_DOCUMENT_BYTES, validateDocumentFile } from "../src/documents";
 
 describe("documentPath", () => {
   it("puts the file under the trip and the uploader", () => {
@@ -42,5 +42,18 @@ describe("fileNameFromPath", () => {
     expect(fileNameFromPath("t1/u1/d1-ticket.pdf")).toBe("d1-ticket.pdf");
     expect(fileNameFromPath("t1/u1/0b1a2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d-Flight-ticket.pdf")).toBe("Flight-ticket.pdf");
     expect(fileNameFromPath("plain.pdf")).toBe("plain.pdf");
+  });
+});
+
+describe("document presentation", () => {
+  it("shows a typed name and whether the file is a PDF or an image", () => {
+    expect(documentTitle({ kind: "passport", fileName: "scan.pdf" })).toBe("Passport");
+    expect(documentFileKind("scan.pdf")).toBe("PDF");
+    expect(documentTitle({ kind: "Beach photo", fileName: "IMG_4521.jpg" })).toBe("Beach photo");
+    expect(documentFileKind("IMG_4521.jpg")).toBe("Image");
+  });
+
+  it("cleans an older file name when no name was typed", () => {
+    expect(documentTitle({ kind: "document", fileName: "riya-visa.pdf" })).toBe("Riya visa");
   });
 });

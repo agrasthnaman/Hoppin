@@ -6,6 +6,7 @@ import { cn } from "../lib/cn";
 import { springSoft } from "../lib/motion";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
+import { BinButton, ConfirmDelete } from "./ConfirmDelete";
 import { KindTag } from "./kind";
 import { Chip } from "./ui/Chip";
 import { Sheet } from "./ui/Sheet";
@@ -35,6 +36,8 @@ export interface DayViewProps {
   /** Shows an Edit button on each plan this returns true for, and calls `onEdit` with it. */
   canEditItem?: (item: Item) => boolean;
   onEdit?: (item: Item) => void;
+  /** Removes a plan this person may change. Shown beside Edit. */
+  onRemove?: (item: Item) => void;
   /** Polls in this trip, so a plan that came from one can show each option's votes. */
   polls?: Poll[];
   votes?: Vote[];
@@ -126,8 +129,9 @@ function PollResults({ poll, votes, onHero }: { poll: Poll; votes: Vote[]; onHer
 }
 
 /** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, polls = [], votes = [] }: DayViewProps) {
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
+  const [confirming, setConfirming] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
   const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
 
@@ -150,8 +154,13 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
   const going = selected ? (goingByItem[selected.id] ?? []) : [];
   const stays = layout.blocks.filter((block) => block.kind === "stay");
   const others = layout.blocks.filter((block) => block.kind !== "stay");
-  const editable = (item: Item) => !!onEdit && (canEditItem ? canEditItem(item) : true);
+  const allowed = (item: Item) => (canEditItem ? canEditItem(item) : true);
+  const editable = (item: Item) => !!onEdit && allowed(item);
+  const removable = (item: Item) => !!onRemove && allowed(item);
   const pollOf = (item: Item) => pollOnPlan(item, polls);
+  const removeButton = (item: Item, tone: "light" | "dark" = "light") => (
+    <BinButton label={`Delete ${item.title}`} onHero={tone === "dark"} onClick={() => setConfirming(item)} />
+  );
   const editButton = (item: Item, tone: "light" | "dark" = "light") => (
     <button
       type="button"
@@ -165,6 +174,13 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
       Edit
     </button>
   );
+  const planActions = (item: Item, tone: "light" | "dark" = "light") =>
+    editable(item) || removable(item) ? (
+      <div className="flex shrink-0">
+        {editable(item) && editButton(item, tone)}
+        {removable(item) && removeButton(item, tone)}
+      </div>
+    ) : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -193,7 +209,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(stay) : stay.title}</p>
                 <p className="text-sm font-medium">{timeLabel(stay)}</p>
               </div>
-              {editable(stay) && editButton(stay)}
+              {planActions(stay)}
             </div>
             {pollOf(stay) && <PollResults poll={pollOf(stay)!} votes={votes} onHero={false} />}
             <div className="mt-1">
@@ -217,7 +233,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                   </p>
                   <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
                 </div>
-                {editable(block) && editButton(block, spotlight ? "dark" : "light")}
+                {planActions(block, spotlight ? "dark" : "light")}
               </div>
               {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={spotlight} />}
               {block.locationUrl && (
@@ -246,7 +262,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
           {pollOf(line) && <PollResults poll={pollOf(line)!} votes={votes} onHero={false} />}
           <Directions item={line} />
           <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-xs">Only you</span>
-          {editable(line) && editButton(line)}
+          {planActions(line)}
         </m.div>
       ))}
       </m.div>
@@ -295,12 +311,32 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 Edit plan
               </Button>
             )}
+            {removable(selected) && (
+              <BinButton
+                label={`Delete ${selected.title}`}
+                onClick={() => {
+                  const item = selected;
+                  setSelected(null);
+                  setConfirming(item);
+                }}
+              />
+            )}
             <Button disabled={going.includes(viewerId)} onClick={() => onJoin(selected.id)}>
               {going.includes(viewerId) ? "You're in" : "I'm in"}
             </Button>
           </div>
         )}
       </Sheet>
+      <ConfirmDelete
+        name={confirming?.title ?? ""}
+        open={confirming !== null}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => {
+          const item = confirming;
+          setConfirming(null);
+          if (item) onRemove?.(item);
+        }}
+      />
     </div>
   );
 }

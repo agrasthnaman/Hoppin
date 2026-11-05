@@ -4,7 +4,7 @@ import type { ItemFormValues } from "../src/components/ItemForm";
 import { createServices } from "../src/app/services";
 import { createDocumentSource } from "../src/data/document-source";
 import { createTripSource } from "../src/data/trip-source";
-import { ConflictError, createItem, setRsvp, updateItem } from "../src/data/writes";
+import { ConflictError, createItem, deleteItem, setRsvp, updateItem } from "../src/data/writes";
 import { getDocumentUrl, uploadDocument } from "../src/lib/documents";
 import { createInviteApi } from "../src/lib/invite-api";
 import { getDeviceKey } from "../src/offline/crypto";
@@ -119,6 +119,7 @@ describe.skipIf(!run)("real Supabase project", () => {
     const writerFor = (client: SupabaseClient): Writer => ({
       createItem: async (t, o, v, id) => void (await createItem(client, t, o, v, id)),
       updateItem: async (i, v) => void (await updateItem(client, i, v)),
+      deleteItem: (id) => deleteItem(client, id),
       setRsvp: (i, u, g) => setRsvp(client, i, u, g),
     });
     const bobSide = (name: string) => {
