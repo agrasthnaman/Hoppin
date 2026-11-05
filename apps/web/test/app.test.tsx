@@ -58,6 +58,37 @@ describe("sign in and gating", () => {
     expect(services.auth.signUp).toHaveBeenCalledWith(expect.objectContaining({ redirectTo: `${window.location.origin}/` }));
   });
 
+  it("tells someone who signs up with an email that already has an account, and offers sign in or a reset link", async () => {
+    const { services } = fakeServices({ session: null });
+    services.auth.signUp.mockRejectedValueOnce(new AuthError("already-registered", "This email already has an account"));
+    renderApp("/sign-in", services);
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Join the waitlist" }));
+    await userEvent.type(screen.getByLabelText("Your name"), "Rahi");
+    await userEvent.type(screen.getByLabelText("Email"), "rahi@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
+    expect(await screen.findByText("You already have an account")).toBeInTheDocument();
+    expect(screen.getByText(/rahi@example.com is already registered/)).toBeInTheDocument();
+    expect(screen.queryByText(/Check your email/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Email me a reset link" }));
+    await waitFor(() => expect(services.auth.requestPasswordReset).toHaveBeenCalledWith(expect.objectContaining({ email: "rahi@example.com" })));
+    expect(await screen.findByText(/we sent a link to choose a new password/)).toBeInTheDocument();
+  });
+
+  it("'Sign in' from the already-registered notice goes to the sign-in form with the email filled in", async () => {
+    const { services } = fakeServices({ session: null });
+    services.auth.signUp.mockRejectedValueOnce(new AuthError("already-registered", "x"));
+    renderApp("/sign-in", services);
+    await userEvent.click(await screen.findByRole("button", { name: "New here? Join the waitlist" }));
+    await userEvent.type(screen.getByLabelText("Your name"), "Rahi");
+    await userEvent.type(screen.getByLabelText("Email"), "rahi@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Sign in" }));
+    expect(screen.getByLabelText("Email")).toHaveValue("rahi@example.com");
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+  });
+
   it("says so when the email or password is wrong, without saying which", async () => {
     const { services } = fakeServices({ session: null });
     services.auth.signIn.mockRejectedValueOnce(new AuthError("invalid-credentials", "Invalid login credentials"));

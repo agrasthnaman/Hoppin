@@ -17,6 +17,18 @@ function client(over: Record<string, unknown> = {}) {
 }
 const fail = (code: string, message = "x", status = 400) => ({ data: { session: null }, error: { code, message, status } });
 
+describe("signUp for an address that already has an account", () => {
+  it("says so, instead of pretending a confirmation email was sent", async () => {
+    const c = client({ signUp: vi.fn().mockResolvedValue({ data: { session: null, user: { identities: [] } }, error: null }) });
+    await expect(createAuthApi(c).signUp({ email: "old@x.co", password: "longenoughpw", name: "Old", redirectTo: "x" })).rejects.toMatchObject({ code: "already-registered" });
+  });
+
+  it("a brand-new sign-up still needs confirming", async () => {
+    const c = client({ signUp: vi.fn().mockResolvedValue({ data: { session: null, user: { identities: [{ id: "1" }] } }, error: null }) });
+    expect(await createAuthApi(c).signUp({ email: "new@x.co", password: "longenoughpw", name: "New", redirectTo: "x" })).toEqual({ confirmationNeeded: true });
+  });
+});
+
 describe("signUp", () => {
   it("creates the account with the name and a confirmation link back to the app", async () => {
     const c = client();
