@@ -189,3 +189,51 @@ describe("profiles", () => {
     expect(await names(id.pending)).toEqual([id.pending]);
   });
 });
+
+describe("old invites tidy themselves away", () => {
+  const old = (days: number) => `now() - interval '${days} days'`;
+  async function insertInvite(trip: string, createdDaysAgo: number, expiresDaysAhead: number, revokedDaysAgo: number | null): Promise<string> {
+    const r = await db.query<{ id: string }>(
+      `insert into invites (trip_id, created_by, created_at, expires_at, revoked_at)
+       values ($1, $2, ${old(createdDaysAgo)}, now() + interval '${expiresDaysAhead} days', ${revokedDaysAgo === null ? "null" : old(revokedDaysAgo)}) returning id`,
+      [trip, id.organizer],
+    );
+    return r.rows[0]!.id;
+  }
+  const remaining = async () => (await db.query<{ id: string }>("select id from invites")).rows.map((row) => row.id);
+
+  it("a new invite removes this trip's invites that were revoked or expired over 30 days ago, and nothing else", async () => {
+    const revokedLongAgo = await insertInvite(id.trip, 60, 14, 45);
+    const expiredLongAgo = await insertInvite(id.trip, 90, -40, null);
+    const revokedRecently = await insertInvite(id.trip, 5, 14, 2);
+    const activeOne = await insertInvite(id.trip, 1, 14, null);
+    const expiredRecently = await insertInvite(id.trip, 20, -3, null);
+    const otherTripOld = await insertInvite(id.otherTrip, 60, 14, 45);
+    const fresh = await createInvite(id.organizer);
+    const left = await remaining();
+    expect(left).not.toContain(revokedLongAgo);
+    expect(left).not.toContain(expiredLongAgo);
+    for (const keep of [revokedRecently, activeOne, expiredRecently, otherTripOld, fresh.id]) expect(left).toContain(keep);
+  });
+
+  it("an active invite is never removed, however old it is", async () => {
+    const stillActive = await insertInvite(id.trip, 400, 14, null);
+    await createInvite(id.organizer);
+    expect(await remaining()).toContain(stillActive);
+  });
+
+  it("purge_old_invites removes the same old ones for every trip and says how many", async () => {
+    await insertInvite(id.trip, 60, 14, 45);
+    await insertInvite(id.otherTrip, 60, 14, 50);
+    const keep = await insertInvite(id.trip, 1, 14, null);
+    const result = await db.query<{ n: number }>("select purge_old_invites() as n");
+    expect(result.rows[0]?.n).toBe(2);
+    expect(await remaining()).toEqual([keep]);
+  });
+
+  it("app users cannot run purge_old_invites", async () => {
+    for (const user of [id.organizer, id.alice, id.outsider]) {
+      await expect(call(user, "select purge_old_invites()"), user).rejects.toThrow();
+    }
+  });
+});
