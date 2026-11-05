@@ -1,5 +1,5 @@
 import { AuthError } from "../src/lib/auth-api";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,52 @@ describe("sign in and gating", () => {
     renderApp("/", services);
     expect(await screen.findByRole("heading", { name: "hoppin" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Hoppin" })).toHaveAttribute("href", "/sign-in");
+  });
+
+  it("keeps the original hero and shelf, and adds the new sections below as you scroll", async () => {
+    const { services } = fakeServices({ session: null });
+    renderApp("/", services);
+    // the original first screen is unchanged
+    expect(await screen.findByRole("heading", { name: "hoppin" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /one place\s*for the group/ })).toBeInTheDocument();
+    expect(screen.getByText("what the group actually needs")).toBeInTheDocument();
+    // the new sections follow it
+    expect(screen.getByRole("heading", { name: "Group trips break in the group chat." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "From scattered to settled." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "The plan, without the chat." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Who paid, and who owes." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Still there when the signal isn't." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Three steps. No sign-up wall for your friends." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your next trip, in one place." })).toBeInTheDocument();
+    // every section ends with a way in, and all of them lead to sign in
+    const ways = screen.getAllByRole("link", { name: /^Open Hoppin/ });
+    expect(ways.length).toBeGreaterThanOrEqual(6);
+    for (const link of ways) expect(link).toHaveAttribute("href", "/sign-in");
+  });
+
+  it("the new sections rise into view when they scroll on screen, and show at once where that is not supported", async () => {
+    const watchers: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
+    class FakeObserver {
+      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
+        watchers.push(callback);
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    const { services } = fakeServices({ session: null });
+    const first = renderApp("/", services);
+    await screen.findByRole("heading", { name: "Group trips break in the group chat." });
+    expect(document.querySelectorAll(".lp-reveal.lp-in")).toHaveLength(0); // waiting to be scrolled to
+    expect(document.querySelectorAll(".lp-reveal").length).toBeGreaterThanOrEqual(5);
+    act(() => watchers[0]!([{ isIntersecting: true }]));
+    expect(document.querySelectorAll(".lp-reveal.lp-in")).toHaveLength(1); // only the one that arrived
+    first.unmount();
+    vi.stubGlobal("IntersectionObserver", undefined);
+    renderApp("/", services);
+    await screen.findByRole("heading", { name: "Group trips break in the group chat." });
+    await waitFor(() => expect(document.querySelectorAll(".lp-reveal:not(.lp-in)")).toHaveLength(0));
+    vi.unstubAllGlobals();
   });
 
   it("sends signed-out visitors to sign in, remembering where they were going", async () => {
