@@ -78,6 +78,13 @@ describe("members screen: the organizer", () => {
 describe("members screen: invite links", () => {
   const invite = { id: "inv1", token: "a1".repeat(32), createdAt: "2026-12-01T00:00:00Z", expiresAt: "2026-12-15T00:00:00Z" };
 
+  it("shows a loader until the invite links arrive", async () => {
+    const { services } = fakeServices({ snapshot: asOrganizer() });
+    services.actions.listInvites.mockReturnValue(new Promise(() => {}));
+    renderApp("/trips/t1/members", services);
+    expect(await screen.findByRole("status", { name: "Loading invite links" })).toBeInTheDocument();
+  });
+
   it("shows each active link, copies it, and can stop it", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

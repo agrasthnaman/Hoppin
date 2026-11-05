@@ -8,6 +8,7 @@ import { CreateTripForm } from "../components/CreateTripForm";
 import { bookingItemValues } from "../lib/booking-draft";
 import { JoinTripForm } from "../components/JoinTripForm";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { SpiderCursor as SilkSpiderCursor } from "../components/ui/SpiderCursor";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
@@ -101,7 +102,12 @@ export function TripsHome() {
         <JoinTripForm onJoin={(token) => navigate(`/join/${token}`)} />
       </article>
       {!online && <p className="trips-note">Connect to the internet to create a trip.</p>}
-      {trips === null && <p role="status" className="trips-note">Loading…</p>}
+      {trips === null && (
+        <p role="status" className="trips-note flex items-center gap-3">
+          <Spinner />
+          Loading your trips
+        </p>
+      )}
       {trips === "error" && <p className="trips-note">Couldn't load your trips. Check your connection and try again.</p>}
       {Array.isArray(trips) && trips.length > 0 && (
         <m.ul className="trips-list" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>

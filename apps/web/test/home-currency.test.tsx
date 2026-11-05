@@ -80,6 +80,11 @@ describe("HomeCurrencyCard", () => {
     return { rates, ...utils };
   }
 
+  it("shows a loader until the rate arrives", async () => {
+    setup(() => new Promise(() => {}));
+    expect(await screen.findByRole("status", { name: "Checking the rate" })).toBeInTheDocument();
+  });
+
   it("shows the current home currency and today's rate with its source", async () => {
     setup();
     expect(screen.getByRole("button", { name: /Home currency.*Indian Rupee/i })).toBeInTheDocument();

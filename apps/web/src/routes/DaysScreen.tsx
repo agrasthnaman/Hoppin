@@ -91,8 +91,8 @@ export function DaysScreen() {
         viewerId={trip.viewerId}
         goingByItem={goingFrom(snapshot.rsvps)}
         highlightId={highlightId}
-        onJoin={(id) => void trip.setGoing(id, true)}
-        onLeave={(id) => void trip.setGoing(id, false)}
+        onJoin={(id) => trip.setGoing(id, true)}
+        onLeave={(id) => trip.setGoing(id, false)}
         canEditItem={(item) => (member ? canEdit(item, member) : false)}
         onEdit={setEditing}
         onRemove={(item) => void trip.removeItem(item)}

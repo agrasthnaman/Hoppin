@@ -2,6 +2,7 @@ import { canManagePoll, tallyPoll, voterCount, type Poll, type TallyLine, type V
 import { CalendarPlus, Check, Lock, Trash2 } from "lucide-react";
 import { useId } from "react";
 import { Button } from "./ui/Button";
+import { Spinner } from "./ui/Spinner";
 import { Card } from "./ui/Card";
 
 export interface PollCardProps {
@@ -49,7 +50,8 @@ export function PollCard({ poll, votes, viewerId, role, online, busy, onVote, on
           <h3 id={`${name}-q`} className="font-display text-lg font-bold">
             {poll.question}
           </h3>
-          <p className="text-sm text-muted">
+          <p className="flex items-center gap-2 text-sm text-muted">
+            {busy && <Spinner className="text-accent" />}
             {poll.multiple ? "Pick any number" : "Pick one"} · {people} {people === 1 ? "person has" : "people have"} voted
           </p>
         </div>

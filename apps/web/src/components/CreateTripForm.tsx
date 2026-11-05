@@ -4,6 +4,7 @@ import type { TripDestination } from "@hoppin/core";
 import { draftBookingsFromText, tripSpan, type DraftBooking } from "../lib/booking-draft";
 import { inputClass } from "../lib/forms";
 import { Button } from "./ui/Button";
+import { Spinner } from "./ui/Spinner";
 
 export interface NewTrip {
   name: string;
@@ -141,6 +142,8 @@ export function CreateTripForm({ onSubmit, onCancel, lookup }: CreateTripFormPro
     }
   }
 
+  const placeHint = destinationHint(place.trim(), match);
+
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       {path === "documents" && (
@@ -173,8 +176,9 @@ export function CreateTripForm({ onSubmit, onCancel, lookup }: CreateTripFormPro
                 onChange={(e) => setPlace(e.target.value)}
                 className={inputClass}
               />
-              <span role="status" className="text-xs text-muted">
-                {destinationHint(place.trim(), match) ?? "Shows the weather forecast for each day."}
+              <span role="status" className="flex items-center gap-2 text-xs text-muted">
+                {placeHint === "Looking up…" && <Spinner className="text-accent" />}
+                {placeHint ?? "Shows the weather forecast for each day."}
               </span>
             </>
           )}
@@ -301,7 +305,7 @@ export function CreateTripForm({ onSubmit, onCancel, lookup }: CreateTripFormPro
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" busy={reading || saving} className="flex-1">
           Create trip
         </Button>
         {path === "documents" ? (

@@ -285,7 +285,7 @@ export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel
         </p>
       )}
       <div className="sticky bottom-0 z-20 -mx-5 flex gap-2 bg-surface px-5 pb-1 pt-3">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" busy={saving} className="flex-1">
           Save
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>

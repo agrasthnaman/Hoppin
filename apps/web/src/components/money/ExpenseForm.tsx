@@ -22,6 +22,7 @@ import { currencyName, currencySymbol, formatMoneyShort, formatRate } from "../.
 import { useRate } from "../../lib/money-view";
 import { CurrencyPicker } from "../HomeCurrencyCard";
 import { Button } from "../ui/Button";
+import { Spinner } from "../ui/Spinner";
 import { CATEGORY_ICON, CATEGORY_LABEL } from "./categories";
 import { GuestTag, PersonDot } from "./PersonDot";
 
@@ -471,7 +472,7 @@ export function ExpenseForm({ initial, people, viewerId, defaultCurrency, previe
         </p>
       )}
       <div className="sticky bottom-0 z-20 -mx-5 flex gap-2 border-t border-line bg-surface px-5 pb-1 pt-3">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" busy={saving} className="flex-1">
           {initial ? "Save changes" : "Add expense"}
         </Button>
         <Button variant="ghost" onClick={onCancel}>
@@ -551,7 +552,8 @@ function Preview({ id, amount, currency, target, rateOpen, rateId, onToggleRate 
             <Info aria-hidden="true" className="size-4" />
           </button>
         )}
-        <span id={id} aria-live="polite" className={cn(typed && converting && quote && "pt-1")}>
+        <span id={id} aria-live="polite" className={cn(typed && converting && quote && "pt-1", typed && converting && quote === undefined && "inline-flex items-center gap-2")}>
+          {typed && converting && quote === undefined && <Spinner className="text-accent" />}
           {line}
         </span>
       </div>

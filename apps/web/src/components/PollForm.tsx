@@ -76,7 +76,7 @@ export function PollForm({ onSubmit, onCancel }: PollFormProps) {
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" busy={saving} className="flex-1">
           Ask the group
         </Button>
         <Button variant="ghost" disabled={saving} onClick={onCancel}>

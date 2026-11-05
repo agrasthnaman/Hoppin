@@ -7,6 +7,7 @@ import { BinButton, ConfirmDelete } from "./ConfirmDelete";
 import { DocumentList } from "./DocumentList";
 import { ItemForm, type ItemFormValues } from "./ItemForm";
 import { Button } from "./ui/Button";
+import { Spinner } from "./ui/Spinner";
 import { Card } from "./ui/Card";
 
 export interface BookingDetailProps {
@@ -138,7 +139,12 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
               />
               <span className="text-xs text-muted">PDF or image, up to 25 MB each. You can choose several at once.</span>
             </div>
-            {uploading && <p role="status" className="text-sm text-muted">Uploading…</p>}
+            {uploading && (
+              <p role="status" className="flex items-center gap-2 text-sm text-muted">
+                <Spinner className="text-accent" />
+                Uploading
+              </p>
+            )}
             {uploadError && (
               <p role="alert" className="text-sm text-danger-fg">
                 {uploadError}

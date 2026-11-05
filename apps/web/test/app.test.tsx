@@ -298,7 +298,7 @@ describe("days screen", () => {
     expect(within(confirm).getByText("This takes it off the trip.")).toBeInTheDocument();
     await userEvent.click(within(confirm).getByRole("button", { name: "Delete it" }));
     await waitFor(() => expect(services.actions.deleteItem).toHaveBeenCalledWith("i1"));
-    expect(screen.queryByRole("region", { name: "Old town tour" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Old town tour" })).toBeNull());
   });
 
   it("a friend's optional plan opens with an Edit plan button only when you may change it", async () => {

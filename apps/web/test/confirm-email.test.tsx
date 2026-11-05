@@ -25,6 +25,14 @@ describe("/auth/confirm (the link in the emails, on our own domain)", () => {
     expect(window.location.hostname).not.toBe("evil.example");
   });
 
+  it("shows a loader while the link is being confirmed", async () => {
+    const { services } = fakeServices();
+    services.auth.verifyEmailLink.mockReturnValue(new Promise(() => {}));
+    renderApp("/auth/confirm?token_hash=abc&type=signup&next=/account", services);
+    const status = await screen.findByRole("status", { name: "One moment while we confirm your link." });
+    expect(status.querySelector(".hp-dot")).not.toBeNull();
+  });
+
   it("explains a link that was already used or has expired", async () => {
     const { services } = fakeServices({ session: null });
     services.auth.verifyEmailLink.mockRejectedValueOnce(new AuthError("invalid-link", "expired"));

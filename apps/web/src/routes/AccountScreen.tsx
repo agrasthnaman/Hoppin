@@ -6,6 +6,7 @@ import { useSignOut } from "../app/useSignOut";
 import { useUser } from "../app/user";
 import { JoinTripForm } from "../components/JoinTripForm";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
@@ -90,6 +91,12 @@ export function AccountScreen() {
 
       <Card>
         <form onSubmit={save} noValidate className="flex flex-col gap-3">
+          {!loaded && (
+            <p role="status" aria-label="Loading your name" className="flex items-center gap-3 text-sm text-muted">
+              <Spinner className="text-accent" />
+              Loading your name
+            </p>
+          )}
           <div className="flex flex-col gap-1">
             <label htmlFor="account-name" className="text-sm font-medium">
               Your name
@@ -106,7 +113,7 @@ export function AccountScreen() {
             <span className="text-xs text-muted">This is how other people in your trips see you.</span>
           </div>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={!online || saving || !loaded}>
+            <Button type="submit" disabled={!online || !loaded} busy={saving}>
               Save name
             </Button>
             {saved && <span role="status" className="text-sm text-muted">Saved</span>}

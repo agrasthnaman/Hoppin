@@ -2,6 +2,7 @@ import { addDays, formatTime, type TripDestination } from "@hoppin/core";
 import { CloudSun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useServices } from "../app/services";
+import { Spinner } from "./ui/Spinner";
 import { FORECAST_DAYS, type WeatherResult } from "../providers/weather";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -32,8 +33,20 @@ export function DayWeather({ destination, date }: { destination: TripDestination
     };
   }, [weather, lat, lon, date, key]);
 
-  if (!destination || result?.key !== key || result.value.status === "unavailable") return null;
+  if (!destination) return null;
   const box = "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card bg-raised px-4 py-3 text-sm";
+  if (result?.key !== key) {
+    return (
+      <section aria-label="Weather" className={`${box} text-muted`}>
+        <CloudSun aria-hidden="true" className="size-5 shrink-0" />
+        <p role="status" aria-label="Checking the forecast" className="flex items-center gap-2">
+          <Spinner className="text-accent" />
+          Checking the forecast
+        </p>
+      </section>
+    );
+  }
+  if (result.value.status === "unavailable") return null;
   if (result.value.status === "not-yet") {
     return (
       <section aria-label="Weather" className={`${box} text-muted`}>

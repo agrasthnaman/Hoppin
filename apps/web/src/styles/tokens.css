@@ -82,6 +82,15 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Three dots in the current text colour, used while a tap is still saving. */
+@keyframes hp-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+.hp-dot {
+  animation: hp-dot 0.9s ease-in-out infinite;
+}
+
 /* Cream cards on the blue stage stay ink on white, even when the trip theme is dark. */
 .on-cream {
   color: #101428;
