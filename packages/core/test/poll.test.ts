@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyVote, canManagePoll, castVote, PollError, pollWinner, tallyPoll, validatePollDraft, voterCount, votesOf, winnerPlanDefaults } from "../src/poll";
+import { applyVote, canManagePoll, castVote, PollError, pollOnPlan, pollWinner, tallyPoll, validatePollDraft, voterCount, votesOf, winnerPlanDefaults } from "../src/poll";
 import type { Poll, Vote } from "../src/types";
 
 const poll = (over: Partial<Poll> = {}): Poll => ({
@@ -101,7 +101,15 @@ describe("winner, voters and rights", () => {
 
   it("the winner becomes a shared group plan titled with the option", () => {
     const winner = tallyPoll(poll(), [vote("1", "b")])[0]!;
-    expect(winnerPlanDefaults(poll(), winner)).toEqual({ title: "Palolem", kind: "activity", groupItem: true, visibility: "shared", notes: "Which beach?" });
+    expect(winnerPlanDefaults(poll(), winner)).toEqual({ title: "Palolem", kind: "activity", groupItem: true, visibility: "shared", notes: "Which beach?", pollId: "p1" });
+  });
+
+  it("a plan remembers which poll it came from, and an older plan still matches on the question", () => {
+    const beach = poll();
+    const other = poll({ id: "p2", question: "Where to eat?", options: [{ id: "x", label: "Thali" }, { id: "y", label: "Fish" }] });
+    expect(pollOnPlan({ title: "Lunch", details: { pollId: "p1" } }, [beach, other])?.id).toBe("p1");
+    expect(pollOnPlan({ title: "Palolem", details: { notes: "Which beach?" } }, [beach, other])?.id).toBe("p1");
+    expect(pollOnPlan({ title: "Lunch", details: { notes: "Bring cash" } }, [beach])).toBeNull();
   });
 });
 

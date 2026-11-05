@@ -12,7 +12,7 @@ export interface ItemFormProps {
   /** An existing item when editing. */
   initial?: Item;
   /** Starting text for a new plan (for example the winner of a poll). Ignored when editing. */
-  prefill?: { title?: string; kind?: ItemKind; notes?: string };
+  prefill?: { title?: string; kind?: ItemKind; notes?: string; pollId?: string };
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
   /** `documents` is set only when creating a booking and at least one file was chosen. */
@@ -124,6 +124,7 @@ export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormP
       visibility: audience === "private" ? "private" : "shared",
       groupItem: audience === "group",
       notes: notes.trim(),
+      ...(!initial && prefill?.pollId ? { pollId: prefill.pollId } : {}),
     } as const;
     try {
       if (documents.length > 0) await onSubmit(values, documents);

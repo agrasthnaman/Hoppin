@@ -1,9 +1,11 @@
 import type { ExpenseRecord, Item } from "@hoppin/core";
 import type { ItemFormValues } from "../components/ItemForm";
 
-function details(base: Record<string, unknown>, notes: string): Record<string, unknown> {
+function details(base: Record<string, unknown>, notes: string, pollId?: string): Record<string, unknown> {
   const { notes: _old, ...rest } = base;
-  return notes ? { ...rest, notes } : rest;
+  const next: Record<string, unknown> = notes ? { ...rest, notes } : { ...rest };
+  if (pollId) next.pollId = pollId;
+  return next;
 }
 
 /** Row for a new item. The owner is always the signed-in person (the database enforces it too). An id can be chosen up front (plans made offline). */
@@ -21,14 +23,14 @@ export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormV
     end_tz: values.endTz ?? null,
     title: values.title,
     location_url: values.locationUrl,
-    details: details({}, values.notes),
+    details: details({}, values.notes, values.pollId),
   };
 }
 
 /** Changes for an existing item. Never includes trip or owner (they cannot change); other details are kept. */
 export function itemUpdatePatch(item: Item, values: ItemFormValues) {
   const { trip_id: _t, owner_id: _o, ...rest } = itemInsertRow(item.tripId, item.ownerId, values);
-  return { ...rest, details: details(item.details, values.notes) };
+  return { ...rest, details: details(item.details, values.notes, values.pollId) };
 }
 
 /** What save_expense() takes. `guestIds` tells guests apart from members (both are ids in the app). */

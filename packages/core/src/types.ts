@@ -136,6 +136,8 @@ export interface ItemValues {
   visibility: Visibility;
   groupItem: boolean;
   notes: string;
+  /** Set when this plan was added from a poll, so the day can show each option's votes. */
+  pollId?: string;
 }
 
 /** One person's part of an expense. `who` is a member's user id or a named guest's id. */

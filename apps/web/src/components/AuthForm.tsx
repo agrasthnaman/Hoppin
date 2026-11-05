@@ -37,12 +37,12 @@ function Field({ label, hint, error, ...input }: { label: string; hint?: string;
 
 function explain(error: unknown, mode: Mode, purpose: "waitlist" | "trip"): string {
   const code = error instanceof AuthError ? error.code : "other";
-  if (code === "invalid-credentials") return "Wrong email or password.";
-  if (code === "rate-limited") return "Too many emails right now. Please try again in a little while.";
+  if (code === "invalid-credentials") return "That email and password don't match. Check them and try again, or reset your password.";
+  if (code === "rate-limited") return "We're a little busy right now. Nothing is lost. Please try again in about an hour.";
   if (code === "weak-password" && error instanceof Error) return error.message;
-  if (mode === "signup") return purpose === "waitlist" ? "Couldn't join the waitlist. Please try again." : "Couldn't create the account. Please try again.";
-  if (mode === "forgot") return "Couldn't send the link. Please try again.";
-  return "Couldn't sign in. Please try again.";
+  if (mode === "signup") return purpose === "waitlist" ? "We couldn't add you just now. Please try again in a moment." : "We couldn't create your account just now. Please try again in a moment.";
+  if (mode === "forgot") return "We couldn't send that email just now. Please try again in a moment.";
+  return "We couldn't sign you in just now. Please try again in a moment.";
 }
 
 /**

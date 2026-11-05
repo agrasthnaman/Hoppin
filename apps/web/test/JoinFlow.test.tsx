@@ -71,7 +71,7 @@ describe("JoinFlow: signed out", () => {
     await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't create the account");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't create your account just now");
     expect(screen.getByRole("button", { name: "Create account" })).toBeEnabled();
   });
 

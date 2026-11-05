@@ -29,14 +29,30 @@ describe("/auth/confirm (the link in the emails, on our own domain)", () => {
     const { services } = fakeServices({ session: null });
     services.auth.verifyEmailLink.mockRejectedValueOnce(new AuthError("invalid-link", "expired"));
     renderApp("/auth/confirm?token_hash=abc&type=signup", services);
-    expect(await screen.findByText(/expired or was already used/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to sign in" })).toHaveAttribute("href", "/sign-in");
+    expect(await screen.findByText(/already been used, or it is more than 24 hours old/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/sign-in");
   });
 
   it("treats a link with no token as invalid without calling the server", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/auth/confirm?type=signup", services);
-    expect(await screen.findByText(/expired or was already used/)).toBeInTheDocument();
+    expect(await screen.findByText(/already been used, or it is more than 24 hours old/)).toBeInTheDocument();
     expect(services.auth.verifyEmailLink).not.toHaveBeenCalled();
+  });
+
+  it("a link opened a second time, by someone already signed in, just carries on instead of showing a problem", async () => {
+    const { services } = fakeServices();
+    services.auth.verifyEmailLink.mockRejectedValueOnce(new AuthError("invalid-link", "already used"));
+    const { router } = renderApp("/auth/confirm?token_hash=abc&type=signup&next=https%3A%2F%2Fhoppinclub.com%2Faccount", services);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/account"));
+    expect(screen.queryByText(/already been used/)).toBeNull();
+  });
+
+  it("tells a signed-out person what to do next in plain words, with no error wording", async () => {
+    const { services } = fakeServices({ session: null });
+    services.auth.verifyEmailLink.mockRejectedValueOnce(new AuthError("invalid-link", "expired"));
+    renderApp("/auth/confirm?token_hash=abc&type=signup", services);
+    expect(await screen.findByText(/just sign in with your password/)).toBeInTheDocument();
+    expect(screen.queryByText(/problem|error|failed|invalid/i)).toBeNull();
   });
 });

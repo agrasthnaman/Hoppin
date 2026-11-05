@@ -1,4 +1,4 @@
-import { buildDay, type Item } from "@hoppin/core";
+import { buildDay, type Item, type Poll, type Vote } from "@hoppin/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
@@ -140,6 +140,38 @@ describe("DayView cards", () => {
     expect(within(screen.getByRole("region", { name: "Old town tour" })).getByRole("link", { name: "Get directions to Old town tour" })).toHaveAttribute("href", "https://maps.example/old-town");
     expect(within(screen.getByRole("region", { name: "Alaya Resort Ubud" })).getByRole("link", { name: "Get directions to Alaya Resort Ubud" })).toHaveAttribute("href", "https://maps.example/alaya");
     expect(within(screen.getByRole("region", { name: "Lunch" })).queryByRole("link", { name: /Get directions/ })).toBeNull();
+  });
+
+  it("a plan that came from a poll shows each option's votes", () => {
+    const beach: Poll = {
+      id: "p1",
+      tripId: "t1",
+      createdBy: ME,
+      question: "Which beach?",
+      multiple: false,
+      closed: false,
+      createdAt: "2026-12-01T00:00:00.000Z",
+      options: [
+        { id: "a", label: "Baga" },
+        { id: "b", label: "Palolem" },
+      ],
+    };
+    const votes: Vote[] = [
+      { pollId: "p1", optionId: "b", userId: ME },
+      { pollId: "p1", optionId: "b", userId: RIYA },
+      { pollId: "p1", optionId: "a", userId: "org" },
+    ];
+    const plan = item({ title: "Palolem", startsAt: at("16:00"), details: { notes: "Which beach?", pollId: "p1" } });
+    const layout = buildDay([plan], ME, "2026-12-01", IST);
+    render(<DayView date="2026-12-01" tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} polls={[beach]} votes={votes} />);
+    const card = screen.getByRole("region", { name: "Palolem" });
+    expect(within(card).getByText("Poll")).toBeInTheDocument();
+    expect(within(card).getByText("Which beach?")).toBeInTheDocument();
+    expect(within(card).getAllByText("Palolem").length).toBeGreaterThan(0);
+    expect(within(card).getByText("2 votes")).toBeInTheDocument();
+    expect(within(card).getByText("Baga")).toBeInTheDocument();
+    expect(within(card).getByText("1 vote")).toBeInTheDocument();
+    expect(within(card).queryByText("Activity")).toBeNull();
   });
 
   it("every card names its kind with an icon tag", () => {

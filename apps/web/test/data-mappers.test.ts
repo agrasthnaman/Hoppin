@@ -142,6 +142,12 @@ describe("item write payloads", () => {
     expect(itemInsertRow("t1", "u1", { ...values, notes: "" }).details).toEqual({});
   });
 
+  it("keeps the poll on the plan so the day can show the votes", () => {
+    expect(itemInsertRow("t1", "u1", { ...values, pollId: "p1" }).details).toEqual({ notes: "Bring tickets", pollId: "p1" });
+    const item = itemFromRow(row({ details: { pollId: "p1", notes: "old" } }));
+    expect(itemUpdatePatch(item, { ...values, notes: "Bring tickets" }).details).toEqual({ pollId: "p1", notes: "Bring tickets" });
+  });
+
   it("an update changes the form's fields, keeps other details, and never touches trip or owner", () => {
     const item = itemFromRow(row({ details: { flightNo: "6E 123", notes: "old" } }));
     const patch = itemUpdatePatch(item, values);
