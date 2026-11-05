@@ -5,10 +5,10 @@ import { inputClass } from "../lib/forms";
 import { Banner } from "./ui/Banner";
 import { Button } from "./ui/Button";
 
-export type AuthFormApi = Pick<AuthApi, "signUp" | "signIn" | "resendConfirmation" | "requestPasswordReset">;
+export type AuthFormApi = Pick<AuthApi, "signUp" | "signIn" | "resendConfirmation" | "requestPasswordReset" | "queueStatus" | "joinQueue">;
 
 type Mode = "signin" | "signup" | "forgot";
-type Sent = { kind: "confirm" | "reset" | "exists"; email: string } | null;
+type Sent = { kind: "confirm" | "reset" | "exists" | "queued" | "inqueue" | "full"; email: string } | null;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -101,8 +101,24 @@ export function AuthForm({
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { confirmationNeeded } = await api.signUp({ email: trimmed, password, name: name.trim(), redirectTo: confirmRedirectTo });
-        if (confirmationNeeded) setSent({ kind: "confirm", email: trimmed });
+        // Someone already waiting in the queue, or already registered, is told so without making a new request.
+        // This check is a courtesy: if it cannot be made, sign-up carries on as normal.
+        const known = await api.queueStatus(trimmed).catch(() => "none" as const);
+        if (known === "waiting" || known === "invited") return setSent({ kind: "inqueue", email: trimmed });
+        if (known === "registered") return setSent({ kind: "exists", email: trimmed });
+        try {
+          const { confirmationNeeded } = await api.signUp({ email: trimmed, password, name: name.trim(), redirectTo: confirmRedirectTo });
+          if (confirmationNeeded) setSent({ kind: "confirm", email: trimmed });
+        } catch (error) {
+          if (!(error instanceof AuthError && error.code === "rate-limited")) throw error;
+          // Over the email limit: save a spot (email and name only, never the password) and send the link later.
+          try {
+            const joined = await api.joinQueue({ email: trimmed, name: name.trim() });
+            setSent({ kind: joined === "queued" ? "queued" : joined === "already_queued" ? "inqueue" : joined === "registered" ? "exists" : "full", email: trimmed });
+          } catch {
+            setFailure(explain(error, mode, purpose)); // the calm "we're a little busy" message
+          }
+        }
       } else if (mode === "signin") {
         await api.signIn({ email: trimmed, password });
       } else {
@@ -147,12 +163,20 @@ export function AuthForm({
   }
 
   const joinLabel = purpose === "waitlist" ? "Join the waitlist" : "Create account";
-  const headline = sent
-    ? sent.kind === "exists"
+  const sentTitle = (s: NonNullable<Sent>): string =>
+    s.kind === "exists"
       ? "You already have an account"
-      : sent.kind === "confirm" && purpose === "waitlist"
-        ? "You're on the list"
-        : "Check your email"
+      : s.kind === "queued"
+        ? "You're in the queue"
+        : s.kind === "inqueue"
+          ? "You're already in the queue"
+          : s.kind === "full"
+            ? "We're at capacity right now"
+            : s.kind === "confirm" && purpose === "waitlist"
+              ? "You're on the list"
+              : "Check your email";
+  const headline = sent
+    ? sentTitle(sent)
     : mode === "signup"
       ? joinLabel
       : mode === "forgot"
@@ -170,12 +194,16 @@ export function AuthForm({
 
   const fields = sent ? (
     <div className="flex flex-col gap-3">
-      {!titled && (
-        <p className="text-lg font-semibold">
-          {sent.kind === "exists" ? "You already have an account" : sent.kind === "confirm" && purpose === "waitlist" ? "You're on the list" : "Check your email"}
+      {!titled && <p className="text-lg font-semibold">{sentTitle(sent)}</p>}
+      {sent.kind === "queued" ? (
+        <p className="text-muted">
+          We're a little busy, so we saved your spot. Your sign-in link will arrive at {sent.email} within the hour. You don't need to do anything else.
         </p>
-      )}
-      {sent.kind === "exists" ? (
+      ) : sent.kind === "inqueue" ? (
+        <p className="text-muted">We have your email and your link is on its way. No need to sign up again.</p>
+      ) : sent.kind === "full" ? (
+        <p className="text-muted">Please try again tomorrow. Nothing is lost.</p>
+      ) : sent.kind === "exists" ? (
         <>
           <p className="text-muted">
             {sent.email} is already registered, so there's no new email to wait for. Sign in with your password. If you've forgotten it, we can email you a link to choose a new one.

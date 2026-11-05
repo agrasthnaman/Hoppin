@@ -35,6 +35,9 @@ if (mode === "templates") {
     mailer_templates_confirmation_content: file("confirm-signup.html"),
     mailer_subjects_recovery: "Choose a new Hoppin password",
     mailer_templates_recovery_content: file("recovery.html"),
+    // Sent by the sign-up queue job (auth.admin.inviteUserByEmail) to people who were waiting.
+    mailer_subjects_invite: "You're in. Your Hoppin invite",
+    mailer_templates_invite_content: file("invite.html"),
   };
 } else if (mode === "auth") {
   // Links are single-use (Supabase default) and valid for 24 hours; passwords need at least 10 characters.
@@ -69,4 +72,4 @@ console.log(mode === "auth"
   ? { mailer_otp_exp: after.mailer_otp_exp, password_min_length: after.password_min_length, mailer_autoconfirm: after.mailer_autoconfirm }
   : mode === "smtp"
   ? { smtp_host: after.smtp_host, smtp_admin_email: after.smtp_admin_email, rate_limit_email_sent: after.rate_limit_email_sent }
-  : { subject_confirmation: after.mailer_subjects_confirmation, subject_recovery: after.mailer_subjects_recovery });
+  : { subject_confirmation: after.mailer_subjects_confirmation, subject_recovery: after.mailer_subjects_recovery, subject_invite: after.mailer_subjects_invite });

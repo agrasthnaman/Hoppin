@@ -19,6 +19,23 @@ export interface PasswordClient {
     updateUser(attrs: { password: string }): PromiseLike<{ error: ServerError }>;
     verifyOtp(args: { token_hash: string; type: EmailLinkType }): PromiseLike<{ error: ServerError }>;
   };
+  /** Calls a database function (used for the sign-up queue). */
+  rpc(fn: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: ServerError }>;
+}
+
+/** Where an email stands in the sign-up queue (see docs/signup-queue.md). */
+export type QueueStatus = "none" | "waiting" | "invited" | "registered";
+/** What happened when someone asked to be put in the queue. */
+export type QueueJoin = "queued" | "already_queued" | "registered" | "full";
+
+const QUEUE_STATUS: readonly QueueStatus[] = ["none", "waiting", "invited", "registered"];
+const QUEUE_JOIN: readonly QueueJoin[] = ["queued", "already_queued", "registered", "full"];
+
+function queueAnswer<T extends string>(data: unknown, allowed: readonly T[]): T {
+  const status = typeof data === "object" && data !== null && "status" in data ? (data as { status: unknown }).status : null;
+  const found = allowed.find((value) => value === status);
+  if (!found) throw new AuthError("other", "unexpected answer from the queue");
+  return found;
 }
 
 export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "already-registered" | "other";
@@ -67,6 +84,20 @@ export function createAuthApi(client: PasswordClient) {
         throw new AuthError("already-registered", "This email already has an account");
       }
       return { confirmationNeeded: data.session === null };
+    },
+
+    /** Is this email already waiting in the queue (or already registered)? Never throws for "not found". */
+    async queueStatus(email: string): Promise<QueueStatus> {
+      const { data, error } = await client.rpc("signup_queue_status", { p_email: email });
+      if (error) throw toAuthError(error);
+      return queueAnswer(data, QUEUE_STATUS);
+    },
+
+    /** Saves a spot in the queue. Only the email and name are sent, never the password. Safe to repeat. */
+    async joinQueue(args: { email: string; name: string }): Promise<QueueJoin> {
+      const { data, error } = await client.rpc("join_signup_queue", { p_email: args.email, p_name: args.name });
+      if (error) throw toAuthError(error);
+      return queueAnswer(data, QUEUE_JOIN);
     },
 
     async signIn(args: { email: string; password: string }): Promise<void> {

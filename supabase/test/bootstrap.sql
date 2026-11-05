@@ -18,6 +18,9 @@ begin
   if not exists (select from pg_roles where rolname = 'anon') then
     create role anon nologin;
   end if;
+  if not exists (select from pg_roles where rolname = 'service_role') then
+    create role service_role nologin;
+  end if;
 end $$;
 
 grant usage on schema auth to authenticated, anon;
