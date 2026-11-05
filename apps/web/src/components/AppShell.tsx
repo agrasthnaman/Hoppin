@@ -43,10 +43,10 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
         aria-label="Main"
         className={cn(
           "fixed inset-x-3 bottom-3 z-20 flex justify-around rounded-full bg-nav px-2 shadow-card",
-          "md:relative md:z-30 md:inset-auto md:min-h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:rounded-none md:p-4 md:pt-6 md:shadow-none",
+          "md:sticky md:inset-auto md:top-0 md:z-30 md:h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:self-start md:overflow-y-auto md:rounded-none md:p-4 md:pt-6 md:shadow-none",
       )}
     >
-      <p className="page-title mb-4 hidden px-4 text-3xl text-nav-fg md:block">{tripName}</p>
+      <p className="hp-mark mb-10 hidden px-4 text-3xl md:block">hoppin</p>
       {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -55,6 +55,7 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
               cn(
                 "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold text-nav-fg transition-colors",
                 "md:min-h-11 md:flex-none md:flex-row md:justify-start md:gap-3 md:rounded-2xl md:px-4 md:text-sm",
+                to === "more" && "md:mt-auto",
                 "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-nav-active",
                 isActive && "text-nav-active md:bg-nav-active md:text-nav",
               )
@@ -69,7 +70,7 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
       <div className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-3xl">
         <header className="flex items-baseline justify-between gap-3 px-4 pb-2 pt-4 md:px-8">
-          <p className="page-title truncate text-4xl md:hidden">{tripName}</p>
+          <p className="page-title truncate text-4xl">{tripName}</p>
           <p className="shrink-0 text-xs text-muted">{formatSyncedAgo(status.lastSyncedAt, status.now)}</p>
         </header>
         <div className="flex flex-col px-4 md:px-8">

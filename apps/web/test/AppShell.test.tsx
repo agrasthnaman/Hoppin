@@ -47,14 +47,18 @@ describe("AppShell navigation", () => {
     expect(within(nav).getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Today" })).toHaveClass("md:bg-nav-active");
     expect(within(nav).getByRole("link", { name: "Days" })).not.toHaveAttribute("aria-current");
-    expect(within(nav).getByText("Goa")).toBeInTheDocument();
+    const mark = within(nav).getByText("hoppin");
+    expect(mark).toHaveClass("hp-mark");
+    expect(within(nav).queryByText("Goa")).toBeNull();
+    expect(screen.getByText("Goa")).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "More" })).toHaveClass("md:mt-auto");
   });
 
   it("is a floating bar on phones and becomes a sidebar on wide screens", () => {
     setup();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(nav).toHaveClass("fixed", "bottom-3", "rounded-full"); // a floating pill on phones
-    expect(nav).toHaveClass("md:relative", "md:z-30", "md:flex-col");
+    expect(nav).toHaveClass("md:sticky", "md:top-0", "md:h-dvh", "md:z-30", "md:flex-col");
   });
 
   it("changes the page when a link is tapped", async () => {
@@ -76,7 +80,7 @@ describe("AppShell sync status", () => {
   it("always shows when the trip was last synced", () => {
     setup();
     expect(screen.getByText("Synced 5 min ago")).toBeInTheDocument();
-    expect(screen.getAllByText("Goa")).toHaveLength(2);
+    expect(screen.getAllByText("Goa")).toHaveLength(1);
   });
 
   it("shows no banner when online and fresh", () => {

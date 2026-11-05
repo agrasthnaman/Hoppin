@@ -157,7 +157,7 @@ describe("trip gate", () => {
   it("loads the trip and opens today while the trip is happening", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1", services);
-    expect(await screen.findAllByText("Goa")).toHaveLength(2);
+    expect(await screen.findAllByText("Goa")).toHaveLength(1);
     const today = await screen.findByRole("heading", { name: "Today" });
     expect(today).toHaveClass("page-title");
     expect(today.parentElement?.querySelector(".editorial")).not.toBeNull();
@@ -299,6 +299,7 @@ describe("docs and money", () => {
   it("opens a booking's document from the docs tab, on the same plan as that day", async () => {
     renderApp("/trips/t1/docs", fakeServices().services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
+    await userEvent.click(within(bookings).getByRole("button", { name: "Activities" }));
     const row = within(bookings).getByRole("link", { name: "Old town tour" }).closest("li");
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByRole("link", { name: "Old town tour" })).toHaveAttribute("href", "/trips/t1/items/i1");
@@ -357,6 +358,10 @@ describe("bookings and my documents", () => {
     expect(within(bookings).getByRole("heading", { name: "Flights" })).toBeInTheDocument();
     expect(within(bookings).getByRole("heading", { name: "Stays" })).toBeInTheDocument();
     expect(within(bookings).getByRole("heading", { name: "Plans" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("button", { name: "Flights" })).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
+    await userEvent.click(within(bookings).getByRole("button", { name: "Stays" }));
+    await userEvent.click(within(bookings).getByRole("button", { name: "Plans" }));
     expect(within(bookings).getByRole("link", { name: "Goa flight" })).toHaveAttribute("href", "/trips/t1/items/f1");
     const flightLinks = within(bookings).getAllByRole("link", { name: /flight/i });
     expect(flightLinks.map((link) => link.textContent)).toEqual(["Goa flight", "Night flight"]);
@@ -369,6 +374,7 @@ describe("bookings and my documents", () => {
   it("each booking you may change has an Edit button that opens the booking form; other people's bookings do not", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
+    await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
     expect(within(bookings).getByRole("button", { name: "Edit Goa flight" })).toBeInTheDocument();
     expect(within(bookings).queryByRole("button", { name: "Edit Beach house" })).toBeNull();
     await userEvent.click(within(bookings).getByRole("button", { name: "Edit Goa flight" }));
@@ -380,19 +386,20 @@ describe("bookings and my documents", () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
     const flights = within(bookings).getByRole("button", { name: "Flights" });
-    expect(flights).toHaveAttribute("aria-expanded", "true");
-    await userEvent.click(flights);
     expect(flights).toHaveAttribute("aria-expanded", "false");
     expect(within(bookings).queryByRole("link", { name: "Goa flight" })).toBeNull();
-    expect(within(bookings).getByRole("link", { name: "Beach house" })).toBeInTheDocument();
+    expect(within(bookings).queryByRole("link", { name: "Beach house" })).toBeNull();
     await userEvent.click(flights);
+    expect(flights).toHaveAttribute("aria-expanded", "true");
     expect(within(bookings).getByRole("link", { name: "Goa flight" })).toBeInTheDocument();
+    expect(within(bookings).queryByRole("link", { name: "Beach house" })).toBeNull();
   });
 
   it("a plan added on the days screen is a booking on Docs too (same list of plans)", async () => {
     renderApp("/trips/t1/docs", fakeServices({ snapshot: bookingsSnapshot() }).services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
     expect(within(bookings).getByRole("heading", { name: "Plans" })).toBeInTheDocument();
+    await userEvent.click(within(bookings).getByRole("button", { name: "Plans" }));
     expect(within(bookings).getByRole("link", { name: "Call the hotel" })).toBeInTheDocument();
   });
 
@@ -400,6 +407,7 @@ describe("bookings and my documents", () => {
     const { services } = fakeServices({ snapshot: bookingsSnapshot() });
     renderApp("/trips/t1/docs", services);
     const bookings = await screen.findByRole("region", { name: "Bookings" });
+    await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
     expect(within(bookings).getByLabelText("Add files to Goa flight").closest("label")).toHaveTextContent("Add more files");
     expect(within(bookings).getByLabelText("Add files to Night flight").closest("label")).toHaveTextContent("Add files");
     await userEvent.upload(within(bookings).getByLabelText("Add files to Goa flight"), [
@@ -413,6 +421,7 @@ describe("bookings and my documents", () => {
   it("a very long booking name is cut with an ellipsis inside its card, and the full name is on hover", async () => {
     const long = "Round trip flight from Delhi to Denpasar with a long layover and extra baggage for the whole group";
     renderApp("/trips/t1/docs", fakeServices({ snapshot: snapshot({ items: [item({ id: "l1", title: long, kind: "flight", startsAt: at("08:00") })] }) }).services);
+    await userEvent.click(await screen.findByRole("button", { name: "Flights" }));
     const link = await screen.findByRole("link", { name: long });
     expect(link).toHaveClass("truncate", "min-w-0");
     expect(link).toHaveAttribute("title", long);
@@ -478,6 +487,7 @@ describe("bookings and my documents", () => {
     expect(within(mine).getByText("passport.pdf")).toBeInTheDocument();
     expect(within(mine).queryByText("riya-visa.pdf")).toBeNull();
     const bookings = screen.getByRole("region", { name: "Bookings" });
+    await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
     expect(within(bookings).getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Other files" })).getByText("riya-visa.pdf")).toBeInTheDocument();
     await userEvent.upload(within(mine).getByLabelText("Add a document"), new File(["x"], "visa.pdf", { type: "application/pdf" }));
