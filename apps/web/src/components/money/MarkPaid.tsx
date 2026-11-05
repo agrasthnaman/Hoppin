@@ -95,7 +95,7 @@ export function MarkPaid({ payment, base, view, viewerId, people, onConfirm, onC
         {!online && <span className="mt-1 block font-semibold">You're offline: it's saved here and sent when you're back online.</span>}
       </p>
       <div className="sticky bottom-0 z-20 -mx-5 flex gap-2 border-t border-line bg-surface px-5 pb-1 pt-3">
-        <Button type="submit" disabled={saving} className="flex-1">
+        <Button type="submit" busy={saving} className="flex-1">
           <Check aria-hidden="true" className="size-4" />
           Yes, mark as paid
         </Button>

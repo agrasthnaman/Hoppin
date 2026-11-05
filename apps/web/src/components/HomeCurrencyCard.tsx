@@ -9,6 +9,7 @@ import { inputClass } from "../lib/forms";
 import { currencyName, currencySymbol, formatMoney } from "../lib/money";
 import { convert, RATE_CURRENCIES, type RateQuote } from "../providers/rates";
 import { Card } from "./ui/Card";
+import { Spinner } from "./ui/Spinner";
 import { Sheet } from "./ui/Sheet";
 
 /** The currency's sign in a round badge; long signs (CHF, R$) get smaller type so they fit. */
@@ -85,7 +86,13 @@ function RateLine({ home }: { home: string }) {
   const quote = result?.home === home ? result.quote : undefined;
   return (
     // Reserves its line while loading, so the card does not jump.
-    <p role="status" className="min-h-10 px-1 text-sm text-muted">
+    <p role="status" aria-label={quote === undefined ? "Checking the rate" : undefined} className={cn("min-h-10 px-1 text-sm text-muted", quote === undefined && "flex items-center gap-2")}>
+      {quote === undefined && (
+        <>
+          <Spinner className="text-accent" />
+          <span>Checking the rate</span>
+        </>
+      )}
       {quote === null && "Rates show up when you're online."}
       {quote && (
         <>

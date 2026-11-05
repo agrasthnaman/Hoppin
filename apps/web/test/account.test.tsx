@@ -28,6 +28,13 @@ describe("account screen", () => {
     expect(await screen.findByRole("link", { name: "Back to your trips" })).toHaveAttribute("href", "/trips/t1/today");
   });
 
+  it("shows a loader until the name arrives", async () => {
+    const { services } = fakeServices();
+    services.actions.getProfile.mockReturnValue(new Promise(() => {}));
+    renderApp("/account", services);
+    expect(await screen.findByRole("status", { name: "Loading your name" })).toBeInTheDocument();
+  });
+
   it("shows the person's name and email, and saves a new name", async () => {
     const { services } = await open();
     const name = await screen.findByLabelText("Your name");

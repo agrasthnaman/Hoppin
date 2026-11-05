@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router";
 import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { UserContext } from "../app/user";
+import { Loading } from "../components/ui/Spinner";
 import { TripsHome } from "./TripsHome";
 
 /** Shown if the landing page cannot be loaded (it is big, so it is not stored for offline use). */
@@ -26,7 +27,7 @@ const LandingPage = lazy(() => import("./Landing").catch(() => ({ default: Offli
 /** The marketing page. Loaded on its own so the spider and its model stay out of the signed-in app. */
 export function WelcomePage() {
   return (
-    <Suspense fallback={<p role="status" className="p-4">Loading…</p>}>
+    <Suspense fallback={<Loading label="Loading" />}>
       <LandingPage />
     </Suspense>
   );
@@ -50,7 +51,7 @@ function SignedInHome() {
     };
   }, [actions, clock]);
 
-  if (tripId === undefined) return <p role="status" className="p-4">Loading…</p>;
+  if (tripId === undefined) return <Loading label="Loading" />;
   if (tripId) return <Navigate to={`/trips/${tripId}/today`} replace />;
   return <TripsHome />;
 }
@@ -62,7 +63,7 @@ function SignedInHome() {
 export function HomeGate() {
   const { sessionClient } = useServices();
   const session = useSession(sessionClient);
-  if (session.status === "loading") return <p role="status" className="p-4">Loading…</p>;
+  if (session.status === "loading") return <Loading label="Loading" />;
   if (session.status === "signedOut") return <WelcomePage />;
   return (
     <UserContext.Provider value={{ userId: session.userId, email: session.email }}>

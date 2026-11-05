@@ -71,7 +71,7 @@ export function DestinationCard({ current, online, lookup, onSave }: Destination
         </div>
         {!online && <p className="text-sm text-muted">Connect to the internet to change the destination.</p>}
         <div className="flex items-center gap-3">
-          <Button type="submit" variant="secondary" disabled={!online || busy}>
+          <Button type="submit" variant="secondary" disabled={!online} busy={busy}>
             Save destination
           </Button>
         </div>

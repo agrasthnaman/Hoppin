@@ -1,7 +1,7 @@
 import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
 import { BedDouble, MapPin, Navigation, Vote as VoteIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "../lib/cn";
 import { springSoft } from "../lib/motion";
 import { Avatar } from "./ui/Avatar";
@@ -25,9 +25,9 @@ export interface DayViewProps {
   viewerId: string;
   /** User ids who said "I'm in", by item id. */
   goingByItem: Record<string, string[]>;
-  onJoin: (itemId: string) => void;
+  onJoin: (itemId: string) => void | Promise<void>;
   /** Drops the viewer's RSVP for an optional plan they already joined. */
-  onLeave: (itemId: string) => void;
+  onLeave: (itemId: string) => void | Promise<void>;
   /** The plan to spotlight with the big colour block (the one happening now, or next up). */
   highlightId?: string | null;
   /** Shown at the right of the day heading (for example an "Add plan" button). */
@@ -48,6 +48,35 @@ const LIST = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChi
 const ITEM = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: springSoft } };
 
 const UNKNOWN: Person = { name: "Someone", color: "#475569" };
+/** Faces on a day card before the rest collapse into +N. */
+const CARD_FACES = 4;
+
+/** Overlapping member faces. Extra people become a +N chip when they would not fit. */
+function FacePile({ ids, person, limit }: { ids: string[]; person: (id: string) => Person; limit: number }) {
+  if (ids.length === 0) return null;
+  const shown = ids.length > limit ? ids.slice(0, limit) : ids;
+  const extra = ids.length - shown.length;
+  return (
+    <div className="flex -space-x-2" role="group" aria-label={`${ids.length} going`}>
+      {shown.map((id) => {
+        const who = person(id);
+        return (
+          <m.span key={id} role="img" aria-label={who.name} initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-flex">
+            <Avatar name={who.name} color={who.color} className="size-8 ring-2 ring-surface" />
+          </m.span>
+        );
+      })}
+      {extra > 0 && (
+        <span
+          aria-label={`${extra} more`}
+          className="z-10 inline-flex size-8 items-center justify-center rounded-full bg-raised text-xs font-semibold ring-2 ring-surface"
+        >
+          +{extra}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function timeLabel(item: Item): string {
   return formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz);
@@ -138,6 +167,12 @@ function planNotes(item: Item): string {
 export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, onLeave, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const [confirming, setConfirming] = useState<Item | null>(null);
+  const [pending, setPending] = useState<{ id: string; going: boolean } | null>(null);
+  useEffect(() => {
+    if (!pending) return;
+    const joined = (goingByItem[pending.id] ?? []).includes(viewerId);
+    if (joined === pending.going) setPending(null);
+  }, [pending, goingByItem, viewerId]);
   const person = (id: string) => people[id] ?? UNKNOWN;
 
   const empty =
@@ -170,6 +205,38 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
       Edit
     </button>
   );
+  const choose = (id: string, going: boolean) => {
+    setPending({ id, going });
+    const action = going ? onJoin(id) : onLeave(id);
+    void Promise.resolve(action).catch(() => setPending((current) => (current?.id === id ? null : current)));
+  };
+  const rsvpButton = (item: Item) => {
+    const joined = (goingByItem[item.id] ?? []).includes(viewerId);
+    const mine = pending?.id === item.id ? pending : null;
+    if (mine && mine.going !== joined) {
+      const label = mine.going ? `Joining ${item.title}` : `Leaving ${item.title}`;
+      return (
+        <Button busy aria-label={label}>
+          {mine.going ? "Joining" : "Leaving"}
+        </Button>
+      );
+    }
+    if (joined) {
+      return (
+        <>
+          <span className="text-sm font-semibold">You're in</span>
+          <Button variant="secondary" aria-label={`Opt out of ${item.title}`} onClick={() => choose(item.id, false)}>
+            Opt out
+          </Button>
+        </>
+      );
+    }
+    return (
+      <Button aria-label={`Join ${item.title}`} onClick={() => choose(item.id, true)}>
+        Join
+      </Button>
+    );
+  };
   const planActions = (item: Item, tone: "light" | "dark" = "light") =>
     editable(item) || removable(item) ? (
       <div className="flex shrink-0">
@@ -217,7 +284,6 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
 
       {timed.map(({ item: block, optional }) => {
         if (optional) {
-          const joined = (goingByItem[block.id] ?? []).includes(viewerId);
           return (
             <m.section key={block.id} aria-label={block.title} variants={ITEM}>
               <div className="rounded-card border border-line bg-surface p-4 shadow-card">
@@ -244,19 +310,9 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
                     <Directions item={block} />
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {joined ? (
-                    <>
-                      <span className="text-sm font-semibold">You're in</span>
-                      <Button variant="secondary" aria-label={`Opt out of ${block.title}`} onClick={() => onLeave(block.id)}>
-                        Opt out
-                      </Button>
-                    </>
-                  ) : (
-                    <Button aria-label={`Join ${block.title}`} onClick={() => onJoin(block.id)}>
-                      Join
-                    </Button>
-                  )}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <FacePile ids={goingByItem[block.id] ?? []} person={person} limit={CARD_FACES} />
+                  <div className="flex flex-wrap items-center gap-2">{rsvpButton(block)}</div>
                 </div>
               </div>
             </m.section>
@@ -328,13 +384,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
               ) : (
                 <>
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {going.map((id) => (
-                        <m.span key={id} initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                          <Avatar name={person(id).name} color={person(id).color} className="size-8 ring-2 ring-surface" />
-                        </m.span>
-                      ))}
-                    </div>
+                    <FacePile ids={going} person={person} limit={8} />
                     <span className="text-sm text-muted">{going.length} going</span>
                   </div>
                   <ul aria-label="Who joined" className="mt-2 flex flex-col gap-1 text-sm">
@@ -345,34 +395,43 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
                 </>
               )}
             </div>
-            {editable(selected) && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const item = selected;
-                  setSelected(null);
-                  onEdit?.(item);
-                }}
-              >
-                Edit plan
+            {(editable(selected) || removable(selected)) && (
+              <div className="flex items-center gap-2">
+                {editable(selected) && (
+                  <Button
+                    variant="secondary"
+                    className="min-w-0 flex-1"
+                    onClick={() => {
+                      const item = selected;
+                      setSelected(null);
+                      onEdit?.(item);
+                    }}
+                  >
+                    Edit plan
+                  </Button>
+                )}
+                {removable(selected) && (
+                  <BinButton
+                    label={`Delete ${selected.title}`}
+                    onClick={() => {
+                      const item = selected;
+                      setSelected(null);
+                      setConfirming(item);
+                    }}
+                  />
+                )}
+              </div>
+            )}
+            {pending?.id === selected.id && pending.going !== going.includes(viewerId) ? (
+              <Button busy aria-label={pending.going ? `Joining ${selected.title}` : `Leaving ${selected.title}`}>
+                {pending.going ? "Joining" : "Leaving"}
               </Button>
-            )}
-            {removable(selected) && (
-              <BinButton
-                label={`Delete ${selected.title}`}
-                onClick={() => {
-                  const item = selected;
-                  setSelected(null);
-                  setConfirming(item);
-                }}
-              />
-            )}
-            {going.includes(viewerId) ? (
-              <Button variant="secondary" onClick={() => onLeave(selected.id)}>
+            ) : going.includes(viewerId) ? (
+              <Button variant="secondary" onClick={() => choose(selected.id, false)}>
                 Opt out
               </Button>
             ) : (
-              <Button onClick={() => onJoin(selected.id)}>I'm in</Button>
+              <Button onClick={() => choose(selected.id, true)}>I'm in</Button>
             )}
           </div>
         )}

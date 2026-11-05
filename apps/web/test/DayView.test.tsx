@@ -1,5 +1,5 @@
 import { buildDay, type Item, type Poll, type Vote } from "@hoppin/core";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { describe, expect, it, vi } from "vitest";
@@ -71,6 +71,24 @@ describe("DayView", () => {
     expect(within(card).getByRole("button", { name: "Join Museum" })).toBeEnabled();
   });
 
+  it("shows a loader from the click until the trip shows you as in", async () => {
+    let resolveJoin: () => void = () => {};
+    const onJoin = vi.fn(() => new Promise<void>((done) => { resolveJoin = done; }));
+    const view = (going: Record<string, string[]> = {}) => (
+      <DayView date="2026-12-01" tz={IST} layout={buildDay([lunch, tour, museum, mine], ME, "2026-12-01", IST)} people={people} viewerId={ME} goingByItem={going} onJoin={onJoin} onLeave={vi.fn()} />
+    );
+    const { rerender } = render(view());
+    await userEvent.click(screen.getByRole("button", { name: "Join Museum" }));
+    const joining = screen.getByRole("button", { name: "Joining Museum" });
+    expect(joining).toHaveAttribute("aria-busy", "true");
+    expect(joining).toBeDisabled();
+    resolveJoin();
+    await waitFor(() => expect(onJoin).toHaveBeenCalledWith(museum.id));
+    expect(screen.getByRole("button", { name: "Joining Museum" })).toBeDisabled();
+    rerender(view({ [museum.id]: [ME] }));
+    expect(screen.getByRole("button", { name: "Opt out of Museum" })).toBeEnabled();
+  });
+
   it("joining from the card saves an RSVP without opening the plan", async () => {
     const { onJoin } = setup();
     await userEvent.click(screen.getByRole("button", { name: "Join Museum" }));
@@ -88,8 +106,6 @@ describe("DayView", () => {
     const { onJoin, onLeave } = setup({ goingByItem: { [museum.id]: [RIYA, ME] } });
     const card = screen.getByRole("region", { name: "Museum" });
     expect(within(card).getByText("You're in")).toBeInTheDocument();
-    await userEvent.click(within(card).getByRole("button", { name: "Opt out of Museum" }));
-    expect(onLeave).toHaveBeenCalledWith(museum.id);
     await userEvent.click(screen.getByRole("button", { name: "Open Museum" }));
     const dialog = screen.getByRole("dialog", { name: "Museum" });
     expect(within(dialog).getByText("Meet at the gate")).toBeInTheDocument();
@@ -99,8 +115,40 @@ describe("DayView", () => {
     expect(within(joined).getByText("Aman")).toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: /Get directions/ })).toHaveAttribute("href", "https://maps.example/museum");
     await userEvent.click(within(dialog).getByRole("button", { name: "Opt out" }));
-    expect(onLeave).toHaveBeenCalledTimes(2);
+    expect(onLeave).toHaveBeenCalledWith(museum.id);
+    expect(within(dialog).getByRole("button", { name: "Leaving Museum" })).toHaveAttribute("aria-busy", "true");
     expect(onJoin).not.toHaveBeenCalled();
+  });
+
+  it("stacks who joined on the card, and counts the faces that do not fit", () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `p${i}`);
+    const crowd = Object.fromEntries(ids.map((id, i) => [id, { name: `Person ${i + 1}`, color: "#334155" }]));
+    setup({ people: { ...people, ...crowd }, goingByItem: { [museum.id]: ids } });
+    const card = screen.getByRole("region", { name: "Museum" });
+    const pile = within(card).getByRole("group", { name: "10 going" });
+    expect(within(pile).getAllByRole("img")).toHaveLength(4);
+    expect(within(pile).getByText("+6")).toBeInTheDocument();
+    expect(within(pile).queryByRole("img", { name: "Person 5" })).toBeNull();
+  });
+
+  it("shows every face on the card when only a few people joined", () => {
+    setup({ goingByItem: { [museum.id]: [RIYA, ME] } });
+    const pile = within(screen.getByRole("region", { name: "Museum" })).getByRole("group", { name: "2 going" });
+    expect(within(pile).getByRole("img", { name: "Riya" })).toBeInTheDocument();
+    expect(within(pile).getByRole("img", { name: "Aman" })).toBeInTheDocument();
+    expect(within(pile).queryByText(/^\+/)).toBeNull();
+  });
+
+  it("keeps delete beside edit in the plan sheet", async () => {
+    setup({ onEdit: vi.fn(), onRemove: vi.fn(), canEditItem: () => true });
+    await userEvent.click(screen.getByRole("button", { name: "Open Museum" }));
+    const dialog = screen.getByRole("dialog", { name: "Museum" });
+    const edit = within(dialog).getByRole("button", { name: "Edit plan" });
+    const bin = within(dialog).getByRole("button", { name: "Delete Museum" });
+    const row = edit.parentElement;
+    expect(row).toBe(bin.parentElement);
+    expect(row?.children).toHaveLength(2);
+    expect(within(dialog).getByRole("button", { name: "I'm in" }).parentElement).not.toBe(row);
   });
 
   it("opening a card nobody has joined yet says so, and I'm in joins from there", async () => {

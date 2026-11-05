@@ -5,6 +5,7 @@ import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { Card } from "../components/ui/Card";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
@@ -23,6 +24,7 @@ export function MembersScreen() {
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [removing, setRemoving] = useState<MemberInfo | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
 
   const members = trip.snapshot?.members ?? [];
   const me = members.find((x) => x.userId === trip.viewerId);
@@ -44,13 +46,16 @@ export function MembersScreen() {
   if (gate || !trip.snapshot) return gate;
   const people = peopleFrom(members);
 
-  async function run(change: () => Promise<void>) {
+  async function run(change: () => Promise<void>, who?: string) {
     setFailed(false);
+    if (who) setActing(who);
     try {
       await change();
       await trip.refresh();
     } catch {
       setFailed(true);
+    } finally {
+      setActing(null);
     }
   }
 
@@ -93,10 +98,10 @@ export function MembersScreen() {
               row(
                 member,
                 <div className="flex gap-2">
-                  <Button disabled={off} aria-label={`Approve ${member.displayName}`} onClick={() => void run(() => invites.approveMember(trip.tripId, member.userId))}>
+                  <Button disabled={off} busy={acting === member.userId} aria-label={`Approve ${member.displayName}`} onClick={() => void run(() => invites.approveMember(trip.tripId, member.userId), member.userId)}>
                     Approve
                   </Button>
-                  <Button variant="ghost" disabled={off} aria-label={`Decline ${member.displayName}`} onClick={() => void run(() => invites.removeMember(trip.tripId, member.userId))}>
+                  <Button variant="ghost" disabled={off} busy={acting === member.userId} aria-label={`Decline ${member.displayName}`} onClick={() => void run(() => invites.removeMember(trip.tripId, member.userId), member.userId)}>
                     Decline
                   </Button>
                 </div>,
@@ -166,6 +171,12 @@ export function MembersScreen() {
         <section aria-label="Invite link" className="flex flex-col gap-3">
           <h3 className="font-semibold">Invite link</h3>
           <p className="text-sm text-muted">Anyone with the link can ask to join. You approve each person before they see anything.</p>
+          {online && list === null && !failed && (
+            <p role="status" aria-label="Loading invite links" className="flex items-center gap-3 text-sm text-muted">
+              <Spinner className="text-accent" />
+              Loading invite links
+            </p>
+          )}
           {(list ?? []).map((invite) => (
             <Card key={invite.id} className="flex flex-col gap-2">
               <input

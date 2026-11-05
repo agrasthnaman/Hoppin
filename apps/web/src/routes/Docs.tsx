@@ -11,6 +11,7 @@ import { BinButton, ConfirmDelete } from "../components/ConfirmDelete";
 import { ItemForm } from "../components/ItemForm";
 import { PageHeading } from "../components/PageHeading";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { Sheet } from "../components/ui/Sheet";
 import { useOnline } from "../hooks/useOnline";
 import { inputClass, selectClass } from "../lib/forms";
@@ -361,14 +362,15 @@ export default function Docs() {
             <span className="text-xs text-muted">{online ? "PDF or image, up to 25 MB." : "Connect to the internet to add or remove a document."}</span>
           </div>
           <div>
-            <Button disabled={!online || uploading} onClick={() => void addPersonal()}>
+            <Button disabled={!online} busy={uploading} onClick={() => void addPersonal()}>
               Add document
             </Button>
           </div>
         </div>
         {uploading && (
-          <p role="status" className="text-sm text-muted">
-            Uploading…
+          <p role="status" className="flex items-center gap-2 text-sm text-muted">
+            <Spinner className="text-accent" />
+            Uploading
           </p>
         )}
         {uploadError && (

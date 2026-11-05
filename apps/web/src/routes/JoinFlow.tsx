@@ -2,6 +2,7 @@ import type { RedeemResult } from "@hoppin/core";
 import { useEffect, useRef, useState } from "react";
 import { AuthForm, type AuthFormApi } from "../components/AuthForm";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { AuthStage } from "./AuthStage";
 
 export interface JoinFlowProps {
@@ -41,7 +42,14 @@ export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, a
 
   let body: React.ReactNode;
   if (signedInUserId) {
-    if (join.kind === "loading") body = <p role="status">Joining the trip…</p>;
+    if (join.kind === "loading") {
+      body = (
+        <p role="status" className="flex items-center gap-3">
+          <Spinner className="text-accent" />
+          Joining the trip
+        </p>
+      );
+    }
     else if (join.kind === "invalid")
       body = <p>This invite link isn't valid anymore. Ask the organizer for a new one.</p>;
     else if (join.kind === "error")

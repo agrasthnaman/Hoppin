@@ -257,7 +257,7 @@ export function AuthForm({
         />
       )}
       {failure && <Banner kind="conflict" text={failure} />}
-      <Button type="submit" disabled={busy}>
+      <Button type="submit" busy={busy}>
         {mode === "signup" ? joinLabel : mode === "forgot" ? "Email me a reset link" : "Sign in"}
       </Button>
       {mode === "signin" && (

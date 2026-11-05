@@ -26,8 +26,8 @@ describe("weather on a day", () => {
     const { services } = fakeServices({ snapshot: withDestination(GOA) });
     services.weather.forDay.mockResolvedValue({ status: "ok", forecast: { hi: 31, lo: 23, summary: "Partly cloudy" }, fetchedAt: Date.UTC(2026, 11, 2, 3, 35), old: false });
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    const weather = await screen.findByRole("region", { name: "Weather" });
-    expect(weather).toHaveTextContent("31° / 23°");
+    expect(await screen.findByText("31° / 23°")).toBeInTheDocument();
+    const weather = screen.getByRole("region", { name: "Weather" });
     expect(weather).toHaveTextContent("Partly cloudy");
     expect(weather).toHaveTextContent("Goa, India");
     expect(weather).toHaveTextContent("Updated 09:05"); // 03:35 UTC in Kolkata
@@ -38,14 +38,25 @@ describe("weather on a day", () => {
     const { services } = fakeServices({ snapshot: withDestination(GOA) });
     services.weather.forDay.mockResolvedValue({ status: "ok", forecast: { hi: 30, lo: 22, summary: "Clear" }, fetchedAt: Date.UTC(2026, 11, 1, 3, 35), old: true });
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    expect(await screen.findByRole("region", { name: "Weather" })).toHaveTextContent("Saved forecast, updated 09:05");
+    expect(await screen.findByText("Saved forecast, updated 09:05")).toBeInTheDocument();
   });
 
   it("days beyond the forecast say when the forecast opens", async () => {
     const { services } = fakeServices({ snapshot: withDestination(GOA) });
     services.weather.forDay.mockResolvedValue({ status: "not-yet" });
     renderApp("/trips/t1/days?date=2026-12-04", services);
-    expect(await screen.findByRole("region", { name: "Weather" })).toHaveTextContent("Too early for a forecast. Weather for Goa, India shows up here from 18 Nov, 16 days before this day.");
+    expect(await screen.findByText(/Too early for a forecast. Weather for Goa, India shows up here from 18 Nov, 16 days before this day./)).toBeInTheDocument();
+  });
+
+  it("shows a loader while the forecast is on its way", async () => {
+    const { services } = fakeServices({ snapshot: withDestination(GOA) });
+    let finish: (value: { status: "ok"; forecast: { hi: number; lo: number; summary: string }; fetchedAt: number; old: boolean }) => void = () => {};
+    services.weather.forDay.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    expect(await screen.findByRole("status", { name: "Checking the forecast" })).toBeInTheDocument();
+    finish({ status: "ok", forecast: { hi: 31, lo: 23, summary: "Partly cloudy" }, fetchedAt: Date.UTC(2026, 11, 2, 3, 35), old: false });
+    expect(await screen.findByText("31° / 23°")).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Checking the forecast" })).toBeNull();
   });
 
   it("shows nothing when there is no forecast to show, and never breaks the day", async () => {
@@ -53,7 +64,7 @@ describe("weather on a day", () => {
     renderApp("/trips/t1/days?date=2026-12-02", services);
     expect(await screen.findByText("Old town tour")).toBeInTheDocument();
     await waitFor(() => expect(services.weather.forDay).toHaveBeenCalled());
-    expect(screen.queryByRole("region", { name: "Weather" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Weather" })).toBeNull());
   });
 
   it("a trip with no destination asks for no weather at all", async () => {

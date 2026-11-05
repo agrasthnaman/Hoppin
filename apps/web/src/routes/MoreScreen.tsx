@@ -94,10 +94,10 @@ export function MoreScreen() {
           </p>
           {trip.syncFailed && <p className="text-sm text-danger-fg">The last refresh didn't work. What you see is the saved copy.</p>}
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" disabled={trip.syncing} onClick={() => void trip.refresh()}>
+            <Button variant="secondary" busy={trip.syncing} onClick={() => void trip.refresh()}>
               Refresh now
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => void downloadAll()}>
+            <Button variant="secondary" busy={busy} onClick={() => void downloadAll()}>
               Download everything for offline use
             </Button>
           </div>
@@ -175,7 +175,7 @@ export function MoreScreen() {
               <div className="flex flex-col gap-3">
                 {tripError && <p role="alert" className="text-sm text-danger-fg">{tripError}</p>}
                 <div className="flex gap-2">
-                  <Button disabled={busy2} onClick={() => void finish(() => actions.leaveTrip(trip.tripId), "Couldn't leave the trip. Check your connection and try again.")}>
+                  <Button busy={busy2} onClick={() => void finish(() => actions.leaveTrip(trip.tripId), "Couldn't leave the trip. Check your connection and try again.")}>
                     Leave trip
                   </Button>
                   <Button variant="ghost" disabled={busy2} onClick={() => setLeaving(false)}>
@@ -206,7 +206,7 @@ export function MoreScreen() {
                 </div>
                 {tripError && <p role="alert" className="text-sm text-danger-fg">{tripError}</p>}
                 <div className="flex gap-2">
-                  <Button disabled={busy2 || typedName.trim() !== tripName} onClick={() => void finish(() => actions.deleteTrip(trip.tripId), "Couldn't delete the trip. Check your connection and try again.")}>
+                  <Button disabled={typedName.trim() !== tripName} busy={busy2} onClick={() => void finish(() => actions.deleteTrip(trip.tripId), "Couldn't delete the trip. Check your connection and try again.")}>
                     Delete trip
                   </Button>
                   <Button variant="ghost" disabled={busy2} onClick={() => setDeleting(false)}>

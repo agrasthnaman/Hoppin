@@ -3,6 +3,7 @@ import { Link, Navigate, useSearchParams } from "react-router";
 import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { Card } from "../components/ui/Card";
+import { Spinner } from "../components/ui/Spinner";
 import type { EmailLinkType } from "../lib/auth-api";
 
 const TYPES: readonly EmailLinkType[] = ["signup", "recovery", "invite"];
@@ -53,7 +54,10 @@ export function ConfirmEmail() {
       <h1 className="font-display text-4xl font-extrabold">{waiting ? "Confirming…" : "One more step"}</h1>
       <Card>
         {waiting ? (
-          <p role="status">One moment while we confirm your link.</p>
+          <p role="status" aria-label="One moment while we confirm your link." className="flex items-center gap-3">
+            <Spinner className="text-accent" />
+            One moment while we confirm your link.
+          </p>
         ) : (
           <div className="flex flex-col items-start gap-3">
             <p className="text-lg font-semibold">This link has already been used, or it is more than 24 hours old.</p>

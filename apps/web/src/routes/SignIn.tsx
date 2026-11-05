@@ -2,6 +2,7 @@ import { Navigate, useSearchParams } from "react-router";
 import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { AuthForm } from "../components/AuthForm";
+import { Spinner } from "../components/ui/Spinner";
 import { AuthStage } from "./AuthStage";
 
 /** Only follow `next` if it is an address inside this app. */
@@ -21,8 +22,9 @@ export function SignIn() {
   return (
     <AuthStage>
       {session.status === "loading" ? (
-        <p role="status" className="auth-lede">
-          Loading…
+        <p role="status" className="auth-lede flex items-center gap-3">
+          <Spinner />
+          Loading
         </p>
       ) : (
         <AuthForm api={auth} purpose="waitlist" titled confirmRedirectTo={`${window.location.origin}${next}`} resetRedirectTo={`${window.location.origin}/reset-password`} />

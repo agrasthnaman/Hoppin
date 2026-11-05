@@ -5,6 +5,7 @@ import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { AuthError } from "../lib/auth-api";
 import { inputClass } from "../lib/forms";
 import { AuthStage } from "./AuthStage";
@@ -44,7 +45,14 @@ export function ResetPassword() {
   }
 
   let body: React.ReactNode;
-  if (session.status === "loading") body = <p role="status">Loading…</p>;
+  if (session.status === "loading") {
+    body = (
+      <p role="status" className="flex items-center gap-3">
+        <Spinner className="text-accent" />
+        Loading
+      </p>
+    );
+  }
   else if (session.status === "signedOut")
     body = (
       <div className="flex flex-col items-start gap-3">
@@ -90,7 +98,7 @@ export function ResetPassword() {
           </span>
         </div>
         {failure && <Banner kind="conflict" text={failure} />}
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" busy={busy}>
           {welcome ? "Create password" : "Save password"}
         </Button>
       </form>

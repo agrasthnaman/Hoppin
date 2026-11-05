@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import type { TripState } from "./useTrip";
 
 export interface TripData extends TripState {
@@ -25,7 +26,10 @@ export function tripGate(trip: TripData): ReactNode | null {
     case "loading":
       return (
         <div role="status" aria-label="Loading your trip" className="flex flex-col gap-3">
-          <span className="sr-only">Loading your trip…</span>
+          <p className="flex items-center gap-3 text-sm text-muted">
+            <Spinner className="text-accent" />
+            Loading your trip
+          </p>
           {[0, 1, 2].map((i) => (
             <div key={i} aria-hidden="true" className="h-24 animate-pulse rounded-card bg-raised" style={{ animationDelay: `${i * 120}ms` }} />
           ))}
