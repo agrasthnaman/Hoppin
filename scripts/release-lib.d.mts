@@ -1,0 +1,11 @@
+export function parseEnv(text: string): Record<string, string>;
+export function listMigrations(dir: string): string[];
+export function pendingMigrations(files: string[], applied: string[], baseline: number): string[];
+export function baselineMigrations(files: string[], applied: string[], baseline: number): string[];
+export function migrationStatement(filename: string, sql: string): string;
+export const ENSURE_TABLE_SQL: string;
+export function recordBaselineSql(filenames: string[]): string;
+export function redact(text: string, secrets: Array<string | undefined>): string;
+export function bundleName(html: string): string | null;
+export const REQUIRED: string[];
+export function missingVars(env: Record<string, string | undefined>): string[];

@@ -40,3 +40,19 @@ Paste the file into the project's SQL editor, or send it through the Management 
 - **Prod project, hosting (Cloudflare Pages), domain, Unsplash/Pexels keys, map-tile key, web push keys:** not set up yet (issues #1 and #2).
 - **Hosted builds** read `package-lock.json`, which currently points at an internal Artifactory registry, so a hosted build cannot install from it yet. Decide how to handle the lockfile before setting up hosting.
 - Backups: check what the Supabase plan includes before the first real trip; free projects may pause when unused.
+
+## One-command release
+
+`npm run release` takes the latest `main` to production: it checks the code is clean and matches GitHub, runs the checks and tests, applies any new database migrations, builds the site, deploys it to Cloudflare Pages, and then confirms hoppinclub.com is serving the new build.
+
+**Set up once:** copy `scripts/release.env.example` to `.env.release` (git ignores it) and fill in the Supabase access token, the project reference and the Cloudflare API token. The file never leaves your machine and the script never prints its values.
+
+**Use:**
+- `npm run release -- --dry-run` shows exactly what it would do and changes nothing. Do this first.
+- `npm run release` asks "Go ahead and release?" before changing anything.
+- `npm run release -- --yes` skips the question.
+- `--templates` also applies the email templates, `--functions` also deploys the sign-up queue function (needs the Supabase command-line tool), `--skip-tests`, `--skip-migrations` and `--skip-deploy` leave a step out.
+
+**Migrations:** the database remembers which files it has applied in a small table, `release_migrations`. The first run assumes everything up to `013` was already applied by hand and applies the rest; after that it only applies new files, each together with its record in one transaction, so a failure keeps nothing from that file. It always applies migrations before deploying the site, because new site code can depend on new database functions.
+
+**If it stops:** it says why and has changed nothing after that point. Migrations that already succeeded stay applied and are not repeated.
