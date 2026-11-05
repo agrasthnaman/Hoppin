@@ -5,6 +5,7 @@ import {
   valuesOf,
   type ConflictNotice,
   type CreateRecord,
+  type DeleteRecord,
   type Item,
   type ItemValues,
   type OutboxRecord,
@@ -21,6 +22,7 @@ import { announceChange } from "./events";
 export interface Writer {
   createItem(tripId: string, ownerId: string, values: ItemValues, id: string): Promise<void>;
   updateItem(item: Item, values: ItemValues): Promise<void>;
+  deleteItem(itemId: string): Promise<void>;
   setRsvp(itemId: string, userId: string, going: boolean): Promise<void>;
 }
 
@@ -81,6 +83,25 @@ export async function queueItemEdit(deps: QueueDeps, args: { tripId: string; ite
   announceChange(tripId);
 }
 
+/**
+ * Queues removal of a plan. It disappears on this device at once. A plan that was never sent is dropped here.
+ * A saved plan is removed on the server when there is a connection. Waiting edits of that plan are dropped.
+ */
+export async function queueDelete(deps: QueueDeps, args: { tripId: string; item: Item }): Promise<void> {
+  const { db } = deps;
+  const { tripId, item } = args;
+  await db.transaction("rw", db.outbox, async () => {
+    const mine = await db.outbox.where("tripId").equals(tripId).toArray();
+    const related = mine.filter((r) => r.itemId === item.id);
+    const onlyHere = related.some((r) => r.kind === "create") || item.version === 0;
+    await db.outbox.bulkDelete(related.map((r) => r.id));
+    if (!onlyHere) {
+      await db.outbox.put({ kind: "delete", id: makeId(deps), tripId, itemId: item.id, itemTitle: item.title, at: clock(deps) });
+    }
+  });
+  announceChange(tripId);
+}
+
 /** Queues a new plan. It gets its final id now, so nothing needs renaming when it is saved. Returns that id. */
 export async function queueCreate(deps: QueueDeps, args: { tripId: string; ownerId: string; values: ItemValues }): Promise<string> {
   const itemId = makeId(deps);
@@ -111,7 +132,7 @@ export async function applyDraft(deps: QueueDeps, draft: OutboxRecord, current: 
 
 async function putDraftBack(deps: QueueDeps, draft: OutboxRecord, current: Item | undefined): Promise<"queued" | "gone"> {
   const { db } = deps;
-  if (draft.kind === "create") {
+  if (draft.kind === "create" || draft.kind === "delete") {
     await db.transaction("rw", db.outbox, db.drafts, async () => {
       await db.drafts.delete(draft.id);
       await db.outbox.put({ ...draft, at: clock(deps) });
@@ -150,8 +171,8 @@ export const isRetryLater = (e: unknown) =>
   /failed to fetch|network|timed? ?out|fetch failed/i.test(errorText(e));
 
 /**
- * Sends the waiting changes: new plans first, then edits (checked against the item as the server has it now), then
- * RSVPs. Nothing is ever dropped: whatever cannot be applied is kept as a draft with a notice.
+ * Sends the waiting changes: new plans first, then removals, then edits (checked against the item as the server has
+ * it now), then RSVPs. Nothing is ever dropped: whatever cannot be applied is kept as a draft with a notice.
  */
 export async function flushOutbox(deps: OutboxDeps, tripId: string): Promise<FlushResult> {
   const result = await sendOutbox(deps, tripId);
@@ -202,7 +223,25 @@ async function sendOutbox(deps: OutboxDeps, tripId: string): Promise<FlushResult
     }
   }
 
-  // 2. edits
+  // 2. removals. A plan already gone counts as done. One the server still has, and refuses, is kept as a draft.
+  for (const d of records.filter((r): r is DeleteRecord => r.kind === "delete").sort((a, b) => a.at - b.at)) {
+    try {
+      await writer.deleteItem(d.itemId);
+      await db.outbox.delete(d.id);
+      result.sent += 1;
+    } catch (e) {
+      if (isRetryLater(e)) return { ...result, deferred: true };
+      const latest = await deps.source.fetchSnapshot(tripId).catch(() => null);
+      const stillThere = latest?.status === "ok" && latest.snapshot.items.some((i) => i.id === d.itemId);
+      if (latest?.status === "ok" && !stillThere) {
+        await db.outbox.delete(d.id);
+        result.sent += 1;
+      } else if (!latest) return { ...result, deferred: true };
+      else await keepAsDraft([d], rejected(d, d.itemTitle, "title", d.itemTitle));
+    }
+  }
+
+  // 3. edits
   const updates = records.filter((r): r is UpdateRecord => r.kind === "update");
   const decided = reconcile(updates.map(asEdit), server);
   const byId = new Map(updates.map((u) => [u.id, u]));
@@ -239,7 +278,7 @@ async function sendOutbox(deps: OutboxDeps, tripId: string): Promise<FlushResult
     }
   }
 
-  // 3. RSVPs
+  // 4. RSVPs
   for (const r of records.filter((x): x is RsvpRecord => x.kind === "rsvp").sort((a, b) => a.at - b.at)) {
     try {
       await writer.setRsvp(r.itemId, r.userId, r.going);

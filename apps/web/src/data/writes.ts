@@ -41,6 +41,13 @@ export async function updateItem(client: WriteClient, item: Item, values: ItemFo
   return itemFromRow(rows[0] as ItemRow);
 }
 
+/** Removes a plan the person may delete. An empty result means the database refused it, or it is already gone. */
+export async function deleteItem(client: WriteClient, itemId: string): Promise<void> {
+  const { data, error } = await client.from("items").delete().eq("id", itemId).select();
+  if (error) throw new Error(error.message);
+  if (!data || (data as unknown[]).length === 0) throw new Error("Could not remove the plan");
+}
+
 export async function setRsvp(client: WriteClient, itemId: string, userId: string, going: boolean): Promise<void> {
   if (going) {
     const { error } = await client.from("rsvps").insert({ item_id: itemId, user_id: userId });

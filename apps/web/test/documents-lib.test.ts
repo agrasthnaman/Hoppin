@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getDocumentUrl, uploadDocument, type DocumentClient } from "../src/lib/documents";
+import { deleteDocument, getDocumentUrl, uploadDocument, type DocumentClient } from "../src/lib/documents";
 
 const ok = { error: null };
 
@@ -9,8 +9,11 @@ function fakeClient(over: { upload?: unknown; insert?: unknown; signed?: unknown
   const createSignedUrl = vi.fn().mockResolvedValue(over.signed ?? { data: { signedUrl: "https://signed.example/x" }, error: null });
   const single = vi.fn().mockImplementation(async () => over.insert ?? { data: {}, error: null });
   const insert = vi.fn().mockReturnValue({ select: () => ({ single }) });
-  const client: DocumentClient = { storage: { from: () => ({ upload, remove, createSignedUrl }) }, from: () => ({ insert }) };
-  return { client, upload, remove, createSignedUrl, insert };
+  const selectDeleted = vi.fn().mockResolvedValue({ data: [{ id: "d" }], error: null });
+  const eq = vi.fn().mockReturnValue({ select: selectDeleted });
+  const removeRow = vi.fn().mockReturnValue({ eq });
+  const client: DocumentClient = { storage: { from: () => ({ upload, remove, createSignedUrl }) }, from: () => ({ insert, delete: removeRow }) };
+  return { client, upload, remove, createSignedUrl, insert, removeRow, eq };
 }
 
 const pdf = () => new File(["hello"], "Flight ticket.pdf", { type: "application/pdf" });
@@ -66,6 +69,24 @@ describe("uploadDocument", () => {
     const { client, remove } = fakeClient({ insert: { data: null, error: { message: "permission denied" } } });
     await expect(uploadDocument(client, pdf(), meta, () => "doc3")).rejects.toThrow("permission denied");
     expect(remove).toHaveBeenCalledWith(["t1/u1/doc3-Flight-ticket.pdf"]);
+  });
+});
+
+describe("deleteDocument", () => {
+  const doc = { id: "d", tripId: "t1", itemId: null, ownerId: "u1", scope: "personal" as const, storagePath: "t1/u1/d-passport.pdf", kind: "Passport", fileName: "passport.pdf" };
+
+  it("removes the file and then the record", async () => {
+    const { client, remove, eq } = fakeClient();
+    await deleteDocument(client, doc);
+    expect(remove).toHaveBeenCalledWith(["t1/u1/d-passport.pdf"]);
+    expect(eq).toHaveBeenCalledWith("id", "d");
+  });
+
+  it("leaves the record when the file cannot be removed", async () => {
+    const { client, removeRow } = fakeClient();
+    vi.mocked(client.storage.from("trip-documents").remove).mockResolvedValueOnce({ error: { message: "storage down" } });
+    await expect(deleteDocument(client, doc)).rejects.toThrow("storage down");
+    expect(removeRow).not.toHaveBeenCalled();
   });
 });
 

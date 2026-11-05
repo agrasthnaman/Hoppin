@@ -44,3 +44,20 @@ export function fileNameFromPath(path: string): string {
   const last = path.split("/").pop() ?? path;
   return last.replace(UUID_PREFIX, "");
 }
+
+/** PDF or image, from the file name, so a list can say what the file is. */
+export function documentFileKind(fileName: string): "PDF" | "Image" {
+  return fileName.toLowerCase().endsWith(".pdf") ? "PDF" : "Image";
+}
+
+/**
+ * The name to show for a personal document. A name the person typed is kept in `kind`.
+ * Older rows only have the file name, so that is cleaned up instead.
+ */
+export function documentTitle(doc: { kind: string; fileName: string }): string {
+  const kind = doc.kind.trim();
+  const source = kind && kind.toLowerCase() !== "document" ? kind : doc.fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+  const name = source.trim();
+  if (!name) return doc.fileName;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}

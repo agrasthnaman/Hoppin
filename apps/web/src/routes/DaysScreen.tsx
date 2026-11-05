@@ -94,6 +94,7 @@ export function DaysScreen() {
         onJoin={(id) => void trip.setGoing(id, true)}
         canEditItem={(item) => (member ? canEdit(item, member) : false)}
         onEdit={setEditing}
+        onRemove={(item) => void trip.removeItem(item)}
         polls={snapshot.polls ?? []}
         votes={snapshot.votes ?? []}
         headerAction={
