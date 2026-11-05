@@ -22,7 +22,7 @@ const MOMENTS = [
 ];
 
 const SHELF = [
-  { k: "days", t: "the plan, without the group chat", d: "Each day is a timeline. Flights and stays are solid blocks. Optional plans stay small until someone taps them." },
+  { k: "days", t: "the plan, without the group chat", d: "Each day is a timeline. Flights and stays are solid blocks. Optional plans are their own cards, and anyone can join." },
   { k: "money", t: "who paid, and the fewest transfers", d: "The boat, the stay, lunch for eight. Hoppin works out who owes whom." },
   { k: "offline", t: "still there when the signal isn't", d: "Tickets, addresses and the day's stops live on the phone. Edits wait, then sync." },
 ];
@@ -315,7 +315,7 @@ export default function Landing() {
             <div className="lp-copy">
               <span className="lp-tag">Days</span>
               <h2 data-silk-anchor>The plan, without the chat.</h2>
-              <p className="lp-lede">Each day is a clean timeline. Flights and stays are solid blocks. Optional plans stay small until someone opts in.</p>
+              <p className="lp-lede">Each day is a clean timeline. Flights and stays are solid blocks. Optional plans are their own cards, and anyone can join.</p>
               <ul className="lp-checks">
                 <li>Everyone sees the same day, live</li>
                 <li>Mark plans as fixed or optional</li>

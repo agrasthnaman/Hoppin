@@ -35,31 +35,47 @@ function item(over: Partial<Item> & Pick<Item, "startsAt" | "title">): Item {
 
 const tour = item({ title: "Old town tour", startsAt: at("10:00"), endsAt: at("12:00"), locationUrl: "https://maps.example/old-town" });
 const lunch = item({ title: "Lunch", startsAt: at("13:00"), endsAt: at("14:00") });
-const museum = item({ title: "Museum", startsAt: at("10:30"), groupItem: false, ownerId: RIYA, locationUrl: "https://maps.example/museum" });
+const museum = item({
+  title: "Museum",
+  startsAt: at("10:30"),
+  groupItem: false,
+  ownerId: RIYA,
+  locationUrl: "https://maps.example/museum",
+  details: { notes: "Meet at the gate" },
+});
 const mine = item({ title: "ABC place", startsAt: at("15:00"), groupItem: false, visibility: "private" });
 
 function setup(props: Partial<React.ComponentProps<typeof DayView>> = {}) {
   const onJoin = vi.fn();
+  const onLeave = vi.fn();
   const layout = buildDay([lunch, tour, museum, mine], ME, "2026-12-01", IST);
   const utils = render(
-    <DayView date="2026-12-01" tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={onJoin} {...props} />,
+    <DayView date="2026-12-01" tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={onJoin} onLeave={onLeave} {...props} />,
   );
-  return { onJoin, ...utils };
+  return { onJoin, onLeave, ...utils };
 }
 
 describe("DayView", () => {
   it("shows group blocks in time order with their local times", () => {
     setup();
     const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(regions).toEqual(["Old town tour", "Lunch"]);
+    expect(regions).toEqual(["Old town tour", "Museum", "Lunch"]);
     expect(within(screen.getByRole("region", { name: "Old town tour" })).getByText("10:00 – 12:00")).toBeInTheDocument();
   });
 
-  it("shows a member's optional plan as a chip inside the block it falls in", () => {
+  it("shows an optional plan as its own card, with a way to join", () => {
     setup();
-    const block = screen.getByRole("region", { name: "Old town tour" });
-    expect(within(block).getByRole("button", { name: "R: Museum" })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Lunch" })).queryByRole("button")).toBeNull();
+    const tourBlock = screen.getByRole("region", { name: "Old town tour" });
+    expect(within(tourBlock).queryByText("Museum")).toBeNull();
+    const card = screen.getByRole("region", { name: "Museum" });
+    expect(within(card).getByRole("button", { name: "Join Museum" })).toBeEnabled();
+  });
+
+  it("joining from the card saves an RSVP without opening the plan", async () => {
+    const { onJoin } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "Join Museum" }));
+    expect(onJoin).toHaveBeenCalledWith(museum.id);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("shows the viewer's private items muted and marked 'Only you'", () => {
@@ -68,22 +84,32 @@ describe("DayView", () => {
     expect(line).toHaveTextContent("Only you");
   });
 
-  it("tapping a chip opens its details and 'I'm in' adds an RSVP", async () => {
-    const { onJoin } = setup();
-    await userEvent.click(screen.getByRole("button", { name: "R: Museum" }));
+  it("opening an optional card shows the notes, the map, and who joined", async () => {
+    const { onJoin, onLeave } = setup({ goingByItem: { [museum.id]: [RIYA, ME] } });
+    const card = screen.getByRole("region", { name: "Museum" });
+    expect(within(card).getByText("You're in")).toBeInTheDocument();
+    await userEvent.click(within(card).getByRole("button", { name: "Opt out of Museum" }));
+    expect(onLeave).toHaveBeenCalledWith(museum.id);
+    await userEvent.click(screen.getByRole("button", { name: "Open Museum" }));
     const dialog = screen.getByRole("dialog", { name: "Museum" });
-    expect(within(dialog).getByText(/Riya/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Meet at the gate")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Added by Riya/)).toBeInTheDocument();
+    const joined = within(dialog).getByRole("list", { name: "Who joined" });
+    expect(within(joined).getByText("Riya")).toBeInTheDocument();
+    expect(within(joined).getByText("Aman")).toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: /Get directions/ })).toHaveAttribute("href", "https://maps.example/museum");
-    await userEvent.click(within(dialog).getByRole("button", { name: "I'm in" }));
-    expect(onJoin).toHaveBeenCalledWith(museum.id);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Opt out" }));
+    expect(onLeave).toHaveBeenCalledTimes(2);
+    expect(onJoin).not.toHaveBeenCalled();
   });
 
-  it("shows who is already in, and disables the button for someone who has joined", async () => {
-    setup({ goingByItem: { [museum.id]: [RIYA, ME] } });
-    await userEvent.click(screen.getByRole("button", { name: "R: Museum" }));
+  it("opening a card nobody has joined yet says so, and I'm in joins from there", async () => {
+    const { onJoin } = setup();
+    await userEvent.click(screen.getByRole("button", { name: "Open Museum" }));
     const dialog = screen.getByRole("dialog", { name: "Museum" });
-    expect(within(dialog).getByRole("button", { name: "You're in" })).toBeDisabled();
-    expect(within(dialog).getByText("2 going")).toBeInTheDocument();
+    expect(within(dialog).getByText("No one yet")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "I'm in" }));
+    expect(onJoin).toHaveBeenCalledWith(museum.id);
   });
 
   it("tells the viewer when nothing is planned", () => {
@@ -113,7 +139,7 @@ describe("DayView cards", () => {
   });
   const show = (date: string, items: Item[]) => {
     const layout = buildDay(items, ME, date, IST);
-    return render(<DayView date={date} tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} />);
+    return render(<DayView date={date} tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} onLeave={vi.fn()} />);
   };
 
   it("pins the stay at the top of the day in its own colour, ahead of the plans", () => {
@@ -163,7 +189,7 @@ describe("DayView cards", () => {
     ];
     const plan = item({ title: "Palolem", startsAt: at("16:00"), details: { notes: "Which beach?", pollId: "p1" } });
     const layout = buildDay([plan], ME, "2026-12-01", IST);
-    render(<DayView date="2026-12-01" tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} polls={[beach]} votes={votes} />);
+    render(<DayView date="2026-12-01" tz={IST} layout={layout} people={people} viewerId={ME} goingByItem={{}} onJoin={vi.fn()} onLeave={vi.fn()} polls={[beach]} votes={votes} />);
     const card = screen.getByRole("region", { name: "Palolem" });
     expect(within(card).getByText("Poll")).toBeInTheDocument();
     expect(within(card).getByText("Which beach?")).toBeInTheDocument();

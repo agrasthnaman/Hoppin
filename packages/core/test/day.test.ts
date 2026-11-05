@@ -73,55 +73,42 @@ describe("buildDay: blocks", () => {
   });
 });
 
-describe("buildDay: chips", () => {
+describe("buildDay: optional plans", () => {
   const tour = item({ title: "Old town tour", startsAt: at("10:00"), endsAt: at("12:00") });
   const lunch = item({ title: "Lunch", startsAt: at("13:00"), endsAt: at("14:00") });
+  const flight = item({ title: "DEL to GOI", kind: "flight", startsAt: at("08:00"), endsAt: at("11:00") });
   const optional = (title: string, hhmm: string, over: Partial<Item> = {}) =>
     item({ title, startsAt: at(hhmm), groupItem: false, ...over });
   const hotel = () =>
     item({ title: "Hotel", kind: "stay", startsAt: "2026-11-30T14:00:00+05:30", endsAt: "2026-12-03T11:00:00+05:30" });
 
-  it("shared optional items become chips keyed to the block they overlap", () => {
-    const museum = optional("Museum", "10:30");
-    const day = buildDay([tour, lunch, museum], ME, "2026-12-01", IST);
-    expect(day.chips[tour.id]?.map((c) => c.title)).toEqual(["Museum"]);
-    expect(day.chips[lunch.id]).toBeUndefined();
-    expect(day.blocks.map((b) => b.id)).not.toContain(museum.id);
+  it("keeps an optional plan on its own, even when it starts during a flight", () => {
+    const seminar = optional("Visit KYND seminak", "09:30");
+    const day = buildDay([flight, seminar], ME, "2026-12-01", IST);
+    expect(day.blocks.map((b) => b.title)).toEqual(["DEL to GOI"]);
+    expect(day.chips[flight.id]).toBeUndefined();
+    expect(day.chips[UNANCHORED]?.map((c) => c.title)).toEqual(["Visit KYND seminak"]);
   });
 
-  it("a chip with no overlapping block attaches to the nearest earlier block", () => {
+  it("does not tuck an optional plan under an earlier booking", () => {
     const cafe = optional("Cafe crawl", "12:30");
-    const day = buildDay([tour, lunch, cafe], ME, "2026-12-01", IST);
-    expect(day.chips[tour.id]?.map((c) => c.title)).toEqual(["Cafe crawl"]);
-  });
-
-  it("a chip before the first block attaches to the first block", () => {
     const early = optional("Sunrise walk", "06:00");
-    const day = buildDay([tour, lunch, early], ME, "2026-12-01", IST);
-    expect(day.chips[tour.id]?.map((c) => c.title)).toEqual(["Sunrise walk"]);
+    const day = buildDay([tour, lunch, cafe, early], ME, "2026-12-01", IST);
+    expect(day.chips[tour.id]).toBeUndefined();
+    expect(day.chips[lunch.id]).toBeUndefined();
+    expect(day.chips[UNANCHORED]?.map((c) => c.title)).toEqual(["Sunrise walk", "Cafe crawl"]);
   });
 
-  it("with no blocks that day, chips are listed under the unanchored key", () => {
-    const day = buildDay([optional("Walk", "10:00")], ME, "2026-12-01", IST);
-    expect(day.chips[UNANCHORED]?.map((c) => c.title)).toEqual(["Walk"]);
-  });
-
-  it("a whole-day stay does not swallow the chips", () => {
-    const stay = hotel();
-    const day = buildDay([stay, tour, optional("Museum", "10:30")], ME, "2026-12-01", IST);
-    expect(day.chips[tour.id]?.map((c) => c.title)).toEqual(["Museum"]);
-    expect(day.chips[stay.id]).toBeUndefined();
-  });
-
-  it("when only a stay is there, chips attach to the stay", () => {
+  it("lists optional plans on their own when the day has only a stay", () => {
     const stay = hotel();
     const day = buildDay([stay, optional("Museum", "10:30")], ME, "2026-12-01", IST);
-    expect(day.chips[stay.id]?.map((c) => c.title)).toEqual(["Museum"]);
+    expect(day.chips[stay.id]).toBeUndefined();
+    expect(day.chips[UNANCHORED]?.map((c) => c.title)).toEqual(["Museum"]);
   });
 
-  it("orders chips in a slot by start time", () => {
-    const day = buildDay([tour, optional("B", "11:00"), optional("A", "10:15")], ME, "2026-12-01", IST);
-    expect(day.chips[tour.id]?.map((c) => c.title)).toEqual(["A", "B"]);
+  it("orders optional plans by start time", () => {
+    const day = buildDay([optional("B", "11:00"), optional("A", "10:15")], ME, "2026-12-01", IST);
+    expect(day.chips[UNANCHORED]?.map((c) => c.title)).toEqual(["A", "B"]);
   });
 });
 

@@ -92,6 +92,7 @@ export function DaysScreen() {
         goingByItem={goingFrom(snapshot.rsvps)}
         highlightId={highlightId}
         onJoin={(id) => void trip.setGoing(id, true)}
+        onLeave={(id) => void trip.setGoing(id, false)}
         canEditItem={(item) => (member ? canEdit(item, member) : false)}
         onEdit={setEditing}
         onRemove={(item) => void trip.removeItem(item)}
@@ -128,6 +129,7 @@ export function DaysScreen() {
       <Sheet open={adding} onOpenChange={setAdding} title="Add a plan">
         <ItemForm
           tz={clock.timeZone}
+          defaultDate={date}
           onCancel={() => setAdding(false)}
           onSubmit={async (values, files) => {
             const id = await trip.addItem(values); // saved on this device first; sent as soon as there is a connection

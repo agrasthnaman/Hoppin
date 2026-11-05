@@ -269,11 +269,13 @@ describe("trip gate", () => {
 });
 
 describe("days screen", () => {
-  it("shows the day: group blocks, members' optional plans as chips, and the viewer's private plan", async () => {
+  it("shows the day: group blocks, an optional plan as its own card, and the viewer's private plan", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/days?date=2026-12-02", services);
     const block = await screen.findByRole("region", { name: "Old town tour" });
-    expect(within(block).getByRole("button", { name: "R: Museum" })).toBeInTheDocument();
+    expect(within(block).queryByText("Museum")).toBeNull();
+    const museum = screen.getByRole("region", { name: "Museum" });
+    expect(within(museum).getByRole("button", { name: "Join Museum" })).toBeInTheDocument();
     expect(screen.getByText("Visit ABC place")).toBeInTheDocument();
     expect(screen.queryByText("Lunch on day three")).toBeNull();
   });
@@ -302,7 +304,7 @@ describe("days screen", () => {
   it("a friend's optional plan opens with an Edit plan button only when you may change it", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    await userEvent.click(await screen.findByRole("button", { name: "R: Museum" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open Museum" }));
     const sheet = await screen.findByRole("dialog", { name: "Museum" });
     expect(within(sheet).queryByRole("button", { name: "Edit plan" })).toBeNull();
   });
@@ -334,10 +336,17 @@ describe("days screen", () => {
     expect(router.state.location.search).toBe("?date=2026-12-02");
   });
 
+  it("opting out drops that RSVP", async () => {
+    const { services } = fakeServices({ snapshot: snapshot({ rsvps: [{ itemId: "i2", userId: "me" }] }) });
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Opt out of Museum" }));
+    await waitFor(() => expect(services.actions.setRsvp).toHaveBeenCalledWith("i2", "me", false));
+  });
+
   it("'I'm in' saves an RSVP and refreshes", async () => {
     const { services, fetchSnapshot } = fakeServices();
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    await userEvent.click(await screen.findByRole("button", { name: "R: Museum" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open Museum" }));
     const calls = fetchSnapshot.mock.calls.length;
     await userEvent.click(within(await screen.findByRole("dialog", { name: "Museum" })).getByRole("button", { name: "I'm in" }));
     // the change is saved on the device first and sent a moment later
@@ -350,7 +359,9 @@ describe("days screen", () => {
     renderApp("/trips/t1/days?date=2026-12-02", services);
     await userEvent.click(await screen.findByRole("button", { name: "Add plan" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
+    expect(within(dialog).getByLabelText("Starts")).toHaveValue("2026-12-02T09:00");
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
+    await userEvent.clear(within(dialog).getByLabelText("Starts"));
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T19:30");
     const calls = fetchSnapshot.mock.calls.length;
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -373,6 +384,7 @@ describe("days screen", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add plan" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
+    await userEvent.clear(within(dialog).getByLabelText("Starts"));
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T19:30");
     await userEvent.upload(within(dialog).getByLabelText("Booking documents"), new File(["x"], "dinner.pdf", { type: "application/pdf" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));

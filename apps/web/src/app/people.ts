@@ -8,6 +8,12 @@ export function peopleFrom(members: TripSnapshot["members"]): Record<string, Per
   return Object.fromEntries(byId.map((m, i) => [m.userId, { name: m.displayName, color: personColor(i) }]));
 }
 
+/** True when this viewer organizes the trip and someone is still waiting to be approved. */
+export function waitingForOrganizer(members: TripSnapshot["members"], viewerId: string): boolean {
+  const me = members.find((member) => member.userId === viewerId);
+  return me?.role === "organizer" && members.some((member) => member.status === "pending");
+}
+
 export function goingFrom(rsvps: TripSnapshot["rsvps"]): Record<string, string[]> {
   const going: Record<string, string[]> = {};
   for (const r of rsvps) (going[r.itemId] ??= []).push(r.userId);

@@ -13,6 +13,8 @@ export interface ItemFormProps {
   initial?: Item;
   /** Starting text for a new plan (for example the winner of a poll). Ignored when editing. */
   prefill?: { title?: string; kind?: ItemKind; notes?: string; pollId?: string };
+  /** `YYYY-MM-DD` of the day this form was opened from. A new plan starts that day at 09:00, and can be changed. Ignored when editing. */
+  defaultDate?: string;
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
   /** `documents` is set only when creating a booking and at least one file was chosen. */
@@ -49,7 +51,7 @@ const KINDS: { value: ItemKind; label: string; icon: LucideIcon }[] = [
 
 const AUDIENCES: { value: Audience; label: string; hint: string; icon: LucideIcon }[] = [
   { value: "group", label: "Whole group", hint: "A fixed plan for everyone", icon: Users },
-  { value: "optional", label: "Optional, anyone can join", hint: "Shows as a small chip people can tap", icon: PartyPopper },
+  { value: "optional", label: "Optional, anyone can join", hint: "Its own card. Anyone in the group can join", icon: PartyPopper },
   { value: "private", label: "Just me", hint: "Only you can see it", icon: Lock },
 ];
 
@@ -71,12 +73,12 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 /** Add or edit a trip item: a booking (flight, stay, transport), a group activity, an optional plan, or a private plan. */
-export function ItemForm({ initial, prefill, tz, onSubmit, onCancel }: ItemFormProps) {
+export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel }: ItemFormProps) {
   const zone = initial?.tz ?? tz;
   const [arrivalZone, setArrivalZone] = useState(initial?.endTz ?? zone);
   const [kind, setKind] = useState<ItemKind>(initial?.kind ?? prefill?.kind ?? "activity");
   const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? "");
-  const [starts, setStarts] = useState(initial ? instantToZonedInput(initial.startsAt, zone) : "");
+  const [starts, setStarts] = useState(initial ? instantToZonedInput(initial.startsAt, zone) : defaultDate ? `${defaultDate}T09:00` : "");
   const [ends, setEnds] = useState(initial?.endsAt ? instantToZonedInput(initial.endsAt, initial.endTz ?? zone) : "");
   const [location, setLocation] = useState(initial?.locationUrl ?? "");
   const [notes, setNotes] = useState(typeof initial?.details.notes === "string" ? initial.details.notes : (prefill?.notes ?? ""));

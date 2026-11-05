@@ -50,6 +50,16 @@ describe("ItemForm", () => {
     await userEvent.type(screen.getByLabelText("Starts"), start);
   };
 
+  it("opens on the day it was started from, and that date can be changed", async () => {
+    const { onSubmit } = setup({ defaultDate: "2026-12-02" });
+    expect(screen.getByLabelText("Starts")).toHaveValue("2026-12-02T09:00");
+    await userEvent.clear(screen.getByLabelText("Starts"));
+    await userEvent.type(screen.getByLabelText("Title"), "Seminar");
+    await userEvent.type(screen.getByLabelText("Starts"), "2026-12-04T11:15");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ startsAt: "2026-12-04T05:45:00.000Z" }));
+  });
+
   it("saves times in the trip's time zone as exact instants, for the whole group by default", async () => {
     const { onSubmit } = setup();
     await fill("Beach dinner", "2026-12-01T10:00");
@@ -286,7 +296,7 @@ describe("ItemForm: choosing what kind of plan it is", () => {
   it("each choice for who it is for explains itself", () => {
     setup();
     expect(screen.getByText("A fixed plan for everyone")).toBeInTheDocument();
-    expect(screen.getByText("Shows as a small chip people can tap")).toBeInTheDocument();
+    expect(screen.getByText("Its own card. Anyone in the group can join")).toBeInTheDocument();
     expect(screen.getByText("Only you can see it")).toBeInTheDocument();
   });
 

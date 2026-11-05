@@ -3,6 +3,7 @@ import { TripDataProvider } from "../app/trip-data";
 import { useServices } from "../app/services";
 import { useTrip } from "../app/useTrip";
 import { useUser } from "../app/user";
+import { waitingForOrganizer } from "../app/people";
 import { AppShell } from "../components/AppShell";
 import { NoticeList } from "../components/NoticeList";
 import { useNow } from "../hooks/useNow";
@@ -33,6 +34,7 @@ export function TripShell() {
         basePath={`/trips/${tripId}`}
         tripName={trip.snapshot?.trip.name ?? "Your trip"}
         status={{ online, lastSyncedAt: trip.syncedAt, now, pending: trip.pendingCount }}
+        memberWaiting={waitingForOrganizer(trip.snapshot?.members ?? [], userId)}
         above={<NoticeList notices={trip.notices} onDismiss={(id) => void trip.dismissNotice(id)} />}
       />
     </TripDataProvider>
