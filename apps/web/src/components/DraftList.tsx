@@ -17,6 +17,7 @@ function show(value: unknown): string {
 function describe(draft: OutboxRecord): string {
   if (draft.kind === "update") return `Your change to the ${fieldLabel(draft.field)} of "${draft.itemTitle ?? "an item"}": ${show(draft.value)}`;
   if (draft.kind === "create") return `A new plan: "${draft.values.title}"`;
+  if (draft.kind === "delete") return `Remove "${draft.itemTitle}"`;
   return "A reply";
 }
 

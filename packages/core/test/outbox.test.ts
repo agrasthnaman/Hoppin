@@ -54,6 +54,13 @@ describe("overlaySnapshot", () => {
     expect(shown.rsvps).toEqual([{ itemId: "i2", userId: "me" }]);
   });
 
+  it("hides a plan that is waiting to be removed", () => {
+    const outbox: OutboxRecord[] = [{ kind: "delete", id: "d1", tripId: "t1", itemId: "i1", itemTitle: "Museum", at: 1 }];
+    const shown = overlaySnapshot(snapshot(), outbox);
+    expect(shown.items.map((i) => i.id)).toEqual(["i2"]);
+    expect(shown.rsvps).toEqual([]);
+  });
+
   it("ignores records for other trips and leaves the saved copy untouched", () => {
     const base = snapshot();
     const outbox: OutboxRecord[] = [{ kind: "update", id: "e1", tripId: "other", itemId: "i1", field: "title", value: "X", baseValue: "Museum", baseVersion: 2, at: 1 }];

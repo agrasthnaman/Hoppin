@@ -23,6 +23,7 @@ import {
   listNotices,
   listOutbox,
   queueCreate,
+  queueDelete,
   queueItemEdit,
   queueRsvp,
   type Writer,
@@ -66,6 +67,8 @@ export interface TripState {
   cacheAll: () => Promise<CacheResult>;
   /** Save changes to an item. Works offline: it is stored here and sent when there is a connection. */
   editItem: (item: Item, values: ItemValues) => Promise<void>;
+  /** Remove a plan. It disappears here at once and is removed for the group when there is a connection. */
+  removeItem: (item: Item) => Promise<void>;
   /** Add a plan. Works offline. Returns the plan's id. */
   addItem: (values: ItemValues) => Promise<string>;
   setGoing: (itemId: string, going: boolean) => Promise<void>;
@@ -235,6 +238,10 @@ export function useTrip(deps: TripDeps, tripId: string, viewerId: string): TripS
     cacheAll: () => cacheDocuments(offline(), tripId),
     editItem: async (item, values) => {
       await queueItemEdit(queueDeps(), { tripId, item, values });
+      kick();
+    },
+    removeItem: async (item) => {
+      await queueDelete(queueDeps(), { tripId, item });
       kick();
     },
     addItem: async (values) => {

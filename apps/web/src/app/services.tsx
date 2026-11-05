@@ -3,10 +3,10 @@ import { createContext, useContext, type ReactNode } from "react";
 import type { ItemFormValues } from "../components/ItemForm";
 import { createAuthApi, type AuthApi } from "../lib/auth-api";
 import { createInviteApi } from "../lib/invite-api";
-import { getDocumentUrl, uploadDocument } from "../lib/documents";
+import { deleteDocument, getDocumentUrl, uploadDocument } from "../lib/documents";
 import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
-import { addGuest, castVote, closePoll, createItem, createPoll, deleteExpense, deletePoll, saveExpense, setRsvp, updateItem } from "../data/writes";
+import { addGuest, castVote, closePoll, createItem, createPoll, deleteExpense, deleteItem, deletePoll, saveExpense, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import { createOpenMeteoGeocoder, createOpenMeteoWeather, createWeatherService, createWeatherStore, type Geocoder, type WeatherService } from "../providers/weather";
@@ -16,6 +16,7 @@ import type { SessionClient } from "./session";
 export interface Actions {
   createItem(tripId: string, ownerId: string, values: ItemFormValues, id?: string): Promise<void>;
   updateItem(item: Item, values: ItemFormValues): Promise<void>;
+  deleteItem(itemId: string): Promise<void>;
   setRsvp(itemId: string, userId: string, going: boolean): Promise<void>;
   /** Asks the group a question. Needs a connection. Returns the poll's id. */
   createPoll(tripId: string, question: string, multiple: boolean, options: string[]): Promise<string>;
@@ -25,6 +26,8 @@ export interface Actions {
   closePoll(pollId: string): Promise<void>;
   deletePoll(pollId: string): Promise<void>;
   uploadDocument(file: File, meta: { tripId: string; ownerId: string; itemId: string | null; scope: DocumentScope; kind: string }): Promise<void>;
+  /** Removes one of this person's documents, including the stored file. Needs a connection. */
+  deleteDocument(doc: TripDocument): Promise<void>;
   /** A short-lived link to open a document online. */
   documentUrl(doc: TripDocument): Promise<string>;
   listTrips(): Promise<{ id: string; name: string; startDate?: string | null; endDate?: string | null }[]>;
@@ -115,12 +118,14 @@ export function createServices(client: any): Services {
     actions: {
       createItem: async (tripId, ownerId, values, id) => void (await createItem(client, tripId, ownerId, values, id)),
       updateItem: async (item, values) => void (await updateItem(client, item, values)),
+      deleteItem: (itemId) => deleteItem(client, itemId),
       setRsvp: (itemId, userId, going) => setRsvp(client, itemId, userId, going),
       createPoll: (tripId, question, multiple, options) => createPoll(client, tripId, question, multiple, options),
       castVote: (pollId, optionIds) => castVote(client, pollId, optionIds),
       closePoll: (pollId) => closePoll(client, pollId),
       deletePoll: (pollId) => deletePoll(client, pollId),
       uploadDocument: async (file, meta) => void (await uploadDocument(client, file, meta)),
+      deleteDocument: (doc) => deleteDocument(client, doc),
       documentUrl: (doc) => getDocumentUrl(client, doc),
       listTrips: async () => {
         const { data, error } = await client.from("trips").select("id, name, start_date, end_date").order("created_at", { ascending: false });

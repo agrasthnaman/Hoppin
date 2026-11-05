@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
+import { payerScrollEnds } from "../src/components/money/ExpenseForm";
 import { listMoney } from "../src/offline/money-outbox";
 import { fakeServices, renderApp, snapshot } from "./helpers";
 
@@ -136,6 +137,32 @@ describe("the Money screen", () => {
     ]);
     expect(services.actions.saveExpense).not.toHaveBeenCalled();
     expect(await listMoney(services.db, "t1")).toEqual([]);
+  });
+});
+
+describe("who paid list", () => {
+  it("knows when names are hidden off either edge", () => {
+    expect(payerScrollEnds(0, 200, 200)).toEqual({ left: false, right: false });
+    expect(payerScrollEnds(0, 120, 600)).toEqual({ left: false, right: true });
+    expect(payerScrollEnds(200, 120, 600)).toEqual({ left: true, right: true });
+    expect(payerScrollEnds(480, 120, 600)).toEqual({ left: true, right: false });
+  });
+
+  it("scrolls inside the card, and a chevron shows the people still off to the side", async () => {
+    renderApp("/trips/t1/money", as("me").services);
+    await userEvent.click(await screen.findByRole("button", { name: "Add expense" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add expense" });
+    const strip = within(dialog).getByRole("radio", { name: "You" }).closest("[data-payer-strip]") as HTMLElement;
+    expect(strip.className).toContain("overflow-x-auto");
+    expect(strip.className).toContain("min-w-0");
+    Object.defineProperty(strip, "clientWidth", { configurable: true, value: 120 });
+    Object.defineProperty(strip, "scrollWidth", { configurable: true, value: 600 });
+    strip.dispatchEvent(new Event("scroll"));
+    const more = await within(dialog).findByRole("button", { name: "More people" });
+    const scrollBy = vi.fn();
+    strip.scrollBy = scrollBy;
+    await userEvent.click(more);
+    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: expect.any(Number) }));
   });
 });
 

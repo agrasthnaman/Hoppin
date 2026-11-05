@@ -4,7 +4,7 @@ import { ConflictError } from "../src/data/writes";
 import { openOfflineDb, type OfflineDb } from "../src/offline/db";
 import {
   applyDraft, dismissNotice, discardDraft, flushOutbox, listDrafts, listNotices, listOutbox,
-  queueCreate, queueItemEdit, queueRsvp, type OutboxDeps, type Writer,
+  queueCreate, queueDelete, queueItemEdit, queueRsvp, type OutboxDeps, type Writer,
 } from "../src/offline/outbox";
 
 const T_LATER = Date.parse("2026-12-01T11:00:00.000Z");
@@ -37,7 +37,7 @@ beforeEach(() => {
     if (server instanceof Error) throw server;
     return server;
   });
-  writer = { createItem: vi.fn(async () => {}), updateItem: vi.fn(async () => {}), setRsvp: vi.fn(async () => {}) };
+  writer = { createItem: vi.fn(async () => {}), updateItem: vi.fn(async () => {}), deleteItem: vi.fn(async () => {}), setRsvp: vi.fn(async () => {}) };
   deps = { db, source: { fetchSnapshot } as unknown as TripSource, writer: writer as unknown as Writer, viewerId: "me", now: () => T_LATER, newId: () => `id${(ids += 1)}` };
 });
 
@@ -80,6 +80,21 @@ describe("queueItemEdit", () => {
   });
 });
 
+describe("queueDelete", () => {
+  it("a saved plan becomes one waiting removal, and its waiting edits are dropped", async () => {
+    await queueItemEdit(deps, { tripId: "t1", item: item(), values: values({ title: "Moved" }) });
+    await queueDelete(deps, { tripId: "t1", item: item() });
+    expect(await listOutbox(db, "t1")).toEqual([expect.objectContaining({ kind: "delete", itemId: "i1", itemTitle: "Museum" })]);
+  });
+
+  it("a plan that was never sent is dropped here, with nothing left to send", async () => {
+    const itemId = await queueCreate(deps, { tripId: "t1", ownerId: "me", values: values({ title: "Draft plan" }) });
+    await queueDelete(deps, { tripId: "t1", item: item({ id: itemId, title: "Draft plan", version: 0 }) });
+    expect(await listOutbox(db, "t1")).toEqual([]);
+    expect(writer.deleteItem).not.toHaveBeenCalled();
+  });
+});
+
 describe("queueCreate and queueRsvp", () => {
   it("a new plan gets its final id straight away", async () => {
     const id = await queueCreate(deps, { tripId: "t1", ownerId: "me", values: values({ title: "Beach dinner" }) });
@@ -107,6 +122,18 @@ describe("flushOutbox", () => {
     expect(await flushOutbox(deps, "t1")).toEqual({ sent: 3, drafts: 0, notices: 0, deferred: false });
     expect(order).toEqual(["create", "update", "rsvp"]);
     expect(writer.createItem).toHaveBeenCalledWith("t1", "me", expect.objectContaining({ title: "Dinner" }), newId);
+    expect(await listOutbox(db, "t1")).toEqual([]);
+  });
+
+  it("sends a removal, and treats a plan that is already gone as removed", async () => {
+    await queueDelete(deps, { tripId: "t1", item: item() });
+    expect(await flushOutbox(deps, "t1")).toMatchObject({ sent: 1, drafts: 0 });
+    expect(writer.deleteItem).toHaveBeenCalledWith("i1");
+
+    writer.deleteItem.mockRejectedValueOnce(new Error("Could not remove the plan"));
+    set([]);
+    await queueDelete(deps, { tripId: "t1", item: item() });
+    expect(await flushOutbox(deps, "t1")).toMatchObject({ sent: 1, drafts: 0 });
     expect(await listOutbox(db, "t1")).toEqual([]);
   });
 

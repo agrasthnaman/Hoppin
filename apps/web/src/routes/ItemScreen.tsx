@@ -1,6 +1,6 @@
 import type { TripDocument } from "@hoppin/core";
 import { ChevronLeft } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
@@ -12,6 +12,7 @@ import { getLocalDocument } from "../offline/sync";
 /** One item with its documents. Documents open from this device when stored there, otherwise online. */
 export function ItemScreen() {
   const { itemId } = useParams();
+  const navigate = useNavigate();
   const trip = useTripData();
   const { actions, db } = useServices();
 
@@ -55,6 +56,10 @@ export function ItemScreen() {
         people={peopleFrom(snapshot.members)}
         onSave={async (values) => {
           await trip.editItem(item, values); // saved on this device first; sent as soon as there is a connection
+        }}
+        onRemove={async () => {
+          await trip.removeItem(item);
+          navigate(`/trips/${trip.tripId}/days`);
         }}
         onUpload={async (file, scope) => {
           await actions.uploadDocument(file, { tripId: trip.tripId, ownerId: trip.viewerId, itemId: item.id, scope, kind: "document" });

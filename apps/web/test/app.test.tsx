@@ -241,6 +241,18 @@ describe("days screen", () => {
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Old town tour");
   });
 
+  it("removes a plan from the day", async () => {
+    const { services } = fakeServices();
+    renderApp("/trips/t1/days?date=2026-12-02", services);
+    const block = await screen.findByRole("region", { name: "Old town tour" });
+    await userEvent.click(within(block).getByRole("button", { name: "Delete Old town tour" }));
+    const confirm = await screen.findByRole("dialog", { name: "Delete Old town tour?" });
+    expect(within(confirm).getByText("This takes it off the trip.")).toBeInTheDocument();
+    await userEvent.click(within(confirm).getByRole("button", { name: "Delete it" }));
+    await waitFor(() => expect(services.actions.deleteItem).toHaveBeenCalledWith("i1"));
+    expect(screen.queryByRole("region", { name: "Old town tour" })).toBeNull();
+  });
+
   it("a friend's optional plan opens with an Edit plan button only when you may change it", async () => {
     const { services } = fakeServices();
     renderApp("/trips/t1/days?date=2026-12-02", services);
@@ -407,7 +419,9 @@ describe("bookings and my documents", () => {
     const bookings = await screen.findByRole("region", { name: "Bookings" });
     await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
     expect(within(bookings).getByRole("button", { name: "Edit Goa flight" })).toBeInTheDocument();
+    expect(within(bookings).getByRole("button", { name: "Delete Goa flight" })).toBeInTheDocument();
     expect(within(bookings).queryByRole("button", { name: "Edit Beach house" })).toBeNull();
+    expect(within(bookings).queryByRole("button", { name: "Delete Beach house" })).toBeNull();
     await userEvent.click(within(bookings).getByRole("button", { name: "Edit Goa flight" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit booking" });
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Goa flight");
@@ -515,16 +529,22 @@ describe("bookings and my documents", () => {
     const { services } = fakeServices({ snapshot: snap });
     renderApp("/trips/t1/docs", services);
     const mine = await screen.findByRole("region", { name: "My documents" });
-    expect(within(mine).getByText("passport.pdf")).toBeInTheDocument();
-    expect(within(mine).queryByText("riya-visa.pdf")).toBeNull();
+    expect(within(mine).getByText("Passport")).toBeInTheDocument();
+    expect(within(mine).getByText("PDF")).toBeInTheDocument();
+    expect(within(mine).getByRole("button", { name: "Remove Passport" })).toBeInTheDocument();
+    expect(within(mine).queryByText("Riya visa")).toBeNull();
     const bookings = screen.getByRole("region", { name: "Bookings" });
     await userEvent.click(within(bookings).getByRole("button", { name: "Flights" }));
     expect(within(bookings).getByRole("button", { name: "Open d1-ticket.pdf" })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Other files" })).getByText("riya-visa.pdf")).toBeInTheDocument();
-    await userEvent.upload(within(mine).getByLabelText("Add a document"), new File(["x"], "visa.pdf", { type: "application/pdf" }));
+    expect(within(screen.getByRole("region", { name: "Other files" })).getByText("Riya visa")).toBeInTheDocument();
+    await userEvent.type(within(mine).getByLabelText("Name"), "Visa");
+    await userEvent.upload(within(mine).getByLabelText("PDF or image"), new File(["x"], "visa.pdf", { type: "application/pdf" }));
+    await userEvent.click(within(mine).getByRole("button", { name: "Add document" }));
     await waitFor(() =>
-      expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: null, scope: "personal", kind: "document" }),
+      expect(services.actions.uploadDocument).toHaveBeenCalledWith(expect.any(File), { tripId: "t1", ownerId: "me", itemId: null, scope: "personal", kind: "Visa" }),
     );
+    await userEvent.click(within(mine).getByRole("button", { name: "Remove Passport" }));
+    await waitFor(() => expect(services.actions.deleteDocument).toHaveBeenCalledWith(expect.objectContaining({ id: "p1", fileName: "passport.pdf" })));
   });
 
   it("says when there are no bookings and no files", async () => {
@@ -560,6 +580,7 @@ describe("item screen", () => {
     renderApp("/trips/t1/items/i2", services);
     expect(await screen.findByRole("heading", { name: "Museum" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete Museum" })).toBeNull();
   });
 
   it("uploads a document against the item", async () => {
