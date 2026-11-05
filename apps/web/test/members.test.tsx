@@ -24,12 +24,19 @@ const open = async (snap = asOrganizer(), opts: Parameters<typeof fakeServices>[
 };
 
 describe("members screen: the organizer", () => {
-  it("lists people waiting for approval, who can be approved or declined", async () => {
+  it("lists people waiting for approval, who can be approved", async () => {
     const { services } = await open();
     const waiting = await screen.findByRole("region", { name: "Waiting for approval" });
     expect(within(waiting).getByText("Kabir")).toBeInTheDocument();
     await userEvent.click(within(waiting).getByRole("button", { name: "Approve Kabir" }));
     await waitFor(() => expect(services.invites.approveMember).toHaveBeenCalledWith("t1", "kabir"));
+  });
+
+  // Its own test: once someone is approved they leave the waiting list, so approving and declining the same person
+  // in one test raced with the screen refreshing.
+  it("lists people waiting for approval, who can be declined", async () => {
+    const { services } = await open();
+    const waiting = await screen.findByRole("region", { name: "Waiting for approval" });
     await userEvent.click(within(waiting).getByRole("button", { name: "Decline Kabir" }));
     await waitFor(() => expect(services.invites.removeMember).toHaveBeenCalledWith("t1", "kabir"));
   });
