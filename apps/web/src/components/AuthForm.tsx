@@ -8,7 +8,7 @@ import { Button } from "./ui/Button";
 export type AuthFormApi = Pick<AuthApi, "signUp" | "signIn" | "resendConfirmation" | "requestPasswordReset">;
 
 type Mode = "signin" | "signup" | "forgot";
-type Sent = { kind: "confirm" | "reset"; email: string } | null;
+type Sent = { kind: "confirm" | "reset" | "exists"; email: string } | null;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -111,7 +111,22 @@ export function AuthForm({
       }
     } catch (error) {
       if (error instanceof AuthError && error.code === "email-not-confirmed") setSent({ kind: "confirm", email: trimmed });
+      else if (error instanceof AuthError && error.code === "already-registered") setSent({ kind: "exists", email: trimmed });
       else setFailure(explain(error, mode, purpose));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendReset() {
+    if (!sent) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      await api.requestPasswordReset({ email: sent.email, redirectTo: resetRedirectTo });
+      setSent({ kind: "reset", email: sent.email });
+    } catch (error) {
+      setFailure(explain(error, "forgot", purpose));
     } finally {
       setBusy(false);
     }
@@ -133,9 +148,11 @@ export function AuthForm({
 
   const joinLabel = purpose === "waitlist" ? "Join the waitlist" : "Create account";
   const headline = sent
-    ? sent.kind === "confirm" && purpose === "waitlist"
-      ? "You're on the list"
-      : "Check your email"
+    ? sent.kind === "exists"
+      ? "You already have an account"
+      : sent.kind === "confirm" && purpose === "waitlist"
+        ? "You're on the list"
+        : "Check your email"
     : mode === "signup"
       ? joinLabel
       : mode === "forgot"
@@ -153,8 +170,25 @@ export function AuthForm({
 
   const fields = sent ? (
     <div className="flex flex-col gap-3">
-      {!titled && <p className="text-lg font-semibold">{sent.kind === "confirm" && purpose === "waitlist" ? "You're on the list" : "Check your email"}</p>}
-      {sent.kind === "confirm" ? (
+      {!titled && (
+        <p className="text-lg font-semibold">
+          {sent.kind === "exists" ? "You already have an account" : sent.kind === "confirm" && purpose === "waitlist" ? "You're on the list" : "Check your email"}
+        </p>
+      )}
+      {sent.kind === "exists" ? (
+        <>
+          <p className="text-muted">
+            {sent.email} is already registered, so there's no new email to wait for. Sign in with your password. If you've forgotten it, we can email you a link to choose a new one.
+          </p>
+          {failure && <Banner kind="conflict" text={failure} />}
+          <Button type="button" onClick={() => { setSent(null); setResent(false); setEmail(sent.email); switchTo("signin"); }}>
+            Sign in
+          </Button>
+          <Button type="button" variant="ghost" disabled={busy} onClick={sendReset}>
+            Email me a reset link
+          </Button>
+        </>
+      ) : sent.kind === "confirm" ? (
         <>
           <p className="text-muted">
             {purpose === "waitlist"
@@ -172,9 +206,11 @@ export function AuthForm({
       ) : (
         <p className="text-muted">If {sent.email} has an account, we sent a link to choose a new password. It works once and expires in 24 hours.</p>
       )}
-      <Button type="button" variant="ghost" onClick={() => { setSent(null); setResent(false); switchTo("signin"); }}>
-        Back to sign in
-      </Button>
+      {sent.kind !== "exists" && (
+        <Button type="button" variant="ghost" onClick={() => { setSent(null); setResent(false); switchTo("signin"); }}>
+          Back to sign in
+        </Button>
+      )}
     </div>
   ) : (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">

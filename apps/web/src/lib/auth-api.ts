@@ -12,7 +12,7 @@ export interface PasswordClient {
       email: string;
       password: string;
       options: { emailRedirectTo: string; data: { display_name: string } };
-    }): PromiseLike<{ data: { session: unknown | null }; error: ServerError }>;
+    }): PromiseLike<{ data: { session: unknown | null; user?: { identities?: unknown[] | null } | null }; error: ServerError }>;
     signInWithPassword(args: { email: string; password: string }): PromiseLike<{ data: unknown; error: ServerError }>;
     resend(args: { type: "signup"; email: string; options: { emailRedirectTo: string } }): PromiseLike<{ error: ServerError }>;
     resetPasswordForEmail(email: string, options: { redirectTo: string }): PromiseLike<{ error: ServerError }>;
@@ -21,7 +21,7 @@ export interface PasswordClient {
   };
 }
 
-export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "other";
+export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "already-registered" | "other";
 
 /** An auth failure the screens can explain in plain words. */
 export class AuthError extends Error {
@@ -61,6 +61,11 @@ export function createAuthApi(client: PasswordClient) {
         options: { emailRedirectTo: args.redirectTo, data: { display_name: args.name } },
       });
       if (error) throw toAuthError(error);
+      // For an address that already has an account the service answers as if sign-up worked, but sends no email and
+      // gives back an account with no identities. Say so, instead of leaving the person waiting for a mail that never comes.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw new AuthError("already-registered", "This email already has an account");
+      }
       return { confirmationNeeded: data.session === null };
     },
 
