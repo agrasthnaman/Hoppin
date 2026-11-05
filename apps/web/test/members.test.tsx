@@ -138,9 +138,24 @@ describe("members screen: offline and access", () => {
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 
-  it("is reachable from the More screen", async () => {
+  it("is reachable from the More screen, and marked when someone is waiting", async () => {
     const fake = fakeServices({ snapshot: asOrganizer() });
     renderApp("/trips/t1/more", fake.services);
-    expect(await screen.findByRole("link", { name: "Members" })).toHaveAttribute("href", "/trips/t1/members");
+    const members = await screen.findByRole("link", { name: "Members" });
+    expect(members).toHaveAttribute("href", "/trips/t1/members");
+    await waitFor(() => expect(members).toHaveAccessibleDescription("Someone is waiting for approval"));
+    expect(members.querySelector("[data-waiting]")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "More" })).toHaveAccessibleDescription("Someone is waiting for approval");
+  });
+
+  it("does not mark Members when the viewer is not the organizer, or nobody is waiting", async () => {
+    const { unmount } = renderApp("/trips/t1/more", fakeServices({ snapshot: asMember() }).services);
+    await screen.findByText(/kept on this device/);
+    expect(screen.getByRole("link", { name: "Members" })).not.toHaveAttribute("aria-describedby");
+    unmount();
+    renderApp("/trips/t1/more", fakeServices({ snapshot: snapshot({ members: [m("me", "Aman", { role: "organizer" }), m("riya", "Riya")] }) }).services);
+    await screen.findByText(/kept on this device/);
+    expect(screen.getByRole("link", { name: "Members" })).not.toHaveAttribute("aria-describedby");
+    expect(screen.getByRole("link", { name: "More" })).not.toHaveAttribute("aria-describedby");
   });
 });

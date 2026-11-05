@@ -1,4 +1,4 @@
-import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, UNANCHORED, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
+import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
 import { BedDouble, MapPin, Navigation, Vote as VoteIcon } from "lucide-react";
 import { useState } from "react";
@@ -8,7 +8,6 @@ import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
 import { BinButton, ConfirmDelete } from "./ConfirmDelete";
 import { KindTag } from "./kind";
-import { Chip } from "./ui/Chip";
 import { Sheet } from "./ui/Sheet";
 
 export interface Person {
@@ -27,6 +26,8 @@ export interface DayViewProps {
   /** User ids who said "I'm in", by item id. */
   goingByItem: Record<string, string[]>;
   onJoin: (itemId: string) => void;
+  /** Drops the viewer's RSVP for an optional plan they already joined. */
+  onLeave: (itemId: string) => void;
   /** The plan to spotlight with the big colour block (the one happening now, or next up). */
   highlightId?: string | null;
   /** Shown at the right of the day heading (for example an "Add plan" button). */
@@ -128,32 +129,27 @@ function PollResults({ poll, votes, onHero }: { poll: Poll; votes: Vote[]; onHer
   );
 }
 
-/** One day of the trip: group blocks, members' optional plans as chips, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
+function planNotes(item: Item): string {
+  const notes = item.details.notes;
+  return typeof notes === "string" ? notes.trim() : "";
+}
+
+/** One day of the trip: group blocks, optional plans as their own cards, and the viewer's private plans. */
+export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, onLeave, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
   const [selected, setSelected] = useState<Item | null>(null);
   const [confirming, setConfirming] = useState<Item | null>(null);
   const person = (id: string) => people[id] ?? UNKNOWN;
-  const initial = (id: string) => person(id).name.trim().charAt(0).toUpperCase();
-
-  const chipRow = (chips: Item[]) => (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {chips.map((chip) => (
-        <Chip
-          key={chip.id}
-          initial={initial(chip.ownerId)}
-          title={chip.title}
-          color={person(chip.ownerId).color}
-          onOpen={() => setSelected(chip)}
-        />
-      ))}
-    </div>
-  );
 
   const empty =
     layout.blocks.length === 0 && layout.privateLines.length === 0 && Object.keys(layout.chips).length === 0;
   const going = selected ? (goingByItem[selected.id] ?? []) : [];
   const stays = layout.blocks.filter((block) => block.kind === "stay");
   const others = layout.blocks.filter((block) => block.kind !== "stay");
+  const optionals = Object.values(layout.chips).flat();
+  const timed = [
+    ...others.map((item) => ({ item, optional: false as const })),
+    ...optionals.map((item) => ({ item, optional: true as const })),
+  ].sort((a, b) => Date.parse(a.item.startsAt) - Date.parse(b.item.startsAt) || a.item.title.localeCompare(b.item.title));
   const allowed = (item: Item) => (canEditItem ? canEditItem(item) : true);
   const editable = (item: Item) => !!onEdit && allowed(item);
   const removable = (item: Item) => !!onRemove && allowed(item);
@@ -215,12 +211,57 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
             <div className="mt-1">
               <Directions item={stay} />
             </div>
-            {layout.chips[stay.id] && chipRow(layout.chips[stay.id] ?? [])}
           </div>
         </m.section>
       ))}
 
-      {others.map((block) => {
+      {timed.map(({ item: block, optional }) => {
+        if (optional) {
+          const joined = (goingByItem[block.id] ?? []).includes(viewerId);
+          return (
+            <m.section key={block.id} aria-label={block.title} variants={ITEM}>
+              <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    aria-label={`Open ${block.title}`}
+                    onClick={() => setSelected(block)}
+                    className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <p className="flex flex-wrap items-center gap-2">
+                      {pollOf(block) ? <PollTag onHero={false} /> : <KindTag kind={block.kind} />}
+                      <span className="text-xs font-semibold text-muted">{timeLabel(block)}</span>
+                      <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-semibold">Optional</span>
+                    </p>
+                    <p className="mt-1 font-display text-lg font-bold">{block.title}</p>
+                    <p className="text-sm text-muted">Added by {person(block.ownerId).name}</p>
+                  </button>
+                  {planActions(block)}
+                </div>
+                {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={false} />}
+                {block.locationUrl && (
+                  <div className="mt-1">
+                    <Directions item={block} />
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {joined ? (
+                    <>
+                      <span className="text-sm font-semibold">You're in</span>
+                      <Button variant="secondary" aria-label={`Opt out of ${block.title}`} onClick={() => onLeave(block.id)}>
+                        Opt out
+                      </Button>
+                    </>
+                  ) : (
+                    <Button aria-label={`Join ${block.title}`} onClick={() => onJoin(block.id)}>
+                      Join
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </m.section>
+          );
+        }
         const spotlight = block.id === highlightId;
         return (
           <m.section key={block.id} aria-label={block.title} variants={ITEM}>
@@ -241,18 +282,10 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                   <Directions item={block} tone={spotlight ? "dark" : "light"} />
                 </div>
               )}
-              {layout.chips[block.id] && chipRow(layout.chips[block.id] ?? [])}
             </div>
           </m.section>
         );
       })}
-
-      {layout.chips[UNANCHORED] && (
-        <m.section aria-label="Optional plans" variants={ITEM}>
-          <p className="text-sm font-medium text-muted">Optional plans</p>
-          {chipRow(layout.chips[UNANCHORED] ?? [])}
-        </m.section>
-      )}
 
       {layout.privateLines.map((line) => (
         <m.div key={line.id} variants={ITEM} className="flex flex-wrap items-center gap-x-3 rounded-card border border-dashed border-line p-3 text-muted">
@@ -276,6 +309,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
         {selected && (
           <div className="flex flex-col gap-4">
             {pollOf(selected) && <PollResults poll={pollOf(selected)!} votes={votes} onHero={false} />}
+            {planNotes(selected) && <p className="text-sm">{planNotes(selected)}</p>}
             {selected.locationUrl && (
               <a
                 href={selected.locationUrl}
@@ -287,18 +321,30 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 Get directions
               </a>
             )}
-            {going.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {going.map((id) => (
-                    <m.span key={id} initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                      <Avatar name={person(id).name} color={person(id).color} className="size-8 ring-2 ring-surface" />
-                    </m.span>
-                  ))}
-                </div>
-                <span className="text-sm text-muted">{going.length} going</span>
-              </div>
-            )}
+            <div>
+              <p className="text-sm font-medium">Who joined</p>
+              {going.length === 0 ? (
+                <p className="mt-1 text-sm text-muted">No one yet</p>
+              ) : (
+                <>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {going.map((id) => (
+                        <m.span key={id} initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                          <Avatar name={person(id).name} color={person(id).color} className="size-8 ring-2 ring-surface" />
+                        </m.span>
+                      ))}
+                    </div>
+                    <span className="text-sm text-muted">{going.length} going</span>
+                  </div>
+                  <ul aria-label="Who joined" className="mt-2 flex flex-col gap-1 text-sm">
+                    {going.map((id) => (
+                      <li key={id}>{person(id).name}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
             {editable(selected) && (
               <Button
                 variant="secondary"
@@ -321,9 +367,13 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, r
                 }}
               />
             )}
-            <Button disabled={going.includes(viewerId)} onClick={() => onJoin(selected.id)}>
-              {going.includes(viewerId) ? "You're in" : "I'm in"}
-            </Button>
+            {going.includes(viewerId) ? (
+              <Button variant="secondary" onClick={() => onLeave(selected.id)}>
+                Opt out
+              </Button>
+            ) : (
+              <Button onClick={() => onJoin(selected.id)}>I'm in</Button>
+            )}
           </div>
         )}
       </Sheet>

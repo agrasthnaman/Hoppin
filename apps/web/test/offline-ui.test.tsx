@@ -53,6 +53,7 @@ describe("working with no signal", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add plan" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
+    await userEvent.clear(within(dialog).getByLabelText("Starts"));
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-02T19:30");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
@@ -87,7 +88,7 @@ describe("working with no signal", () => {
     const { services } = await loadOnce();
     setOnline(false);
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    await userEvent.click(await screen.findByRole("button", { name: "R: Museum" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open Museum" }));
     await userEvent.click(within(await screen.findByRole("dialog", { name: "Museum" })).getByRole("button", { name: "I'm in" }));
     expect(await screen.findByText("1 change waiting to send.")).toBeInTheDocument();
     goOnline();

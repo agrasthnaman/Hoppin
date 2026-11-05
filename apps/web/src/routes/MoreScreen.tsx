@@ -3,6 +3,7 @@ import { formatSyncedAgo, localDate } from "@hoppin/core";
 import { UserRound, Users, Vote } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { waitingForOrganizer } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
@@ -54,14 +55,23 @@ export function MoreScreen() {
   }
 
   const gate = tripGate(trip);
+  const memberWaiting = waitingForOrganizer(trip.snapshot?.members ?? [], trip.viewerId);
   return (
     <div className="flex flex-col gap-4">
       <h2 className="page-title text-5xl">More</h2>
       <Card className="flex flex-col p-0">
-        <Link to={`/trips/${trip.tripId}/members`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
-          <Users aria-hidden="true" className="size-5 text-muted" />
+        <Link
+          to={`/trips/${trip.tripId}/members`}
+          aria-describedby={memberWaiting ? "members-waiting" : undefined}
+          className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <span className="relative">
+            <Users aria-hidden="true" className="size-5 text-muted" />
+            {memberWaiting && <span data-waiting="" aria-hidden="true" className="absolute -right-1 -top-1 size-2.5 rounded-full bg-accent ring-2 ring-surface" />}
+          </span>
           Members
         </Link>
+        {memberWaiting && <span id="members-waiting" className="sr-only">Someone is waiting for approval</span>}
         <Link to={`/trips/${trip.tripId}/polls`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <Vote aria-hidden="true" className="size-5 text-muted" />
           Polls

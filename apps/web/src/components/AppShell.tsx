@@ -13,6 +13,8 @@ export interface AppShellProps {
   status: SyncState;
   /** Shown under the status banners, for example conflict notices. */
   above?: React.ReactNode;
+  /** Marks More when the organizer has someone waiting to join. */
+  memberWaiting?: boolean;
 }
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
@@ -27,7 +29,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  * Frame around every trip screen: sync status and banners on top, the page in the middle, main navigation
  * as a bottom bar on phones and a sidebar on wide screens.
  */
-export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
+export function AppShell({ basePath, tripName, status, above, memberWaiting = false }: AppShellProps) {
   const banners = syncBanners(status);
   const location = useLocation();
   return (
@@ -50,10 +52,13 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
         <MapPin aria-hidden="true" size={22} strokeWidth={1.7} />
         hoppin
       </p>
-      {NAV.map(({ to, label, icon: Icon }) => (
+      {NAV.map(({ to, label, icon: Icon }) => {
+          const waiting = memberWaiting && to === "more";
+          return (
           <NavLink
             key={to}
             to={`${basePath}/${to}`}
+            aria-describedby={waiting ? "more-waiting" : undefined}
             className={({ isActive }) =>
               cn(
                 "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-2 text-xs font-semibold text-nav-fg transition-colors",
@@ -64,10 +69,15 @@ export function AppShell({ basePath, tripName, status, above }: AppShellProps) {
               )
             }
           >
-            <Icon aria-hidden="true" className="size-5" />
+            <span className="relative">
+              <Icon aria-hidden="true" className="size-5" />
+              {waiting && <span data-waiting="" aria-hidden="true" className="absolute -right-1 -top-1 size-2.5 rounded-full bg-accent ring-2 ring-nav" />}
+            </span>
             {label}
           </NavLink>
-        ))}
+          );
+        })}
+      {memberWaiting && <span id="more-waiting" className="sr-only">Someone is waiting for approval</span>}
       </nav>
 
       <div className="min-w-0 flex-1">

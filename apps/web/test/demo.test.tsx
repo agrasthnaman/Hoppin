@@ -36,7 +36,8 @@ describe("demo mode", () => {
   it("shows a full sample day: group plans, friends' optional plans as chips, and the viewer's private plan", async () => {
     renderApp("/trips/demo-goa/days?date=2026-12-01", demo());
     const tour = await screen.findByRole("region", { name: "Old town walking tour" });
-    expect(within(tour).getByRole("button", { name: /Museum/ })).toBeInTheDocument();
+    expect(within(tour).queryByText("Museum")).toBeNull();
+    expect(screen.getByRole("region", { name: "Museum" })).toBeInTheDocument();
     expect(screen.getByText("Visit the ABC viewpoint")).toBeInTheDocument();
   });
 
@@ -45,6 +46,7 @@ describe("demo mode", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add plan" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a plan" });
     await userEvent.type(within(dialog).getByLabelText("Title"), "Beach dinner");
+    await userEvent.clear(within(dialog).getByLabelText("Starts"));
     await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-01T19:30");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("region", { name: "Beach dinner" })).toBeInTheDocument();

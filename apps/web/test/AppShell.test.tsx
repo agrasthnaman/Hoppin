@@ -13,12 +13,12 @@ const status = (over: Partial<{ online: boolean; lastSyncedAt: number | null }> 
   ...over,
 });
 
-function setup(initial = "/trips/t1/today", s = status()) {
+function setup(initial = "/trips/t1/today", s = status(), memberWaiting = false) {
   const router = createMemoryRouter(
     [
       {
         path: "/trips/:tripId",
-        element: <AppShell basePath="/trips/t1" tripName="Goa" status={s} />,
+        element: <AppShell basePath="/trips/t1" tripName="Goa" status={s} memberWaiting={memberWaiting} />,
         children: [
           { path: "today", element: <h2>Today page</h2> },
           { path: "days", element: <h2>Days page</h2> },
@@ -60,6 +60,18 @@ describe("AppShell navigation", () => {
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(nav).toHaveClass("fixed", "bottom-3", "rounded-full"); // a floating pill on phones
     expect(nav).toHaveClass("md:sticky", "md:top-0", "md:h-dvh", "md:z-30", "md:flex-col");
+  });
+
+  it("puts a dot on More when someone is waiting for the organizer", () => {
+    setup("/trips/t1/today", status(), true);
+    const more = screen.getByRole("link", { name: "More" });
+    expect(more).toHaveAccessibleDescription("Someone is waiting for approval");
+    expect(more.querySelector("[data-waiting]")).not.toBeNull();
+  });
+
+  it("leaves More unmarked when nobody is waiting", () => {
+    setup();
+    expect(screen.getByRole("link", { name: "More" })).not.toHaveAccessibleDescription();
   });
 
   it("changes the page when a link is tapped", async () => {

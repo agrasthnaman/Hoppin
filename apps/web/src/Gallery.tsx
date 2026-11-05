@@ -112,6 +112,7 @@ export function Gallery() {
           viewerId="aman"
           goingByItem={{ "3": ["riya"] }}
           onJoin={() => {}}
+          onLeave={() => {}}
         />
         <Tabs defaultValue="days">
           <TabsList aria-label="Sections">
