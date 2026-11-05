@@ -14,8 +14,10 @@ describe("sign in and gating", () => {
   it("shows the Hoppin landing when nobody is signed in", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/", services);
-    expect(await screen.findByRole("heading", { name: "hoppin" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Hoppin" })).toHaveAttribute("href", "/sign-in");
+    expect(await screen.findByRole("heading", { level: 1, name: /stop chasing the chat/i })).toBeInTheDocument();
+    const opens = screen.getAllByRole("link", { name: /Open Hoppin/ });
+    expect(opens.length).toBeGreaterThan(3);
+    for (const link of opens) expect(link).toHaveAttribute("href", "/sign-in");
   });
 
   it("sends signed-out visitors to sign in, remembering where they were going", async () => {
