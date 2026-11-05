@@ -14,12 +14,28 @@ describe("confirm signup email", () => {
   });
 });
 
-describe.each(["confirm-signup.html", "recovery.html"])("email template %s", (name) => {
+describe("invite email (sent from the sign-up queue)", () => {
+  const html = read("invite.html");
+
+  it("says they are in and asks them to create a password", () => {
+    expect(html).toContain("You're in.");
+    expect(html).toContain("Open my invite");
+    expect(html).toContain("create your password");
+  });
+
+  it("is an invite link, and does not send people back to a confirm-sign-up flow", () => {
+    expect(html).toContain("type=invite");
+    expect(html).not.toContain("type=signup");
+    expect(html).not.toContain("waitlist");
+  });
+});
+
+describe.each(["confirm-signup.html", "recovery.html", "invite.html"])("email template %s", (name) => {
   const html = read(name);
 
   it("links to our own domain, not to the auth provider, in the button and the fallback link (and shows it as text)", () => {
     expect(html).not.toContain("ConfirmationURL");
-    const links = html.match(/\{\{ \.SiteURL \}\}\/auth\/confirm\?token_hash=\{\{ \.TokenHash \}\}&type=(signup|recovery)/g);
+    const links = html.match(/\{\{ \.SiteURL \}\}\/auth\/confirm\?token_hash=\{\{ \.TokenHash \}\}&type=(signup|recovery|invite)/g);
     expect(links).toHaveLength(3);
   });
 

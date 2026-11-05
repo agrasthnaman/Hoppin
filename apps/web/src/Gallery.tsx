@@ -69,6 +69,8 @@ export function Gallery() {
             signIn: async () => {},
             resendConfirmation: async () => {},
             requestPasswordReset: async () => {},
+            queueStatus: async () => "none",
+            joinQueue: async () => "queued",
           }}
           redeem={async () => ({ tripId: "t", status: "pending" })}
           onContinue={() => {}}

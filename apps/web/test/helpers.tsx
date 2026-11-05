@@ -81,6 +81,8 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       signIn: vi.fn(async () => {}),
       resendConfirmation: vi.fn(async () => {}),
       requestPasswordReset: vi.fn(async () => {}),
+      queueStatus: vi.fn(async (): Promise<"none" | "waiting" | "invited" | "registered"> => "none"),
+      joinQueue: vi.fn(async (): Promise<"queued" | "already_queued" | "registered" | "full"> => "queued"),
       updatePassword: vi.fn(async () => {}),
       verifyEmailLink: vi.fn(async () => {}),
       signOut: vi.fn(async () => {

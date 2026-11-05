@@ -41,7 +41,8 @@ export function ConfirmEmail() {
     );
   }, [auth, tokenHash, type]);
 
-  const destination = type === "recovery" ? "/reset-password" : pathOnly(params.get("next"));
+  // A reset link goes to choose a new password. An invite (from the sign-up queue) goes to create the first password.
+  const destination = type === "recovery" ? "/reset-password" : type === "invite" ? "/reset-password?welcome=1" : pathOnly(params.get("next"));
   if (state === "done") return <Navigate to={destination} replace />;
   // A link opened a second time (the first time already signed them in) is not a problem: they are in, so carry on.
   if (state === "invalid" && session.status === "signedIn") return <Navigate to={destination} replace />;

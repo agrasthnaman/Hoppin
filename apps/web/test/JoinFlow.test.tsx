@@ -17,6 +17,8 @@ function setup(over: Partial<React.ComponentProps<typeof JoinFlow>> = {}) {
       signIn: vi.fn().mockResolvedValue(undefined),
       resendConfirmation: vi.fn().mockResolvedValue(undefined),
       requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+      queueStatus: vi.fn().mockResolvedValue("none"),
+      joinQueue: vi.fn().mockResolvedValue("queued"),
     },
     redeem: vi.fn().mockResolvedValue({ tripId: "trip1", status: "pending" }),
     onContinue: vi.fn(),
