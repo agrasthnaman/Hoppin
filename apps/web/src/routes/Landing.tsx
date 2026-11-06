@@ -2,16 +2,17 @@ import { ArrowDown, Heart, MapPin, Pause, Play, SkipBack, SkipForward } from "lu
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import SilkSpiderCursor from "../components/ui/silk-spider-cursor";
+import { supportMailto } from "../lib/support";
 import "./landing.css";
 
 // A public front door for Hoppin, in the same collage as the silk spider.
 // Anything marked data-silk-anchor is a place the silk may stick.
 
 const NAV = [
-  { href: "#plan", label: "days" },
-  { href: "#plan", label: "bookings" },
-  { href: "#plan", label: "money" },
-  { href: "#plan", label: "docs" },
+  { href: "#days", label: "days" },
+  { href: "#bookings", label: "bookings" },
+  { href: "#money", label: "money" },
+  { href: "#docs", label: "docs" },
   { href: "#today", label: "today" },
 ];
 
@@ -311,7 +312,7 @@ export default function Landing() {
             Everything the group needs, nothing it doesn't.
           </h2>
 
-          <div className="lp-feat">
+          <div className="lp-feat" id="days">
             <div className="lp-copy">
               <span className="lp-tag">Days</span>
               <h2 data-silk-anchor>The plan, without the chat.</h2>
@@ -354,7 +355,47 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="lp-feat lp-flip">
+          <div className="lp-feat lp-flip" id="bookings">
+            <div className="lp-copy">
+              <span className="lp-tag">Bookings</span>
+              <h2 data-silk-anchor>The ticket, when someone asks.</h2>
+              <p className="lp-lede">Flights, stays and the rest live with the plan. The confirmation is on the booking, not in a screenshot somewhere up the chat.</p>
+              <ul className="lp-checks">
+                <li>Flights, stays and transport in one list</li>
+                <li>Open the confirmation at the desk</li>
+                <li>The same plan you already see on the day</li>
+              </ul>
+            </div>
+            <div className="lp-mock" aria-hidden="true" data-silk-anchor>
+              <div className="lp-bar-t">
+                <span>Bookings</span>
+                <span>3 saved</span>
+              </div>
+              <div className="lp-doc">
+                <i>FLT</i>
+                <div>
+                  <b>Delhi → Goa · IndiGo 6E 123</b>
+                  <div className="lp-small">Sat 14 Mar · 06:30</div>
+                </div>
+              </div>
+              <div className="lp-doc">
+                <i>STY</i>
+                <div>
+                  <b>Sea View Resort</b>
+                  <div className="lp-small">Confirmation · 4 nights</div>
+                </div>
+              </div>
+              <div className="lp-doc">
+                <i>TKT</i>
+                <div>
+                  <b>Sunset kayaking</b>
+                  <div className="lp-small">Booked by Riya · 6 going</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lp-feat" id="money">
             <div className="lp-copy">
               <span className="lp-tag">Money</span>
               <h2 data-silk-anchor>Who paid, and who owes.</h2>
@@ -395,7 +436,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="lp-feat">
+          <div className="lp-feat lp-flip" id="docs">
             <div className="lp-copy">
               <span className="lp-tag">Docs &amp; offline</span>
               <h2 data-silk-anchor>Still there when the signal isn't.</h2>
@@ -484,6 +525,7 @@ export default function Landing() {
         <footer className="hp-foot" data-silk-anchor>
           <span>hoppin · one shared place for the group trip</span>
           <span>2026</span>
+          <a href={supportMailto({ subject: "A question from the Hoppin site" })}>Email support at support@hoppinclub.com</a>
         </footer>
       </section>
 
@@ -564,7 +606,7 @@ const HP_CSS = `
 .hp-word { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); margin: 0; font-size: min(42vw, 78svh); line-height: 0.82; font-weight: 500; letter-spacing: -0.07em; white-space: nowrap; color: #f4f1ea; user-select: none; }
 .hp-word span { display: inline-block; }
 .hp-coast { position: absolute; left: 14%; top: 36%; width: clamp(96px, 10vw, 150px); height: auto; aspect-ratio: 3 / 4; border-radius: 18px; transform: rotate(-9deg); filter: drop-shadow(10px 18px 14px rgba(0, 6, 60, 0.45)); z-index: 2; }
-.hp-today { position: absolute; left: 4.5%; top: 48%; width: clamp(250px, 21vw, 300px); padding: 14px 16px 12px; border-radius: 18px; z-index: 2;
+.hp-today { position: absolute; left: 4.5%; top: 48%; width: clamp(250px, 21vw, 300px); padding: 14px 16px 12px; border-radius: 18px; z-index: 2; scroll-margin-top: 28px;
   background: linear-gradient(160deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08)); border: 1px solid rgba(255,255,255,0.35);
   backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
   box-shadow: 0 24px 50px -18px rgba(0, 4, 60, 0.6), inset 0 1px 0 rgba(255,255,255,0.4); transform: rotate(1.2deg); }
@@ -621,6 +663,7 @@ const HP_CSS = `
 .hp-card h4 { margin: 34px 0 10px; font-size: 24px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; }
 .hp-card p { margin: 0; font-size: 14px; font-weight: 300; opacity: 0.85; line-height: 1.45; }
 .hp-foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 90px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.25); font-size: 13px; font-weight: 300; opacity: 0.85; }
+.hp-foot a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 760px) {
   .hp-links { display: none; }
   .hp-hero { height: max(100svh, 760px); }
