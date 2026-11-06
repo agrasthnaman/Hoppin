@@ -12,7 +12,7 @@ const variants: Record<Variant, string> = {
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
-  /** Shows the dots and ignores further taps until the work finishes. */
+  /** Shows Hop and ignores further taps until the work finishes. */
   busy?: boolean;
 }
 

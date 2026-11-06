@@ -6,6 +6,7 @@ import { useServices } from "../app/services";
 import { useTripData } from "../app/trip-data";
 import { KIND_STYLE } from "../components/kind";
 import { Button } from "../components/ui/Button";
+import { Spinner } from "../components/ui/Spinner";
 import { Card } from "../components/ui/Card";
 import { useOnline } from "../hooks/useOnline";
 
@@ -145,7 +146,10 @@ export default function Updates() {
       {!online ? (
         <p className="text-sm text-muted">Connect to the internet to see updates.</p>
       ) : load.status === "loading" ? (
-        <p role="status" className="text-sm text-muted">Loading updates…</p>
+        <p role="status" aria-label="Loading updates" className="flex items-center gap-3 text-sm text-muted">
+          <Spinner className="text-accent" />
+          Loading updates…
+        </p>
       ) : load.status === "failed" ? (
         <Card className="flex flex-col items-start gap-3">
           <p role="alert" className="text-sm text-danger-fg">Couldn't load updates. Check your connection.</p>

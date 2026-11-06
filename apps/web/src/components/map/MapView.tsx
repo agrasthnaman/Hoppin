@@ -2,7 +2,7 @@ import type { ItemKind } from "@hoppin/core";
 import { Camera, type LucideIcon } from "lucide-react";
 import { createRoot, type Root } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
-import { drawnAt, legMs, legsFor, totalMs, type LngLat } from "../../lib/map-arc";
+import { drawnAt, legMs, legsFor, PLAY_DAY_GAP_MS, totalMs, type DrawPace, type LngLat } from "../../lib/map-arc";
 import { KIND_STYLE } from "../kind";
 import { Banner } from "../ui/Banner";
 import "./map.css";
@@ -98,6 +98,20 @@ function PinFace({ point }: { point: MapPoint }) {
       )}
     </span>
   );
+}
+
+/**
+ * Room to leave round the pins when fitting the map to them. A full map keeps space at the top for a pin's note. A small
+ * preview that only looks needs almost none: with the full padding a short map is squeezed to nothing and shows the whole world.
+ */
+export function fitPadding(interactive: boolean, height: number | null): { top: number; right: number; bottom: number; left: number } {
+  if (!interactive) return { top: 24, right: 24, bottom: 24, left: 24 };
+  const full = { top: 112, right: 48, bottom: 48, left: 48 };
+  if (height !== null && full.top + full.bottom > height * 0.5) {
+    const scale = (height * 0.5) / (full.top + full.bottom);
+    return { top: Math.round(full.top * scale), right: 24, bottom: Math.round(full.bottom * scale), left: 24 };
+  }
+  return full;
 }
 
 function reducedMotion(): boolean {
@@ -199,12 +213,13 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
     const still = reducedMotion();
     // A replay runs the days one after another. Each day starts when the one before it has finished.
     const replay = playKey > 0 && !still;
+    const pace: DrawPace = replay ? "play" : "draw";
     const dayStart = new Map<number, number>();
     if (replay) {
       let clock = 0;
       for (const line of lines) {
         dayStart.set(line.day ?? 0, clock);
-        clock += totalMs(legsFor(line.coords)) + 500;
+        clock += totalMs(legsFor(line.coords), pace) + PLAY_DAY_GAP_MS;
       }
     }
     const timer = window.setTimeout(() => fail.current?.(), 10_000);
@@ -226,6 +241,7 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
         touchPitch: false,
         cooperativeGestures,
         interactive,
+        renderWorldCopies: false, // never draw the world side by side
         ...(tilt > 0 ? { pitch: tilt } : {}),
         ...(first ? { center: [first.lon, first.lat] as [number, number], zoom: pins.length === 1 ? 14 : 11 } : {}),
       });
@@ -265,8 +281,8 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
               return;
             }
             const source = (next as unknown as { getSource?: (name: string) => { setData?: (data: unknown) => void } | undefined }).getSource?.(id);
-            source?.setData?.(shape(drawnAt(hops, elapsed)));
-            if (elapsed < totalMs(hops)) frames.push(requestAnimationFrame(step));
+            source?.setData?.(shape(drawnAt(hops, elapsed, pace)));
+            if (elapsed < totalMs(hops, pace)) frames.push(requestAnimationFrame(step));
           };
           frames.push(requestAnimationFrame(step));
         });
@@ -277,7 +293,7 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
         } else if (pins.length > 1) {
           const bounds = new ml.LngLatBounds();
           for (const point of pins) bounds.extend([point.lon, point.lat]);
-          next.fitBounds(bounds, { padding: { top: 112, right: 48, bottom: 48, left: 48 }, maxZoom: 15, duration: 0 });
+          next.fitBounds(bounds, { padding: fitPadding(interactive, typeof height === "number" ? height : null), maxZoom: 15, duration: 0 });
         }
       });
       next.on("error", (event) => {
@@ -293,12 +309,12 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
       for (const point of pins) if (point.kind === "stop") stopsPerDay.set(point.day, (stopsPerDay.get(point.day) ?? 0) + 1);
       if (replay && pins.length > 1) {
         const finish = [...dayStart.entries()].reduce((latest, [, start]) => Math.max(latest, start), 0);
-        const total = lines.reduce((sum, line) => sum + totalMs(legsFor(line.coords)) + 500, 0);
+        const total = lines.reduce((sum, line) => sum + totalMs(legsFor(line.coords), "play") + PLAY_DAY_GAP_MS, 0);
         timeouts.push(
           window.setTimeout(() => {
             const bounds = new ml.LngLatBounds();
             for (const point of pins) bounds.extend([point.lon, point.lat]);
-            (next as unknown as { fitBounds?: (b: unknown, o: unknown) => void }).fitBounds?.(bounds, { padding: { top: 112, right: 48, bottom: 48, left: 48 }, maxZoom: 15, duration: 900 });
+            (next as unknown as { fitBounds?: (b: unknown, o: unknown) => void }).fitBounds?.(bounds, { padding: fitPadding(interactive, typeof height === "number" ? height : null), maxZoom: 15, duration: 900 });
           }, Math.max(total, finish) + 600),
         );
       }
@@ -314,10 +330,19 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
         button.className = "map-pin inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent";
         // Each pin lands as the route reaches it.
         const hops = Math.max(0, (stopsPerDay.get(point.day) ?? 1) - 1);
-        const delay = still || point.kind !== "stop" ? 0 : Math.max(0, (point.order ?? 1) - 1) * legMs(hops) + (dayStart.get(point.day) ?? 0);
+        const delay = still || point.kind !== "stop" ? 0 : Math.max(0, (point.order ?? 1) - 1) * legMs(hops, pace) + (dayStart.get(point.day) ?? 0);
         if (replay && point.kind === "stop") {
-          // The camera hops to each stop as the route reaches it.
-          timeouts.push(window.setTimeout(() => (next as unknown as { easeTo?: (o: unknown) => void }).easeTo?.({ center: [point.lon, point.lat], zoom: 12.5, duration: 700 }), delay));
+          // The camera moves to the stop and leaves its card open, so the place can be read.
+          timeouts.push(window.setTimeout(() => {
+            container.querySelectorAll(".map-marker").forEach((node) => node.removeAttribute("data-open"));
+            wrap.setAttribute("data-open", "true");
+            (next as unknown as { easeTo?: (o: unknown) => void }).easeTo?.({
+              center: [point.lon, point.lat],
+              zoom: 12.5,
+              duration: 1400,
+              padding: { top: 140, bottom: 160, left: 48, right: 48 },
+            });
+          }, delay));
         }
         button.style.animationDelay = `${Math.round(delay)}ms`;
         if (point.id === current) {

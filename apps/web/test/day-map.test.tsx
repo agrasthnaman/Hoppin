@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DayGlance } from "../src/components/map/DayGlance";
 import { DayMap } from "../src/components/map/DayMap";
-import { MAP_NOTICE } from "../src/components/map/MapView";
+import { fitPadding, MAP_NOTICE } from "../src/components/map/MapView";
 import { fakeServices, item, renderApp, snapshot } from "./helpers";
 
 const mapMock = vi.hoisted(() => ({
@@ -206,5 +206,32 @@ describe("the map glance on the day plan", () => {
     const glance = screen.getByRole("link", { name: "Open the map for this day. 2 stops" });
     expect(glance).toHaveTextContent("Lunch → Uluwatu Temple");
     expect(mapMock.maps).toBe(0);
+  });
+});
+
+describe("fitting a small map to its pins", () => {
+  it("leaves little room round the pins in a short preview, so it does not zoom out to the whole world", () => {
+    expect(fitPadding(false, 176)).toEqual({ top: 24, right: 24, bottom: 24, left: 24 });
+  });
+
+  it("keeps room for a pin's note on a full map, but never more than half of a short one", () => {
+    expect(fitPadding(true, null)).toEqual({ top: 112, right: 48, bottom: 48, left: 48 });
+    expect(fitPadding(true, 320)).toEqual({ top: 112, right: 48, bottom: 48, left: 48 });
+    const short = fitPadding(true, 200);
+    expect(short.top + short.bottom).toBeLessThanOrEqual(100);
+  });
+
+  it("the day preview fits its two far-apart stops with the small padding", async () => {
+    const first = placed({ id: "flight", title: "SQ-511 BLR to SIN", kind: "flight", startsAt: "2026-12-02T01:00:00.000Z", details: { place: { lat: 12.95, lon: 77.67, label: "Bengaluru" } } });
+    const day = dayStops([first, placed()], "me", new Set(), "2026-12-02", "Asia/Kolkata");
+    mapMock.fitBounds.mockClear();
+    render(
+      <MemoryRouter>
+        <DayGlance day={day} dayIndex={0} tripId="t1" online />
+      </MemoryRouter>,
+    );
+    await screen.findByRole("link", { name: /Open the map for this day/ });
+    await vi.waitFor(() => expect(mapMock.fitBounds).toHaveBeenCalled());
+    expect(mapMock.fitBounds).toHaveBeenCalledWith(expect.anything(), { padding: { top: 24, right: 24, bottom: 24, left: 24 }, maxZoom: 15, duration: 0 });
   });
 });

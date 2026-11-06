@@ -162,6 +162,7 @@ describe("trip map", () => {
     );
     await user.click(screen.getByRole("button", { name: "Day 2 · Sun 29 Mar" }));
     const play = screen.getByRole("button", { name: "Play the trip" });
+    expect(play.parentElement?.className ?? "").not.toMatch(/overflow-hidden/);
     await user.click(play);
     expect(screen.getByRole("button", { name: "All days" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Playing the trip" })).toBeDisabled();

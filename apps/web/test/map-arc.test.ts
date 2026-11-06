@@ -62,4 +62,8 @@ describe("drawing the line hop by hop", () => {
     expect(legMs(20) * 20).toBeLessThanOrEqual(3200);
     expect(legMs(0)).toBe(0);
   });
+  it("lets a played trip sit on each hop long enough to read it", () => {
+    expect(legMs(2, "play")).toBeGreaterThanOrEqual(2000);
+    expect(legMs(8, "play")).toBe(legMs(2, "play"));
+  });
 });

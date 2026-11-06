@@ -1,5 +1,5 @@
 import { AuthError } from "../src/lib/auth-api";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,14 +18,13 @@ describe("sign in and gating", () => {
     expect(screen.getByRole("link", { name: "Open Hoppin" })).toHaveAttribute("href", "/sign-in");
   });
 
-  it("keeps the original hero and shelf, and adds the new sections below as you scroll", async () => {
+  it("keeps the original hero, and the detail sections below, without repeating them in a shelf", async () => {
     const { services } = fakeServices({ session: null });
     renderApp("/", services);
-    // the original first screen is unchanged
     expect(await screen.findByRole("heading", { name: "hoppin" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /one place\s*for the group/ })).toBeInTheDocument();
-    expect(screen.getByText("what the group actually needs")).toBeInTheDocument();
-    // the new sections follow it
+    expect(screen.queryByText("what the group actually needs")).toBeNull();
+    expect(screen.queryByText("the plan, without the group chat")).toBeNull();
     expect(screen.getByRole("heading", { name: "Group trips break in the group chat." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "From scattered to settled." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "The plan, without the chat." })).toBeInTheDocument();
@@ -39,28 +38,23 @@ describe("sign in and gating", () => {
     for (const link of ways) expect(link).toHaveAttribute("href", "/sign-in");
   });
 
-  it("the new sections rise into view when they scroll on screen, and show at once where that is not supported", async () => {
-    const watchers: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
-    class FakeObserver {
-      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
-        watchers.push(callback);
-      }
-      observe() {}
-      disconnect() {}
-    }
-    vi.stubGlobal("IntersectionObserver", FakeObserver);
+  it("draws the problems with icons, and the settle-up sample uses more than one currency", async () => {
     const { services } = fakeServices({ session: null });
-    const first = renderApp("/", services);
-    await screen.findByRole("heading", { name: "Group trips break in the group chat." });
-    expect(document.querySelectorAll(".lp-reveal.lp-in")).toHaveLength(0); // waiting to be scrolled to
-    expect(document.querySelectorAll(".lp-reveal").length).toBeGreaterThanOrEqual(5);
-    act(() => watchers[0]!([{ isIntersecting: true }]));
-    expect(document.querySelectorAll(".lp-reveal.lp-in")).toHaveLength(1); // only the one that arrived
-    first.unmount();
+    renderApp("/", services);
+    const plans = await screen.findByRole("heading", { name: "Plans buried in chat" });
+    expect(plans.closest(".lp-pain-card")?.querySelector("svg")).toBeTruthy();
+    expect(screen.queryByText("💬")).toBeNull();
+    const money = screen.getByText("Settle up").closest(".lp-mock")?.textContent ?? "";
+    const symbols = ["₹", "$", "€", "£"].filter((symbol) => money.includes(symbol));
+    expect(symbols.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("shows the lower sections straight away when scrolling cannot be watched", async () => {
     vi.stubGlobal("IntersectionObserver", undefined);
+    const { services } = fakeServices({ session: null });
     renderApp("/", services);
     await screen.findByRole("heading", { name: "Group trips break in the group chat." });
-    await waitFor(() => expect(document.querySelectorAll(".lp-reveal:not(.lp-in)")).toHaveLength(0));
+    expect(document.getElementById("days")?.closest("[data-reveal]")?.getAttribute("data-motion")).toBe("off");
     vi.unstubAllGlobals();
   });
 

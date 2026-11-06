@@ -40,14 +40,25 @@ export function legsFor(stops: LngLat[]): LngLat[][] {
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
-/** How long each hop takes to draw: about 0.65 s, but a long trip is never slower than 3.2 s overall. */
-export function legMs(count: number): number {
-  return count === 0 ? 0 : Math.min(650, 3200 / count);
+/** Opening the map draws quickly. Playing the trip holds each hop so the stop can be read. */
+export type DrawPace = "draw" | "play";
+
+/** A played hop stays on screen this long, however many stops the day has. */
+export const PLAY_HOP_MS = 2400;
+
+/** Quiet moment after a day finishes, before the next day starts. */
+export const PLAY_DAY_GAP_MS = 1800;
+
+/** How long each hop takes to draw. A long trip's first drawing stays under about 3.2 s. Playing does not. */
+export function legMs(count: number, pace: DrawPace = "draw"): number {
+  if (count === 0) return 0;
+  if (pace === "play") return PLAY_HOP_MS;
+  return Math.min(650, 3200 / count);
 }
 
 /** The line as it looks `elapsed` ms after it starts drawing: finished hops in full, the current one part-way, the rest empty. */
-export function drawnAt(legs: LngLat[][], elapsed: number): LngLat[][] {
-  const per = legMs(legs.length);
+export function drawnAt(legs: LngLat[][], elapsed: number, pace: DrawPace = "draw"): LngLat[][] {
+  const per = legMs(legs.length, pace);
   return legs.map((leg, index) => {
     const t = per === 0 ? 1 : Math.min(1, Math.max(0, (elapsed - index * per) / per));
     if (t <= 0) return [];
@@ -58,6 +69,6 @@ export function drawnAt(legs: LngLat[][], elapsed: number): LngLat[][] {
 }
 
 /** When the whole line is finished. */
-export function totalMs(legs: LngLat[][]): number {
-  return legMs(legs.length) * legs.length;
+export function totalMs(legs: LngLat[][], pace: DrawPace = "draw"): number {
+  return legMs(legs.length, pace) * legs.length;
 }

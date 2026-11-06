@@ -1,5 +1,6 @@
-import { ArrowDown, Heart, MapPin, Pause, Play, SkipBack, SkipForward } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowDown, Heart, MapPin, MessageSquare, Pause, Play, SkipBack, SkipForward, Ticket, Wallet, WifiOff, type LucideIcon } from "lucide-react";
+import { m, type Variants } from "motion/react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import SilkSpiderCursor from "../components/ui/silk-spider-cursor";
 import { supportMailto } from "../lib/support";
@@ -16,16 +17,13 @@ const NAV = [
   { href: "#today", label: "today" },
 ];
 
+/** How long one stop stays on screen while the home-page trip is playing. */
+const MOMENT_MS = 7000;
+
 const MOMENTS = [
   { place: "Goa", title: "sunset kayaking", when: "day 3 · 5:30pm", by: "Riya booked it", hue: 18 },
   { place: "Manali", title: "the overnight bus", when: "day 1 · 9:00pm", by: "window seats, both sides", hue: 200 },
   { place: "Fort Aguada", title: "morning at the fort", when: "day 4 · 10:00am", by: "tickets are in docs", hue: 32 },
-];
-
-const SHELF = [
-  { k: "days", t: "the plan, without the group chat", d: "Each day is a timeline. Flights and stays are solid blocks. Optional plans are their own cards, and anyone can join." },
-  { k: "money", t: "who paid, and the fewest transfers", d: "The boat, the stay, lunch for eight. Hoppin works out who owes whom." },
-  { k: "offline", t: "still there when the signal isn't", d: "Tickets, addresses and the day's stops live on the phone. Edits wait, then sync." },
 ];
 
 const COAST = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=700&q=80";
@@ -41,11 +39,11 @@ const CHAT = [
   { me: true, text: "scrolling up since 20 mins 😭" },
 ];
 
-const PAINS = [
-  { icon: "💬", t: "Plans buried in chat", d: "Times, links and addresses scroll away the moment someone sends a meme." },
-  { icon: "🎫", t: "Tickets in 12 screenshots", d: "Nobody can find the booking when the guard, gate or hotel desk asks for it." },
-  { icon: "💸", t: "“Who owes whom?”", d: "Expenses pile up, memory fades, and someone ends up quietly out of pocket." },
-  { icon: "📵", t: "No signal, no plan", d: "The one moment you need the address is the moment the network drops." },
+const PAINS: { icon: LucideIcon; t: string; d: string }[] = [
+  { icon: MessageSquare, t: "Plans buried in chat", d: "Times, links and addresses scroll away the moment someone sends a meme." },
+  { icon: Ticket, t: "Tickets in 12 screenshots", d: "Nobody can find the booking when the guard, gate or hotel desk asks for it." },
+  { icon: Wallet, t: "“Who owes whom?”", d: "Expenses pile up, memory fades, and someone ends up quietly out of pocket." },
+  { icon: WifiOff, t: "No signal, no plan", d: "The one moment you need the address is the moment the network drops." },
 ];
 
 const BEFORE = [
@@ -82,33 +80,48 @@ function OpenCta({ line, to, label }: { line: string; to: string; label: string 
   );
 }
 
-/** Fades and lifts its content into place the first time it scrolls into view. Shows at once if that is not possible. */
+/** Phones that ask for less motion, or cannot watch scrolling, get the page with no entrance animation. */
+function canReveal(): boolean {
+  const calm = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return typeof IntersectionObserver === "function" && !calm;
+}
+
+const rise: Variants = {
+  hidden: { opacity: 0, y: 72 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 120, damping: 18, mass: 0.9 } },
+};
+
+const stagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.16, delayChildren: 0.08 } },
+};
+
+const inView = { once: true, margin: "0px 0px -8% 0px", amount: 0.2 } as const;
+
+/** One block rises the first time it scrolls into view. */
 function Reveal({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || typeof IntersectionObserver === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      setSeen(true);
-      return;
-    }
-    const watcher = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setSeen(true);
-          watcher.disconnect();
-        }
-      },
-      { rootMargin: "0px 0px -12% 0px" },
-    );
-    watcher.observe(node);
-    return () => watcher.disconnect();
-  }, []);
+  if (!canReveal()) return <div data-reveal="" data-motion="off">{children}</div>;
   return (
-    <div ref={ref} className={seen ? "lp-reveal lp-in" : "lp-reveal"}>
+    <m.div data-reveal="" data-motion="on" initial="hidden" whileInView="show" viewport={inView} variants={rise}>
       {children}
-    </div>
+    </m.div>
   );
+}
+
+/** A row or list whose pieces rise one after another. */
+function RiseGroup({ className, children, label }: { className?: string; children: ReactNode; label?: string }) {
+  const named = label ? { role: "img" as const, "aria-label": label } : {};
+  if (!canReveal()) return <div className={className} data-reveal="" data-motion="off" {...named}>{children}</div>;
+  return (
+    <m.div className={className} data-reveal="" data-motion="on" initial="hidden" whileInView="show" viewport={inView} variants={stagger} {...named}>
+      {children}
+    </m.div>
+  );
+}
+
+function RiseItem({ className, children }: { className?: string; children: ReactNode }) {
+  if (!canReveal()) return <div className={className} data-silk-anchor="">{children}</div>;
+  return <m.div className={className} data-silk-anchor="" variants={rise}>{children}</m.div>;
 }
 
 export default function Landing() {
@@ -214,104 +227,100 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="hp-shelf" id="plan">
-        <h3 data-silk-anchor>what the group actually needs</h3>
-        <div className="hp-cards">
-          {SHELF.map((card) => (
-            <article key={card.k} className="hp-card" data-silk-anchor>
-              <span className="hp-card-k">{card.k}</span>
-              <h4>{card.t}</h4>
-              <p>{card.d}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <div className="lp-root lp-below">
       {/* PAIN POINTS */}
       <section className="lp-pain" id="pain">
-        <Reveal>
         <div className="lp-wrap">
-          <div className="lp-head">
-            <div>
-              <p className="lp-eyebrow">sound familiar?</p>
-              <h2 data-silk-anchor>Group trips break in the group chat.</h2>
+          <Reveal>
+            <div className="lp-head">
+              <div>
+                <p className="lp-eyebrow">sound familiar?</p>
+                <h2 data-silk-anchor>Group trips break in the group chat.</h2>
+              </div>
+              <p className="lp-lede">The trip itself is the easy part. Keeping eight people on the same page is where it falls apart.</p>
             </div>
-            <p className="lp-lede">The trip itself is the easy part. Keeping eight people on the same page is where it falls apart.</p>
-          </div>
+          </Reveal>
           <div className="lp-pain-grid">
-            <div className="lp-chat" role="img" aria-label="A chaotic group chat" data-silk-anchor>
+            <RiseGroup className="lp-chat" label="A chaotic group chat">
               <div className="lp-top">
                 <span>Goa 2026 🌴🌴 (11)</span>
                 <span>248 unread</span>
               </div>
-              {CHAT.map((m, i) => (
-                <div key={i} className={m.me ? "lp-msg lp-me" : "lp-msg"}>
-                  {m.by ? <u>{m.by}</u> : null}
-                  {m.text}
-                </div>
+              {CHAT.map((message, i) => (
+                <RiseItem key={i} className={message.me ? "lp-msg lp-me" : "lp-msg"}>
+                  {message.by ? <u>{message.by}</u> : null}
+                  {message.text}
+                </RiseItem>
               ))}
               <div className="lp-more">↑ 248 messages between you and the booking</div>
-            </div>
-            <div className="lp-pains">
-              {PAINS.map((p) => (
-                <div key={p.t} className="lp-pain-card" data-silk-anchor>
+            </RiseGroup>
+            <RiseGroup className="lp-pains">
+              {PAINS.map((p) => {
+                const Icon = p.icon;
+                return (
+                <RiseItem key={p.t} className="lp-pain-card">
                   <div className="lp-ico" aria-hidden="true">
-                    {p.icon}
+                    <Icon size={20} strokeWidth={1.7} />
                   </div>
                   <div>
                     <h3>{p.t}</h3>
                     <p>{p.d}</p>
                   </div>
-                </div>
-              ))}
-            </div>
+                </RiseItem>
+                );
+              })}
+            </RiseGroup>
           </div>
-          <OpenCta line="Tired of scrolling up for the booking?" to={enter} label={enterLabel} />
+          <Reveal>
+            <OpenCta line="Tired of scrolling up for the booking?" to={enter} label={enterLabel} />
+          </Reveal>
         </div>
-        </Reveal>
       </section>
 
       {/* BEFORE / AFTER */}
       <section style={{ paddingBottom: 0 }}>
-        <Reveal>
         <div className="lp-wrap">
-          <p className="lp-eyebrow">the difference</p>
-          <h2 style={{ marginBottom: 40 }} data-silk-anchor>
-            From scattered to settled.
-          </h2>
-          <div className="lp-ba">
-            <div className="lp-before" data-silk-anchor>
+          <Reveal>
+            <p className="lp-eyebrow">the difference</p>
+            <h2 style={{ marginBottom: 40 }} data-silk-anchor>
+              From scattered to settled.
+            </h2>
+          </Reveal>
+          <RiseGroup className="lp-ba">
+            <RiseItem className="lp-before">
               <h3>Without Hoppin</h3>
               <ul>
                 {BEFORE.map((x) => (
                   <li key={x}>{x}</li>
                 ))}
               </ul>
-            </div>
-            <div className="lp-after" data-silk-anchor>
+            </RiseItem>
+            <RiseItem className="lp-after">
               <h3>With Hoppin</h3>
               <ul>
                 {AFTER.map((x) => (
                   <li key={x}>{x}</li>
                 ))}
               </ul>
-            </div>
-          </div>
-          <OpenCta line="Ready to go from scattered to settled?" to={enter} label={enterLabel} />
+            </RiseItem>
+          </RiseGroup>
+          <Reveal>
+            <OpenCta line="Ready to go from scattered to settled?" to={enter} label={enterLabel} />
+          </Reveal>
         </div>
-        </Reveal>
       </section>
 
       {/* FEATURES */}
       <section id="features">
-        <Reveal>
         <div className="lp-wrap">
-          <p className="lp-eyebrow">what you get</p>
-          <h2 style={{ marginBottom: 24 }} data-silk-anchor>
-            Everything the group needs, nothing it doesn't.
-          </h2>
+          <Reveal>
+            <p className="lp-eyebrow">what you get</p>
+            <h2 style={{ marginBottom: 24 }} data-silk-anchor>
+              Everything the group needs, nothing it doesn't.
+            </h2>
+          </Reveal>
 
+          <Reveal>
           <div className="lp-feat" id="days">
             <div className="lp-copy">
               <span className="lp-tag">Days</span>
@@ -354,7 +363,9 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          </Reveal>
 
+          <Reveal>
           <div className="lp-feat lp-flip" id="bookings">
             <div className="lp-copy">
               <span className="lp-tag">Bookings</span>
@@ -394,7 +405,9 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          </Reveal>
 
+          <Reveal>
           <div className="lp-feat" id="money">
             <div className="lp-copy">
               <span className="lp-tag">Money</span>
@@ -411,7 +424,7 @@ export default function Landing() {
                 <span>Settle up</span>
                 <span>8 people</span>
               </div>
-              <div className="lp-big-total">₹48,600</div>
+              <div className="lp-big-total">$612</div>
               <div className="lp-small" style={{ opacity: 0.6 }}>
                 total trip spend
               </div>
@@ -419,23 +432,25 @@ export default function Landing() {
                 <span className="lp-who">
                   <span className="lp-av" style={{ background: "#0d22ee" }}>K</span>Kabir → Riya
                 </span>
-                <span className="lp-amt">₹2,400</span>
+                <span className="lp-amt">€48</span>
               </div>
               <div className="lp-owe">
                 <span className="lp-who">
                   <span className="lp-av" style={{ background: "#e0457b" }}>N</span>Neha → Riya
                 </span>
-                <span className="lp-amt">₹1,150</span>
+                <span className="lp-amt">£26</span>
               </div>
               <div className="lp-owe">
                 <span className="lp-who">
                   <span className="lp-av" style={{ background: "#14a37f" }}>A</span>Aman → Kabir
                 </span>
-                <span className="lp-amt">₹800</span>
+                <span className="lp-amt">₹2,400</span>
               </div>
             </div>
           </div>
+          </Reveal>
 
+          <Reveal>
           <div className="lp-feat lp-flip" id="docs">
             <div className="lp-copy">
               <span className="lp-tag">Docs &amp; offline</span>
@@ -476,28 +491,32 @@ export default function Landing() {
               <span className="lp-offline">Offline · everything saved on this phone</span>
             </div>
           </div>
-          <OpenCta line="Everything the group needs, in one place." to={enter} label={enterLabel} />
+          </Reveal>
+          <Reveal>
+            <OpenCta line="Everything the group needs, in one place." to={enter} label={enterLabel} />
+          </Reveal>
         </div>
-        </Reveal>
       </section>
 
       {/* HOW IT WORKS */}
       <section id="how" style={{ paddingTop: 0 }}>
-        <Reveal>
         <div className="lp-wrap">
-          <p className="lp-eyebrow">how it works</p>
-          <h2 data-silk-anchor>Three steps. No sign-up wall for your friends.</h2>
-          <div className="lp-steps">
+          <Reveal>
+            <p className="lp-eyebrow">how it works</p>
+            <h2 data-silk-anchor>Three steps. No sign-up wall for your friends.</h2>
+          </Reveal>
+          <RiseGroup className="lp-steps">
             {STEPS.map((s) => (
-              <div key={s.t} className="lp-step" data-silk-anchor>
+              <RiseItem key={s.t} className="lp-step">
                 <h3>{s.t}</h3>
                 <p>{s.d}</p>
-              </div>
+              </RiseItem>
             ))}
-          </div>
-          <OpenCta line="Start your first trip in a minute." to={enter} label={enterLabel} />
+          </RiseGroup>
+          <Reveal>
+            <OpenCta line="Start your first trip in a minute." to={enter} label={enterLabel} />
+          </Reveal>
         </div>
-        </Reveal>
       </section>
 
       {/* FINAL CTA */}
@@ -540,6 +559,12 @@ function Today() {
   const [liked, setLiked] = useState(false);
   const moment = MOMENTS[index]!;
 
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => setIndex((current) => (current + 1) % MOMENTS.length), MOMENT_MS);
+    return () => window.clearInterval(id);
+  }, [playing]);
+
   const skip = (dir: number) => {
     setIndex((index + dir + MOMENTS.length) % MOMENTS.length);
   };
@@ -564,7 +589,7 @@ function Today() {
         </button>
       </div>
       <div className="hp-bar">
-        <span className={playing ? "hp-fill run" : "hp-fill"} key={index} />
+        <span className={playing ? "hp-fill run" : "hp-fill"} key={index} style={playing ? { animationDuration: `${MOMENT_MS}ms` } : undefined} />
       </div>
       <div className="hp-today-row">
         <span className={playing ? "hp-live on" : "hp-live"}>
@@ -606,7 +631,7 @@ const HP_CSS = `
 .hp-word { position: absolute; left: 50%; top: 4%; transform: translateX(-50%); margin: 0; font-size: min(42vw, 78svh); line-height: 0.82; font-weight: 500; letter-spacing: -0.07em; white-space: nowrap; color: #f4f1ea; user-select: none; }
 .hp-word span { display: inline-block; }
 .hp-coast { position: absolute; left: 14%; top: 36%; width: clamp(96px, 10vw, 150px); height: auto; aspect-ratio: 3 / 4; border-radius: 18px; transform: rotate(-9deg); filter: drop-shadow(10px 18px 14px rgba(0, 6, 60, 0.45)); z-index: 2; }
-.hp-today { position: absolute; left: 4.5%; top: 48%; width: clamp(250px, 21vw, 300px); padding: 14px 16px 12px; border-radius: 18px; z-index: 2; scroll-margin-top: 28px;
+.hp-today { position: absolute; left: 4.5%; top: auto; bottom: 46%; width: clamp(250px, 21vw, 300px); padding: 14px 16px 16px; border-radius: 18px; z-index: 4; scroll-margin-top: 28px;
   background: linear-gradient(160deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08)); border: 1px solid rgba(255,255,255,0.35);
   backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
   box-shadow: 0 24px 50px -18px rgba(0, 4, 60, 0.6), inset 0 1px 0 rgba(255,255,255,0.4); transform: rotate(1.2deg); }
@@ -614,14 +639,14 @@ const HP_CSS = `
 .hp-swatch { width: 38px; height: 38px; border-radius: 8px; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
 .hp-today-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
 .hp-today-meta b { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
-.hp-today-meta span { font-size: 11.5px; opacity: 0.75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hp-today-meta span { font-size: 12.5px; opacity: 0.9; white-space: normal; }
 .hp-root button { all: unset; cursor: pointer; display: inline-grid; place-items: center; color: #fff; }
 .hp-root button:focus-visible, .hp-root a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 999px; }
 .hp-heart { opacity: 0.85; }
 .hp-heart.on { color: #ff6b8b; opacity: 1; }
 .hp-bar { margin-top: 12px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.22); overflow: hidden; }
 .hp-fill { display: block; height: 100%; width: 34%; background: #fff; border-radius: 3px; }
-.hp-fill.run { animation: hp-prog 28s linear infinite; }
+.hp-fill.run { animation: hp-prog linear forwards; }
 @keyframes hp-prog { from { width: 0% } to { width: 100% } }
 .hp-today-row { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
 .hp-live { display: inline-flex; align-items: center; gap: 6px; }
@@ -653,15 +678,8 @@ const HP_CSS = `
 .hp-pin { position: absolute; top: -8px; left: 50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8b8b, #c0141e); box-shadow: 0 3px 4px rgba(0,0,0,0.35); }
 .hp-hint { margin: 22px 0 0; font-size: 12px; letter-spacing: 0.04em; opacity: 0.75; z-index: 2; white-space: nowrap; }
 .hp-hint kbd { display: inline-block; padding: 2px 7px; margin-right: 4px; border: 1px solid rgba(255,255,255,0.55); border-bottom-width: 2px; border-radius: 5px; font: inherit; font-size: 11px; }
-.hp-shelf { position: relative; padding: 120px clamp(16px, 4.5vw, 64px) 40px; z-index: 2; }
 .hp-end { position: relative; padding: 0 clamp(16px, 4.5vw, 64px) 40px; z-index: 2; }
 .hp-end .hp-foot { margin-top: 0; }
-.hp-shelf h3 { display: inline-block; margin: 0 0 32px; font-size: clamp(30px, 3.4vw, 54px); font-weight: 500; letter-spacing: -0.05em; }
-.hp-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 2vw, 28px); }
-.hp-card { padding: 22px 22px 26px; border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); }
-.hp-card-k { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.7; }
-.hp-card h4 { margin: 34px 0 10px; font-size: 24px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; }
-.hp-card p { margin: 0; font-size: 14px; font-weight: 300; opacity: 0.85; line-height: 1.45; }
 .hp-foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 90px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.25); font-size: 13px; font-weight: 300; opacity: 0.85; }
 .hp-foot a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 760px) {
@@ -669,14 +687,13 @@ const HP_CSS = `
   .hp-hero { height: max(100svh, 760px); }
   .hp-word { top: 12%; font-size: 22vw; }
   .hp-coast { left: 8%; top: 16%; width: 82px; }
-  .hp-today { left: 5%; top: 40%; width: 220px; }
+  .hp-today { left: 5%; top: auto; bottom: 48%; width: 240px; }
   .hp-copy { max-width: 90vw; bottom: 16%; }
   .hp-road-wrap { left: 50%; transform: translateX(-50%); bottom: -2%; }
   .hp-road { width: 120px; }
   .hp-ticket { right: -8%; top: 24%; width: 170px; transform: rotate(9deg) scale(0.78); }
   .hp-flatlay { right: 6%; top: 46%; width: 74px; }
   .hp-note, .hp-hint { display: none; }
-  .hp-cards { grid-template-columns: 1fr; }
   .hp-foot { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
