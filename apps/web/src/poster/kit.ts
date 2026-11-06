@@ -420,6 +420,36 @@ export function stamp(p: Painter, c: Ctx, o: { x: number; y: number; w: number; 
   p.text(o.year, x + w / 2, y + h * 0.26 + pin + c.U(0.6), { font: "display", size: c.U(3) * (w / c.X(14)), color: o.col, align: "center" });
 }
 
+/** A rectangle with scalloped (stamp-perforated) edges. Sizes in percent of the poster, scallop radius in `u`. */
+export function scallopRect(p: Painter, c: Ctx, o: { x: number; y: number; w: number; h: number; color: string; r: number }) {
+  const x = c.X(o.x);
+  const y = c.Y(o.y);
+  const w = c.X(o.w);
+  const h = c.Y(o.h);
+  const r = c.U(o.r);
+  p.shadow("rgba(0,0,0,0.22)", c.U(2.2), 0, c.U(1));
+  p.rect(x + r, y + r, w - 2 * r, h - 2 * r, o.color);
+  p.noShadow();
+  const nx = Math.max(2, Math.round((w - 2 * r) / (2 * r)));
+  const ny = Math.max(2, Math.round((h - 2 * r) / (2 * r)));
+  for (let i = 0; i <= nx; i += 1) {
+    const px = x + r + ((w - 2 * r) * i) / nx;
+    for (const py of [y + r, y + h - r]) {
+      p.begin();
+      p.arc(px, py, r, 0, Math.PI * 2);
+      p.fill(o.color);
+    }
+  }
+  for (let i = 0; i <= ny; i += 1) {
+    const py = y + r + ((h - 2 * r) * i) / ny;
+    for (const px of [x + r, x + w - r]) {
+      p.begin();
+      p.arc(px, py, r, 0, Math.PI * 2);
+      p.fill(o.color);
+    }
+  }
+}
+
 /** A round postmark with two short lines of text. */
 export function postmark(p: Painter, c: Ctx, o: { x: number; y: number; d: number; col: string; lines: string[]; size: number; rot?: number }) {
   const d = c.U(o.d);

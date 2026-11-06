@@ -35,6 +35,7 @@ const KINDS: [Kind, string][] = [
   ["day", "Day card"],
 ];
 const MEMORY_KEY = "hoppin.poster";
+const photoWord = (n: number) => (n === 1 ? "1 photo" : `${n} photos`);
 
 function remembered(): { tpl?: string; palette?: string; size?: PosterSize } {
   try {
@@ -352,7 +353,7 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
   );
 
   const photoSheet = (
-    <Sheet open={adding} onOpenChange={setAdding} title={`Add ${tpl.photos} photos`} description={`${tpl.name} fits ${tpl.photos} photos. Pick them from your phone's gallery or your computer.`}>
+    <Sheet open={adding} onOpenChange={setAdding} title={tpl.photos === 1 ? "Add a photo" : `Add ${tpl.photos} photos`} description={`${tpl.name} fits ${photoWord(tpl.photos)}. Pick ${tpl.photos === 1 ? "it" : "them"} from your phone's gallery or your computer.`}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: Math.max(tpl.photos, photos.length) }, (_, i) => (
@@ -396,7 +397,7 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
           </Chip>
           {PHOTO_COUNTS.map((n) => (
             <Chip key={n} on={countFilter === n} onClick={() => setCountFilter(countFilter === n ? null : n)}>
-              {n} photos
+              {photoWord(n)}
             </Chip>
           ))}
         </div>
@@ -430,7 +431,7 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
                   <span>
                     <span className="block text-sm font-semibold">{t.name}</span>
                     <span className="block text-xs text-muted">
-                      {t.photos} photos · {t.mood === "funky" ? "Funky" : "Aesthetic"}
+                      {photoWord(t.photos)} · {t.mood === "funky" ? "Funky" : "Aesthetic"}
                     </span>
                   </span>
                   {t.isNew && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase text-accent-soft-fg">New</span>}

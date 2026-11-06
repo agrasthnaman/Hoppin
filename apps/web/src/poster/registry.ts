@@ -1,9 +1,10 @@
 import { cover, dump, film, grid, postcard, route } from "./templates/aesthetic";
 import { booth, burst, cork, luggage, scrapbook, stickers, ticket, windows } from "./templates/funky";
+import { cinema, instant, pass, postage, solo, sticky } from "./templates/single";
 import type { PosterTemplate } from "./types";
 
 /** Every template, by how many photos it takes. New templates only need adding here; the brand tests pick them up. */
-export const TEMPLATES: PosterTemplate[] = [route, postcard, luggage, windows, ticket, cover, booth, grid, burst, stickers, scrapbook, film, cork, dump];
+export const TEMPLATES: PosterTemplate[] = [instant, pass, sticky, cinema, solo, postage, route, postcard, luggage, windows, ticket, cover, booth, grid, burst, stickers, scrapbook, film, cork, dump];
 
 export const PHOTO_COUNTS = [...new Set(TEMPLATES.map((t) => t.photos))].sort((a, b) => a - b);
 
