@@ -1,7 +1,7 @@
 import { inputClass } from "../lib/forms";
 import { formatSyncedAgo, localDate } from "@hoppin/core";
-import { FileDown, LayoutGrid, LifeBuoy, UserRound, Users, Vote } from "lucide-react";
-import { useState } from "react";
+import { Bell, FileDown, LayoutGrid, LifeBuoy, UserRound, Users, Vote } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { waitingForOrganizer } from "../app/people";
 import { useServices } from "../app/services";
@@ -34,6 +34,16 @@ export function MoreScreen() {
   const signOut = useSignOut();
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!online) return;
+    let current = true;
+    actions.unreadUpdates(trip.tripId).then((n) => current && setUnread(n), () => {});
+    return () => {
+      current = false;
+    };
+  }, [actions, trip.tripId, online]);
 
   async function downloadAll() {
     setBusy(true);
@@ -73,6 +83,18 @@ export function MoreScreen() {
           Members
         </Link>
         {memberWaiting && <span id="members-waiting" className="sr-only">Someone is waiting for approval</span>}
+        <Link
+          to={`/trips/${trip.tripId}/updates`}
+          aria-describedby={unread > 0 ? "updates-new" : undefined}
+          className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <span className="relative">
+            <Bell aria-hidden="true" className="size-5 text-muted" />
+            {unread > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 size-2.5 rounded-full bg-accent ring-2 ring-surface" />}
+          </span>
+          Updates
+        </Link>
+        {unread > 0 && <span id="updates-new" className="sr-only">You have new updates</span>}
         <Link to={`/trips/${trip.tripId}/polls`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <Vote aria-hidden="true" className="size-5 text-muted" />
           Polls

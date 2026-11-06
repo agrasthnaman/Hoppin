@@ -75,6 +75,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
   const at = (day: number, hhmm: string) => zonedTimeToInstant(`${addDays(base, day)}T${hhmm}`, timeZone);
   const stamp = () => new Date().toISOString();
   let counter = 0;
+  let demoEmailUpdates = true;
   const files = new Map<string, { bytes: ArrayBuffer; type: string }>();
 
   const item = (id: string, tripId: string, ownerId: string, over: Partial<Item> & Pick<Item, "title" | "startsAt">): Item => ({
@@ -360,6 +361,17 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       saveExpense: writer.saveExpense,
       deleteExpense: writer.deleteExpense,
       addGuest: writer.addGuest,
+      // In the demo nobody else edits the trip, so there are no updates to show.
+      async listUpdates() {
+        return { notifications: [], emailOn: demoEmailUpdates };
+      },
+      async unreadUpdates() {
+        return 0;
+      },
+      async markUpdatesRead() {},
+      async setEmailUpdates(_tripId, on) {
+        demoEmailUpdates = on;
+      },
       async deleteDocument(doc) {
         const t = trips.find((x) => x.documents.some((d) => d.id === doc.id));
         const found = t?.documents.find((d) => d.id === doc.id);
