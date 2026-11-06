@@ -47,8 +47,10 @@ export function createAppRoutes(): RouteObject[] {
             { path: "docs", ...lazyPage(() => import("../routes/Docs")) },
             { path: "polls", ...lazyPage(() => import("../routes/Polls")) },
             { path: "map", ...lazyPage(() => import("../routes/TripMap")) },
+            { path: "export", ...lazyPage(() => import("../routes/Export")) },
           ],
         },
+        { path: "/trips/:tripId/print", ...lazyPage(() => import("../routes/PrintPlan")) }, // outside the trip shell: no navigation on paper
       ],
     },
   ];
