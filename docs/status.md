@@ -13,7 +13,7 @@ Run `npm run demo` to click through all of it on sample data. A signed-in person
 | open | everything else on the [issues page](https://github.com/agrasthnaman/Hoppin/issues) |
 
 ## Navigation
-The bottom bar is **Days, Map, Money, Docs, More**. Map is a main tab because it is a key feature. There is no Today tab any more: Days opens on today's date during the trip, and its top card ("Happening now", "Up next", "Tonight you're at") is the old Today screen. `/trips/:id/today` still works and redirects to Days. "All trips" is in More.
+The bottom bar is **Days, Map, Money, Docs, More**. Map is a main tab because it is a key feature. There is no Today tab any more: Days opens on today's date during the trip, and its top card ("Happening now", "Up next", "Tonight you're at") is the old Today screen. `/trips/:id/today` still works and redirects to Days. "All trips" is in More. **Export** (More > Export) downloads a calendar file (`.ics`, made on the phone) and opens a printable plan at `/trips/:id/print` (outside the app shell, no navigation bar) to print or save as PDF; both work offline and include only what the viewer can see.
 
 ## Look and feel
 The app has a "soft pop" look with three palettes (Rose & teal, Lilac & lime, Tangerine & sky), each in light and dark, chosen in More > Appearance. **Read [design-brief.md](design-brief.md) before building any screen**: use only the semantic colour classes, and check your screen in all palettes and both modes in `npm run demo`.

@@ -1,6 +1,6 @@
 import { inputClass } from "../lib/forms";
 import { formatSyncedAgo, localDate } from "@hoppin/core";
-import { Bell, LayoutGrid, LifeBuoy, UserRound, Users, Vote } from "lucide-react";
+import { Bell, FileDown, LayoutGrid, LifeBuoy, UserRound, Users, Vote } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { waitingForOrganizer } from "../app/people";
@@ -98,6 +98,10 @@ export function MoreScreen() {
         <Link to={`/trips/${trip.tripId}/polls`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <Vote aria-hidden="true" className="size-5 text-muted" />
           Polls
+        </Link>
+        <Link to={`/trips/${trip.tripId}/export`} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
+          <FileDown aria-hidden="true" className="size-5 text-muted" />
+          Export
         </Link>
         <Link to="/trips" className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <LayoutGrid aria-hidden="true" className="size-5 text-muted" />

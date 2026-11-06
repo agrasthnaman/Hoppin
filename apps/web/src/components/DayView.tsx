@@ -1,4 +1,4 @@
-import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
+import { formatTimeRange, pollOnPlan, stayNote, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
 import { BedDouble, ChevronDown, Navigation, Vote as VoteIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -171,20 +171,6 @@ function dateParts(date: string): { weekday: string; rest: string } {
   const at = new Date(`${date}T12:00:00Z`);
   const fmt = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", ...o }).format(at);
   return { weekday: fmt({ weekday: "long" }), rest: fmt({ day: "numeric", month: "long" }) };
-}
-
-const DAY_MS = 86_400_000;
-const dayNumber = (date: string) => Math.round(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
-
-/** What to say about a stay on this day: when to check in or out, or which night it is. */
-function stayNote(item: Item, date: string): string {
-  const first = localDate(Date.parse(item.startsAt), item.tz);
-  const last = item.endsAt ? localDate(Date.parse(item.endsAt), item.tz) : first;
-  const nights = dayNumber(last) - dayNumber(first);
-  if (date === first && (!item.endsAt || nights > 0)) return `Check-in ${formatTime(item.startsAt, item.tz)}`;
-  if (item.endsAt && date === last && nights > 0) return `Check-out ${formatTime(item.endsAt, item.tz)}`;
-  if (nights > 1 && date > first && date < last) return `Night ${dayNumber(date) - dayNumber(first) + 1} of ${nights}`;
-  return "Staying here";
 }
 
 /** "Get directions" for a plan with a map link, right on its card so nobody has to open the plan first. */

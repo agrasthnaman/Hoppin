@@ -1,0 +1,50 @@
+/* The printable plan (PrintPlan.tsx). On screen it follows the theme; on paper it is always black on white. */
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body,
+  .print-page,
+  .print-sheet {
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-page {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .print-sheet {
+    max-width: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none !important;
+    font-size: 11pt;
+  }
+
+  .print-sheet * {
+    color: black !important;
+    border-color: silver !important;
+    box-shadow: none !important;
+  }
+
+  .print-toolbar {
+    display: none !important;
+  }
+
+  .print-plan {
+    break-inside: avoid;
+  }
+
+  .print-day-heading {
+    break-after: avoid;
+  }
+
+  .print-sheet a[href]::after {
+    content: " (" attr(href) ")";
+  }
+}
