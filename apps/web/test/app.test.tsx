@@ -64,6 +64,13 @@ describe("sign in and gating", () => {
     vi.unstubAllGlobals();
   });
 
+  it("offers a way to email support on the sign-in page", async () => {
+    const { services } = fakeServices({ session: null });
+    renderApp("/sign-in", services);
+    const link = await screen.findByRole("link", { name: "Email support" });
+    expect(link.getAttribute("href")).toMatch(/^mailto:support@hoppinclub\.com\?subject=Help%20signing%20in/);
+  });
+
   it("sends signed-out visitors to sign in, remembering where they were going", async () => {
     const { services } = fakeServices({ session: null });
     const { router } = renderApp("/trips/t1/days", services);
@@ -668,6 +675,14 @@ describe("item screen", () => {
 });
 
 describe("more screen", () => {
+  it("has a Help and support link that opens an email to the support address with the trip's name", async () => {
+    const { services } = fakeServices();
+    renderApp("/trips/t1/more", services);
+    const link = await screen.findByRole("link", { name: "Help and support" });
+    expect((link.getAttribute("href") ?? "").startsWith("mailto:support@hoppinclub.com?")).toBe(true);
+    await waitFor(() => expect(decodeURIComponent(screen.getByRole("link", { name: "Help and support" }).getAttribute("href") ?? "")).toContain("Trip: Goa"));
+  });
+
   it("shows when the trip last synced and refreshes on request", async () => {
     const { services, fetchSnapshot } = fakeServices();
     renderApp("/trips/t1/more", services);

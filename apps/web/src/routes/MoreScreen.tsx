@@ -1,12 +1,13 @@
 import { inputClass } from "../lib/forms";
 import { formatSyncedAgo, localDate } from "@hoppin/core";
-import { LayoutGrid, UserRound, Users, Vote } from "lucide-react";
+import { LayoutGrid, LifeBuoy, UserRound, Users, Vote } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { waitingForOrganizer } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
 import { useSignOut } from "../app/useSignOut";
+import { supportMailto } from "../lib/support";
 import { AppearanceCard } from "../components/AppearanceCard";
 import { JoinTripForm } from "../components/JoinTripForm";
 import { DestinationCard } from "../components/DestinationCard";
@@ -80,6 +81,10 @@ export function MoreScreen() {
           <LayoutGrid aria-hidden="true" className="size-5 text-muted" />
           All trips
         </Link>
+        <a href={supportMailto({ ...(trip.snapshot ? { trip: trip.snapshot.trip.name } : {}) })} className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
+          <LifeBuoy aria-hidden="true" className="size-5 text-muted" />
+          Help and support
+        </a>
         <Link to="/account" className="flex items-center gap-3 rounded-card p-4 font-semibold focus-visible:outline-2 focus-visible:outline-accent">
           <UserRound aria-hidden="true" className="size-5 text-muted" />
           Account

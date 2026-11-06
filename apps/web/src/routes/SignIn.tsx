@@ -3,6 +3,7 @@ import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { AuthForm } from "../components/AuthForm";
 import { Spinner } from "../components/ui/Spinner";
+import { supportMailto } from "../lib/support";
 import { AuthStage } from "./AuthStage";
 
 /** Only follow `next` if it is an address inside this app. */
@@ -29,6 +30,12 @@ export function SignIn() {
       ) : (
         <AuthForm api={auth} purpose="waitlist" titled confirmRedirectTo={`${window.location.origin}${next}`} resetRedirectTo={`${window.location.origin}/reset-password`} />
       )}
+      <p className="auth-lede mt-6">
+        Stuck?{" "}
+        <a href={supportMailto({ subject: "Help signing in to Hoppin" })} className="font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          Email support
+        </a>
+      </p>
     </AuthStage>
   );
 }
