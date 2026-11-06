@@ -20,3 +20,4 @@ export * from "./poll";
 export * from "./digest";
 export * from "./ics";
 export * from "./print-plan";
+export * from "./recap";

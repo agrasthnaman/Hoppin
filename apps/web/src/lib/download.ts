@@ -10,7 +10,12 @@ export function safeFileName(name: string, fallback = "trip"): string {
 
 /** Saves text as a file on the device. No server is involved; on iOS Safari a calendar file opens "Add to Calendar". */
 export function downloadText(filename: string, mime: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  downloadBlob(filename, new Blob([text], { type: mime }));
+}
+
+/** Saves a file made on the device (a poster picture). The temporary address is released once the download starts. */
+export function downloadBlob(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
