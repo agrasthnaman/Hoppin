@@ -1,4 +1,4 @@
-import type { ExpenseRecord, Item, MembershipStatus, TripDestination, TripGuest, TripSnapshot } from "@hoppin/core";
+import type { ExpenseRecord, Item, MembershipStatus, TripDestination, TripGuest, TripNotification, TripSnapshot } from "@hoppin/core";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { vi } from "vitest";
@@ -54,7 +54,7 @@ type Session = { user: { id: string; email?: string } } | null;
 let n = 0;
 
 type TripRow = { id: string; name: string; startDate?: string | null; endDate?: string | null };
-export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot | "no-access" | Error; trips?: TripRow[]; invites?: { id: string; token: string; createdAt: string; expiresAt: string }[] } = {}) {
+export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot | "no-access" | Error; trips?: TripRow[]; invites?: { id: string; token: string; createdAt: string; expiresAt: string }[]; updates?: TripNotification[] } = {}) {
   let session: Session = opts.session === undefined ? { user: { id: "me", email: "aman@example.com" } } : opts.session;
   let listener: (e: string, s: Session) => void = () => {};
   const sessionClient: SessionClient = {
@@ -123,6 +123,10 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       saveExpense: vi.fn(async (_expense: ExpenseRecord, _guestIds: ReadonlySet<string>) => {}),
       deleteExpense: vi.fn(async (_expenseId: string) => {}),
       addGuest: vi.fn(async (_guest: TripGuest) => {}),
+      listUpdates: vi.fn(async (_tripId: string) => ({ notifications: opts.updates ?? [], emailOn: true })),
+      unreadUpdates: vi.fn(async (_tripId: string) => (opts.updates ?? []).filter((u) => !u.readAt).length),
+      markUpdatesRead: vi.fn(async (_tripId: string) => {}),
+      setEmailUpdates: vi.fn(async (_tripId: string, _on: boolean) => {}),
     },
     clock: { now: () => NOW, timeZone: TZ },
     weather: { forDay: vi.fn(async (_place: { lat: number; lon: number }, _date: string): Promise<WeatherResult> => ({ status: "unavailable" })) },

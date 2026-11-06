@@ -17,3 +17,4 @@ export * from "./password";
 export * from "./expenses";
 export * from "./money-outbox";
 export * from "./poll";
+export * from "./digest";

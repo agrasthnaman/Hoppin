@@ -1,4 +1,4 @@
-import type { DocumentScope, DocumentSource, ExpenseRecord, InviteApi, Item, TripDestination, TripDocument, TripGuest, TripSource } from "@hoppin/core";
+import type { DocumentScope, DocumentSource, ExpenseRecord, InviteApi, Item, TripDestination, TripDocument, TripGuest, TripNotification, TripSource } from "@hoppin/core";
 import { createContext, useContext, type ReactNode } from "react";
 import type { ItemFormValues } from "../components/ItemForm";
 import { createAuthApi, type AuthApi } from "../lib/auth-api";
@@ -7,6 +7,7 @@ import { deleteDocument, getDocumentUrl, uploadDocument } from "../lib/documents
 import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
 import { addGuest, castVote, closePoll, createItem, createPoll, deleteExpense, deleteItem, deletePoll, saveExpense, setRsvp, updateItem } from "../data/writes";
+import { listUpdates, markUpdatesRead, setEmailUpdates, unreadUpdates } from "../data/updates";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import { createPhotonPlaces, type PlacesApi } from "../providers/places";
@@ -55,6 +56,11 @@ export interface Actions {
   saveExpense(expense: ExpenseRecord, guestIds: ReadonlySet<string>): Promise<void>;
   deleteExpense(expenseId: string): Promise<void>;
   addGuest(guest: TripGuest): Promise<void>;
+  /** The signed-in person's change digests for a trip, and whether they also get them by email. */
+  listUpdates(tripId: string): Promise<{ notifications: TripNotification[]; emailOn: boolean }>;
+  unreadUpdates(tripId: string): Promise<number>;
+  markUpdatesRead(tripId: string): Promise<void>;
+  setEmailUpdates(tripId: string, on: boolean): Promise<void>;
 }
 
 export interface Services {
@@ -223,6 +229,10 @@ export function createServices(client: any): Services {
       saveExpense: (expense, guestIds) => saveExpense(client, expense, guestIds),
       deleteExpense: (expenseId) => deleteExpense(client, expenseId),
       addGuest: (guest) => addGuest(client, guest),
+      listUpdates: async (tripId) => listUpdates(client, tripId, await signedInId()),
+      unreadUpdates: (tripId) => unreadUpdates(client, tripId),
+      markUpdatesRead: (tripId) => markUpdatesRead(client, tripId),
+      setEmailUpdates: (tripId, on) => setEmailUpdates(client, tripId, on),
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),
