@@ -16,6 +16,14 @@ describe("main bundle stays small", () => {
     expect(direct.map((f) => f.slice(src.length + 1)).sort()).toEqual(["routes/Landing.tsx"]);
   });
 
+  it("poster code loads only with the studio, and never pulls in the 3D mascot", () => {
+    const posterFiles = files(join(src, "poster"));
+    for (const file of posterFiles) expect(readFileSync(file, "utf8")).not.toMatch(/from ["'](three|[^"']*hop-mascot|[^"']*silk-spider)/);
+    const importers = files(src).filter((file) => !file.includes(`${join(src, "poster")}`) && !file.includes(join(src, "components/poster")) && /from ["'][^"']*\/poster\//.test(readFileSync(file, "utf8")));
+    expect(importers.map((file) => file.slice(src.length + 1))).toEqual(["routes/Posters.tsx"]);
+    expect(readFileSync(join(src, "app/routes.tsx"), "utf8")).toMatch(/import\(["']\.\.\/routes\/Posters["']\)/);
+  });
+
   it("only the map view loads maplibre, and only when a map is opened", () => {
     const hits = files(src).filter((file) => readFileSync(file, "utf8").includes("maplibre-gl"));
     expect(hits.map((file) => file.slice(src.length + 1)).sort()).toEqual(["components/map/MapView.tsx"]);
