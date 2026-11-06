@@ -5,6 +5,7 @@ import { useServices } from "../app/services";
 import { tripGate } from "../app/trip-data";
 import { useTripRoute } from "../app/useTripRoute";
 import { Button } from "../components/ui/Button";
+import { ZonePicker } from "../components/ZonePicker";
 import { formatDateRange } from "../lib/dates";
 import "./print.css";
 
@@ -12,16 +13,29 @@ import "./print.css";
 export default function PrintPlan() {
   const trip = useTripRoute();
   const { clock } = useServices();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const includeNotes = params.get("notes") === "1";
   const includeOptional = params.get("optional") !== "0";
+  const displayTz = params.get("tz");
   const back = `/trips/${trip.tripId}/export`;
 
   const gate = tripGate(trip);
   const plan =
     !gate && trip.snapshot
-      ? buildPrintPlan(trip.snapshot, { viewerId: trip.viewerId, includeNotes, includeOptional, printedAt: clock.now(), deviceTz: clock.timeZone })
+      ? buildPrintPlan(trip.snapshot, { viewerId: trip.viewerId, includeNotes, includeOptional, printedAt: clock.now(), deviceTz: clock.timeZone, displayTz })
       : null;
+
+  function chooseZone(tz: string) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (tz) next.set("tz", tz);
+        else next.delete("tz");
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   return (
     <div className="print-page min-h-dvh bg-raised px-3 py-4 sm:py-8">
@@ -33,8 +47,19 @@ export default function PrintPlan() {
           <ArrowLeft aria-hidden="true" className="size-4" />
           Back
         </Link>
+        {plan && (
+          <div className="order-last w-full sm:order-none sm:ml-auto sm:w-auto">
+            <ZonePicker
+              value={plan.header.zone.chosen ? plan.header.zone.tz : ""}
+              zones={plan.zones}
+              deviceTz={clock.timeZone}
+              at={clock.now()}
+              onChange={chooseZone}
+            />
+          </div>
+        )}
         <div className="flex items-center gap-3">
-          <p className="hidden text-sm text-muted sm:block">Choose Print, then Save as PDF to keep a copy.</p>
+          <p className="hidden text-sm text-muted lg:block">Choose Print, then Save as PDF to keep a copy.</p>
           <Button disabled={!plan} onClick={() => window.print()}>
             <Printer aria-hidden="true" className="size-4" />
             Print
@@ -52,6 +77,11 @@ export default function PrintPlan() {
                 {plan.header.destination && ` · ${plan.header.destination}`}
               </p>
               {plan.header.travellers.length > 0 && <p className="text-sm">Travellers: {plan.header.travellers.join(", ")}</p>}
+              <p className="text-sm">
+                {plan.header.zone.chosen
+                  ? `All times are in ${plan.header.zone.label}.`
+                  : `Times are in the trip's time zone, ${plan.header.zone.label}. A time marked (local) is in that place's own time, like a flight leaving from home.`}
+              </p>
               <p className="text-xs text-muted">{plan.header.printed}</p>
             </header>
 

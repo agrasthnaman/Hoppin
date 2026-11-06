@@ -73,6 +73,23 @@ describe("printable plan", () => {
     expect(screen.getByText(/^Printed /)).toBeInTheDocument();
   });
 
+  it("says which time zone the times are in, the trip's own by default", async () => {
+    await open();
+    expect(screen.getByText(/^Times are in the trip's time zone, Kolkata · GMT\+5:30\./)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Show times in" })).toHaveValue("");
+  });
+
+  it("can show every time in another zone, kept in the address with the other options", async () => {
+    const { router } = await open("?notes=1&optional=1");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Show times in" }), "Asia/Tokyo");
+    expect(router.state.location.search).toBe("?notes=1&optional=1&tz=Asia%2FTokyo");
+    expect(await screen.findByText("All times are in Tokyo · GMT+9.")).toBeInTheDocument();
+    expect(within(day(/Day 2/)).getAllByRole("listitem")[1]!.textContent).toMatch(/^13:30 – 15:30Old town tour/);
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Show times in" }), "");
+    expect(router.state.location.search).toBe("?notes=1&optional=1");
+  });
+
   it("has no accessibility problems", async () => {
     const { container } = await open();
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();

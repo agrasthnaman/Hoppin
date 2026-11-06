@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPrintPlan, stayNote, type PrintOptions } from "../src/print-plan";
+import { buildPrintPlan, stayNote, tripZones, zoneLabel, type PrintOptions } from "../src/print-plan";
 import type { Item, TripSnapshot } from "../src/types";
 
 const TZ = "Asia/Makassar";
@@ -46,7 +46,7 @@ const opts = (over: Partial<PrintOptions> = {}): PrintOptions => ({ viewerId: "m
 
 describe("buildPrintPlan", () => {
   it("has the trip's header: name, dates, destination, printed date and travellers' first names", () => {
-    expect(buildPrintPlan(trip, opts()).header).toEqual({
+    expect(buildPrintPlan(trip, opts()).header).toMatchObject({
       name: "Bali",
       startDate: "2026-03-28",
       endDate: "2026-03-31",
@@ -89,6 +89,41 @@ describe("buildPrintPlan", () => {
     const early = plan({ id: "early", title: "Visa run", startsAt: at("2026-03-26", "10:00") });
     const days = buildPrintPlan({ ...trip, trip: { ...trip.trip, startDate: null, endDate: null }, items: [early, temple] }, opts()).days;
     expect(days.map((d) => d.heading)).toEqual(["Day 1 · Thu 26 Mar 2026", "Day 2 · Fri 27 Mar 2026", "Day 3 · Sat 28 Mar 2026", "Day 4 · Sun 29 Mar 2026"]);
+  });
+});
+
+describe("time zone", () => {
+  it("by default says the trip's own zone is used, and marks plans in another zone as local", () => {
+    const plan = buildPrintPlan(trip, opts());
+    expect(plan.header.zone).toEqual({ tz: TZ, label: "Makassar · GMT+8", chosen: false });
+  });
+
+  it("shows every time in a chosen zone, groups days by it, and drops the local mark", () => {
+    const plan = buildPrintPlan(trip, opts({ displayTz: "Asia/Kolkata" }));
+    expect(plan.header.zone).toEqual({ tz: "Asia/Kolkata", label: "Kolkata · GMT+5:30", chosen: true });
+    expect(plan.days[0]!.plans[0]).toMatchObject({ title: "DEL to DPS", time: "09:45 – 15:00" });
+    expect(plan.days[1]!.plans[0]).toMatchObject({ title: "Temple visit", time: "06:30 – 08:30" });
+  });
+
+  it("a plan can move to another day in the chosen zone", () => {
+    const late = plan({ id: "late", title: "Night market", startsAt: at("2026-03-29", "23:30") });
+    const days = buildPrintPlan({ ...trip, items: [villa, late] }, opts({ displayTz: "Asia/Tokyo" })).days;
+    expect(days.find((d) => d.plans.some((p) => p.id === "late"))!.date).toBe("2026-03-30");
+  });
+
+  it("names renamed zones by their current city", () => {
+    expect(zoneLabel("Asia/Calcutta", Date.parse("2026-03-28T00:00:00Z"))).toBe("Kolkata · GMT+5:30");
+    expect(zoneLabel("America/New_York", Date.parse("2026-01-10T00:00:00Z"))).toBe("New York · GMT-5");
+  });
+
+  it("ignores a zone that does not exist", () => {
+    expect(buildPrintPlan(trip, opts({ displayTz: "Mars/Olympus" })).header.zone).toMatchObject({ tz: TZ, chosen: false });
+  });
+
+  it("offers the zones of the plans shown, the trip's own first, never those of other people's private plans", () => {
+    expect(tripZones(trip.items)).toEqual([TZ, "Asia/Kolkata"]);
+    const hidden = plan({ id: "h", title: "Hidden", visibility: "private", ownerId: "riya", tz: "Europe/Paris", startsAt: at("2026-03-29", "10:00") });
+    expect(buildPrintPlan({ ...trip, items: [...trip.items, hidden] }, opts()).zones).toEqual([TZ, "Asia/Kolkata"]);
   });
 });
 

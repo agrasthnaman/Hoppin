@@ -1,4 +1,4 @@
-import { buildIcs, exportableItems } from "@hoppin/core";
+import { buildIcs, exportableItems, zoneLabel } from "@hoppin/core";
 import { CalendarPlus, Printer } from "lucide-react";
 import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -67,6 +67,7 @@ export default function Export() {
           Add to calendar
         </h3>
         <p className="text-sm text-muted">Download the plan as a calendar file. Open it to add every plan to Apple Calendar, Google Calendar or Outlook.</p>
+        <p className="text-sm text-muted">Your calendar shows each plan at the right moment, in this device's time zone ({zoneLabel(clock.timeZone, clock.now())}).</p>
         <div className="flex flex-col">
           <Option label="Include optional plans I joined" checked={calOptional} onChange={setCalOptional} />
           <Option label="Include my private plans" checked={calPrivate} onChange={setCalPrivate} />
@@ -90,6 +91,7 @@ export default function Export() {
           Print or save as PDF
         </h3>
         <p className="text-sm text-muted">Opens a clean copy of the plan. Choose Print, then Save as PDF.</p>
+        <p className="text-sm text-muted">Times are in the trip's time zone. You can pick another one on the next page.</p>
         <div className="flex flex-col">
           <Option label="Include notes" checked={printNotes} onChange={setPrintNotes} />
           {printNotes && <p className="-mt-1 mb-1 pl-8 text-xs text-muted">Notes can hold booking numbers. Only share the printout with people you trust.</p>}

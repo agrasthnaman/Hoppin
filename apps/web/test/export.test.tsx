@@ -70,6 +70,12 @@ describe("export screen", () => {
     await waitFor(() => expect(router.state.location.search).toBe("?notes=1&optional=0"));
   });
 
+  it("says which time zone each export uses", async () => {
+    await open();
+    expect(screen.getByText("Your calendar shows each plan at the right moment, in this device's time zone (Kolkata · GMT+5:30).")).toBeInTheDocument();
+    expect(screen.getByText("Times are in the trip's time zone. You can pick another one on the next page.")).toBeInTheDocument();
+  });
+
   it("has no accessibility problems", async () => {
     const { container } = await open();
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
