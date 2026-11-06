@@ -22,6 +22,7 @@ const open = async (query = "") => {
   return utils;
 };
 const day = (name: RegExp) => screen.getByRole("region", { name });
+const picker = () => screen.getByRole("button", { name: /^Show times in/ });
 
 describe("printable plan", () => {
   it("has no app navigation, only Back and Print", async () => {
@@ -76,22 +77,54 @@ describe("printable plan", () => {
   it("says which time zone the times are in, the trip's own by default", async () => {
     await open();
     expect(screen.getByText(/^Times are in the trip's time zone, Kolkata · GMT\+5:30\./)).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Show times in" })).toHaveValue("");
+    expect(picker()).toHaveAccessibleName("Show times in Trip time · Kolkata · GMT+5:30");
+    expect(picker()).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("can show every time in another zone, kept in the address with the other options", async () => {
+  it("can show every time in another zone, picked from a searchable list, kept in the address", async () => {
     const { router } = await open("?notes=1&optional=1");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Show times in" }), "Asia/Tokyo");
+    await userEvent.click(picker());
+    const list = screen.getByRole("listbox", { name: "Time zones" });
+    expect(within(list).getByRole("option", { name: "Trip time · Kolkata · GMT+5:30" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.type(screen.getByRole("combobox", { name: "Search time zones" }), "tokyo");
+    await userEvent.click(within(list).getByRole("option", { name: "Tokyo · GMT+9" }));
+    expect(screen.queryByRole("listbox")).toBeNull();
     expect(router.state.location.search).toBe("?notes=1&optional=1&tz=Asia%2FTokyo");
     expect(await screen.findByText("All times are in Tokyo · GMT+9.")).toBeInTheDocument();
     expect(within(day(/Day 2/)).getAllByRole("listitem")[1]!.textContent).toMatch(/^13:30 – 15:30Old town tour/);
 
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Show times in" }), "");
+    await userEvent.click(picker());
+    await userEvent.click(screen.getByRole("option", { name: "Trip time · Kolkata · GMT+5:30" }));
     expect(router.state.location.search).toBe("?notes=1&optional=1");
+  });
+
+  it("works from the keyboard, and Escape closes it without changing anything", async () => {
+    const { router } = await open();
+    picker().focus();
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard("gmt+9");
+    await userEvent.keyboard("{ArrowDown}{ArrowUp}{Enter}");
+    expect(router.state.location.search).toMatch(/tz=Asia%2F/);
+    expect(picker()).toHaveFocus();
+
+    const before = router.state.location.search;
+    await userEvent.click(picker());
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(router.state.location.search).toBe(before);
+  });
+
+  it("says when no zone matches the search", async () => {
+    await open();
+    await userEvent.click(picker());
+    await userEvent.type(screen.getByRole("combobox", { name: "Search time zones" }), "atlantis");
+    expect(screen.getByText('No time zone matches "atlantis". Try a city, like Tokyo.')).toBeInTheDocument();
   });
 
   it("has no accessibility problems", async () => {
     const { container } = await open();
+    expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
+    await userEvent.click(picker());
     expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 });
