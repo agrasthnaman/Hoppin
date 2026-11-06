@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { cn } from "../../lib/cn";
 import { useThemeTick } from "../../hooks/useThemeTick";
-import { legsFor, totalMs } from "../../lib/map-arc";
+import { legsFor, PLAY_DAY_GAP_MS, totalMs } from "../../lib/map-arc";
 import { dayColor } from "../../lib/map-colors";
 import { Card } from "../ui/Card";
 import { MapFrame } from "./MapView";
@@ -69,7 +69,7 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
   const points = useMemo(() => withPlanLinks(drawn.points, items, tripId), [drawn.points, items, tripId]);
   const lines = drawn.lines;
   const playable = days.reduce((total, day) => total + day.stops.length, 0) >= 2;
-  const playMs = days.reduce((total, day) => total + (day.stops.length >= 2 ? totalMs(legsFor(day.stops.map((stop) => [stop.place.lon, stop.place.lat]))) + 500 : 0), 0) + 1600;
+  const playMs = days.reduce((total, day) => total + (day.stops.length >= 2 ? totalMs(legsFor(day.stops.map((stop) => [stop.place.lon, stop.place.lat])), "play") + PLAY_DAY_GAP_MS : 0), 0) + 1600;
   function play() {
     setWhich("all");
     setSelected(null);
@@ -113,21 +113,21 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
           </button>
         ))}
       </div>
+      {online && playable && points.length > 0 && (
+        <button
+          type="button"
+          onClick={play}
+          disabled={playing}
+          aria-label={playing ? "Playing the trip" : "Play the trip"}
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full bg-surface px-4 text-sm font-bold text-fg shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80"
+        >
+          <Play aria-hidden="true" className="size-4 fill-current" />
+          {playing ? "Playing…" : "Play trip"}
+        </button>
+      )}
       {points.length > 0 && (
         <div className="relative overflow-hidden rounded-card shadow-card">
           <MapFrame points={points} lines={lines} height="60dvh" tilt={30} playKey={playKey} online={online} selectedId={selected} onSelect={setSelected} />
-          {online && playable && (
-            <button
-              type="button"
-              onClick={play}
-              disabled={playing}
-              aria-label={playing ? "Playing the trip" : "Play the trip"}
-              className="absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-full bg-surface px-4 text-sm font-bold text-fg shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80"
-            >
-              <Play aria-hidden="true" className="size-4 fill-current" />
-              {playing ? "Playing…" : "Play trip"}
-            </button>
-          )}
         </div>
       )}
       {upcoming && (
