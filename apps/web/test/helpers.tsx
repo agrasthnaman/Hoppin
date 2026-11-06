@@ -127,6 +127,7 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
     clock: { now: () => NOW, timeZone: TZ },
     weather: { forDay: vi.fn(async (_place: { lat: number; lon: number }, _date: string): Promise<WeatherResult> => ({ status: "unavailable" })) },
     geocoder: { find: vi.fn(async (_query: string): Promise<TripDestination | null> => null) },
+    places: { searchPlaces: vi.fn(async () => ({ status: "ok" as const, results: [] })), reversePlace: vi.fn(async () => null) },
     rates: {
       source: "European Central Bank",
       quote: vi.fn(async (from: string, to: string, date?: string) => ({ from, to, date: date ?? "2026-12-02", rate: from === to ? 1 : 2, fetchedAt: NOW, old: false })),

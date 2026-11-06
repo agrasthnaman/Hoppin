@@ -1,4 +1,5 @@
-import type { Item, ItemValues } from "./types";
+import { isValidPlace, roundPlace } from "./place";
+import type { Item, ItemValues, Place } from "./types";
 
 export type EditableField = keyof ItemValues;
 
@@ -37,9 +38,19 @@ export interface ConflictNotice {
   at: number;
 }
 
-const FIELDS: EditableField[] = ["kind", "title", "startsAt", "endsAt", "tz", "endTz", "locationUrl", "visibility", "groupItem", "notes"];
+const FIELDS: EditableField[] = ["kind", "title", "startsAt", "endsAt", "tz", "endTz", "locationUrl", "visibility", "groupItem", "notes", "place"];
 
-const same = (a: unknown, b: unknown) => (a ?? null) === (b ?? null);
+function placeOf(value: unknown): Place | null {
+  return isValidPlace(value) ? roundPlace(value) : null;
+}
+
+/** Places match on coordinates. A label difference is not a different place. */
+const same = (a: unknown, b: unknown) => {
+  const left = placeOf(a);
+  const right = placeOf(b);
+  if (left || right) return !!left && !!right && left.lat === right.lat && left.lon === right.lon;
+  return (a ?? null) === (b ?? null);
+};
 
 export function valuesOf(item: Item): ItemValues {
   return {
@@ -53,6 +64,7 @@ export function valuesOf(item: Item): ItemValues {
     visibility: item.visibility,
     groupItem: item.groupItem,
     notes: typeof item.details.notes === "string" ? item.details.notes : "",
+    place: placeOf(item.details.place),
     ...(typeof item.details.pollId === "string" ? { pollId: item.details.pollId } : {}),
   };
 }
@@ -65,7 +77,10 @@ export function diffItem(item: Item, next: ItemValues): FieldChange[] {
 
 /** An item with new values applied. Other details are kept, and an emptied note is removed. Version is unchanged. */
 export function applyValues(item: Item, values: ItemValues): Item {
-  const { notes: _old, ...rest } = item.details;
+  const { notes: _old, place: _place, ...rest } = item.details;
+  const details = withPoll(values.notes ? { ...rest, notes: values.notes } : rest, values.pollId);
+  const place = values.place === undefined ? placeOf(item.details.place) : placeOf(values.place);
+  if (place) details.place = place;
   return {
     ...item,
     kind: values.kind,
@@ -77,7 +92,7 @@ export function applyValues(item: Item, values: ItemValues): Item {
     locationUrl: values.locationUrl,
     visibility: values.visibility,
     groupItem: values.groupItem,
-    details: withPoll(values.notes ? { ...rest, notes: values.notes } : rest, values.pollId),
+    details,
   };
 }
 
@@ -160,6 +175,7 @@ const FIELD_LABEL: Record<EditableField, string> = {
   groupItem: "audience",
   notes: "notes",
   pollId: "poll",
+  place: "place",
 };
 
 export function fieldLabel(field: EditableField): string {

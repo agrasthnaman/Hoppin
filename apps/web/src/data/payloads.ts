@@ -1,10 +1,12 @@
-import type { ExpenseRecord, Item } from "@hoppin/core";
+import { isValidPlace, roundPlace, type ExpenseRecord, type Item, type Place } from "@hoppin/core";
 import type { ItemFormValues } from "../components/ItemForm";
 
-function details(base: Record<string, unknown>, notes: string, pollId?: string): Record<string, unknown> {
-  const { notes: _old, ...rest } = base;
+function details(base: Record<string, unknown>, notes: string, pollId?: string, place?: Place | null): Record<string, unknown> {
+  const { notes: _old, place: previous, ...rest } = base;
   const next: Record<string, unknown> = notes ? { ...rest, notes } : { ...rest };
   if (pollId) next.pollId = pollId;
+  const kept = place === undefined ? (isValidPlace(previous) ? roundPlace(previous) : null) : place && isValidPlace(place) ? roundPlace(place) : null;
+  if (kept) next.place = kept;
   return next;
 }
 
@@ -23,14 +25,14 @@ export function itemInsertRow(tripId: string, ownerId: string, values: ItemFormV
     end_tz: values.endTz ?? null,
     title: values.title,
     location_url: values.locationUrl,
-    details: details({}, values.notes, values.pollId),
+    details: details({}, values.notes, values.pollId, values.place),
   };
 }
 
 /** Changes for an existing item. Never includes trip or owner (they cannot change); other details are kept. */
 export function itemUpdatePatch(item: Item, values: ItemFormValues) {
   const { trip_id: _t, owner_id: _o, ...rest } = itemInsertRow(item.tripId, item.ownerId, values);
-  return { ...rest, details: details(item.details, values.notes, values.pollId) };
+  return { ...rest, details: details(item.details, values.notes, values.pollId, values.place) };
 }
 
 /** What save_expense() takes. `guestIds` tells guests apart from members (both are ids in the app). */

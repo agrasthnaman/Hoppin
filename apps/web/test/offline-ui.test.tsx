@@ -39,7 +39,7 @@ describe("NoticeList", () => {
 async function loadOnce(path = "/trips/t1/days?date=2026-12-02") {
   const fake = fakeServices();
   const first = renderApp(path, fake.services);
-  await screen.findByText("Old town tour");
+  await screen.findByRole("region", { name: "Old town tour" });
   await waitFor(() => expect(fake.services.documentSource.download).toHaveBeenCalled());
   first.unmount();
   return fake;

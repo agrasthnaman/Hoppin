@@ -1,6 +1,6 @@
 import { formatTime, formatTimeRange, localDate, pollOnPlan, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
-import { BedDouble, MapPin, Navigation, Vote as VoteIcon } from "lucide-react";
+import { BedDouble, ChevronDown, Navigation, Vote as VoteIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/cn";
 import { springSoft } from "../lib/motion";
@@ -78,8 +78,92 @@ function FacePile({ ids, person, limit }: { ids: string[]; person: (id: string) 
   );
 }
 
-function timeLabel(item: Item): string {
-  return formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz);
+function timeLabel(item: Item, zone: string): string {
+  return formatTimeRange(item.startsAt, item.endsAt, zone, zone);
+}
+
+/** Cities a traveller is likely to read a day in, plus whatever zone a plan on the day already uses. */
+const TRAVEL_ZONES = [
+  "Pacific/Honolulu",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Istanbul",
+  "Africa/Cairo",
+  "Africa/Johannesburg",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Bangkok",
+  "Asia/Singapore",
+  "Asia/Hong_Kong",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+  "UTC",
+];
+
+function knownZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: zone }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function zoneOffsetMinutes(zone: string, date: string): number {
+  try {
+    const name = new Intl.DateTimeFormat("en-GB", { timeZone: zone, timeZoneName: "shortOffset", hour: "2-digit" })
+      .formatToParts(new Date(`${date}T12:00:00Z`))
+      .find((part) => part.type === "timeZoneName")?.value ?? "";
+    const match = /GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?/.exec(name);
+    if (!match?.[1]) return 0;
+    const sign = match[1] === "-" ? -1 : 1;
+    return sign * (Number(match[2]) * 60 + Number(match[3] ?? "0"));
+  } catch {
+    return 0;
+  }
+}
+
+function zoneChoices(date: string, fallback: string, items: Item[]): string[] {
+  const zones = new Set<string>([fallback, ...TRAVEL_ZONES]);
+  for (const item of items) {
+    zones.add(item.tz);
+    if (item.endTz) zones.add(item.endTz);
+  }
+  return [...zones]
+    .filter(knownZone)
+    .sort((a, b) => zoneOffsetMinutes(a, date) - zoneOffsetMinutes(b, date) || a.localeCompare(b));
+}
+
+function zoneLabel(zone: string, date: string): string {
+  const city = zone === "UTC" ? "UTC" : (zone.split("/").pop() ?? zone).replaceAll("_", " ");
+  try {
+    const name = new Intl.DateTimeFormat("en-GB", { timeZone: zone, timeZoneName: "shortOffset", hour: "2-digit" })
+      .formatToParts(new Date(`${date}T12:00:00Z`))
+      .find((part) => part.type === "timeZoneName")?.value;
+    return name ? `${city} · ${name}` : city;
+  } catch {
+    return city;
+  }
+}
+
+function hourOf(iso: string, zone: string): number {
+  const value = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+  return Number(value);
+}
+
+/** Hours that have a plan, in order. An hour with nothing planned is left off the timeline. */
+function hourMarks(hours: number[]): number[] {
+  return [...new Set(hours)].sort((a, b) => a - b);
+}
+
+function hourText(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
 }
 
 /** "Wednesday" and "4 November", shown as a small line above a big one. */
@@ -164,7 +248,9 @@ function planNotes(item: Item): string {
 }
 
 /** One day of the trip: group blocks, optional plans as their own cards, and the viewer's private plans. */
-export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, onLeave, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
+export function DayView({ date, tz, layout, people, viewerId, goingByItem, onJoin, onLeave, renderBlockTitle, highlightId, headerAction, canEditItem, onEdit, onRemove, polls = [], votes = [] }: DayViewProps) {
+  const [zone, setZone] = useState(tz);
+  useEffect(() => setZone(tz), [tz]);
   const [selected, setSelected] = useState<Item | null>(null);
   const [confirming, setConfirming] = useState<Item | null>(null);
   const [pending, setPending] = useState<{ id: string; going: boolean } | null>(null);
@@ -181,10 +267,19 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
   const stays = layout.blocks.filter((block) => block.kind === "stay");
   const others = layout.blocks.filter((block) => block.kind !== "stay");
   const optionals = Object.values(layout.chips).flat();
-  const timed = [
-    ...others.map((item) => ({ item, optional: false as const })),
-    ...optionals.map((item) => ({ item, optional: true as const })),
+  type Slot = { item: Item; kind: "group" | "optional" | "private" };
+  const slots: Slot[] = [
+    ...others.map((item) => ({ item, kind: "group" as const })),
+    ...optionals.map((item) => ({ item, kind: "optional" as const })),
+    ...layout.privateLines.map((item) => ({ item, kind: "private" as const })),
   ].sort((a, b) => Date.parse(a.item.startsAt) - Date.parse(b.item.startsAt) || a.item.title.localeCompare(b.item.title));
+  const byHour = new Map<number, Slot[]>();
+  for (const slot of slots) {
+    const hour = hourOf(slot.item.startsAt, zone);
+    byHour.set(hour, [...(byHour.get(hour) ?? []), slot]);
+  }
+  const marks = hourMarks([...byHour.keys()]);
+  const zones = zoneChoices(date, tz, [...layout.blocks, ...optionals, ...layout.privateLines]);
   const allowed = (item: Item) => (canEditItem ? canEditItem(item) : true);
   const editable = (item: Item) => !!onEdit && allowed(item);
   const removable = (item: Item) => !!onRemove && allowed(item);
@@ -270,7 +365,7 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
                   <span>{stayNote(stay, date)}</span>
                 </p>
                 <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(stay) : stay.title}</p>
-                <p className="text-sm font-medium">{timeLabel(stay)}</p>
+                <p className="text-sm font-medium">{timeLabel(stay, zone)}</p>
               </div>
               {planActions(stay)}
             </div>
@@ -282,85 +377,146 @@ export function DayView({ date, layout, people, viewerId, goingByItem, onJoin, o
         </m.section>
       ))}
 
-      {timed.map(({ item: block, optional }) => {
-        if (optional) {
-          return (
-            <m.section key={block.id} aria-label={block.title} variants={ITEM}>
-              <div className="rounded-card border border-line bg-surface p-4 shadow-card">
-                <div className="flex items-start justify-between gap-2">
-                  <button
-                    type="button"
-                    aria-label={`Open ${block.title}`}
-                    onClick={() => setSelected(block)}
-                    className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-accent"
-                  >
-                    <p className="flex flex-wrap items-center gap-2">
-                      {pollOf(block) ? <PollTag onHero={false} /> : <KindTag kind={block.kind} />}
-                      <span className="text-xs font-semibold text-muted">{timeLabel(block)}</span>
-                      <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-semibold">Optional</span>
-                    </p>
-                    <p className="mt-1 font-display text-lg font-bold">{block.title}</p>
-                    <p className="text-sm text-muted">Added by {person(block.ownerId).name}</p>
-                  </button>
-                  {planActions(block)}
-                </div>
-                {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={false} />}
-                {block.locationUrl && (
-                  <div className="mt-1">
-                    <Directions item={block} />
-                  </div>
-                )}
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <FacePile ids={goingByItem[block.id] ?? []} person={person} limit={CARD_FACES} />
-                  <div className="flex flex-wrap items-center gap-2">{rsvpButton(block)}</div>
-                </div>
-              </div>
-            </m.section>
-          );
-        }
-        const spotlight = block.id === highlightId;
-        return (
-          <m.section key={block.id} aria-label={block.title} variants={ITEM}>
-            <div className={cn("rounded-card p-4", spotlight ? "bg-hero text-hero-fg" : "border border-line bg-surface shadow-card")}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-2">
-                    {pollOf(block) ? <PollTag onHero={spotlight} /> : <KindTag kind={block.kind} onHero={spotlight} />}
-                    <span className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block)}</span>
-                  </p>
-                  <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
-                </div>
-                {planActions(block, spotlight ? "dark" : "light")}
-              </div>
-              {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={spotlight} />}
-              {block.locationUrl && (
-                <div className="mt-1">
-                  <Directions item={block} tone={spotlight ? "dark" : "light"} />
-                </div>
-              )}
+      {marks.length > 0 && (
+        <div className="mt-1">
+          <div className="grid grid-cols-[3.25rem_1.25rem_minmax(0,1fr)] items-center">
+            <span />
+            <div className="relative flex h-8 justify-center" aria-hidden="true">
+              <span className="absolute inset-y-0 w-px bg-line" />
+              <span className="relative z-10 mt-2 size-2.5 rounded-full bg-accent ring-4 ring-bg" />
             </div>
-          </m.section>
-        );
-      })}
-
-      {layout.privateLines.map((line) => (
-        <m.div key={line.id} variants={ITEM} className="flex flex-wrap items-center gap-x-3 rounded-card border border-dashed border-line p-3 text-muted">
-          {pollOf(line) ? <PollTag onHero={false} /> : <KindTag kind={line.kind} />}
-          <span className="text-sm">{formatTime(line.startsAt, line.tz)}</span>
-          <span>{line.title}</span>
-          {pollOf(line) && <PollResults poll={pollOf(line)!} votes={votes} onHero={false} />}
-          <Directions item={line} />
-          <span className="ml-auto rounded-full bg-raised px-2 py-0.5 text-xs">Only you</span>
-          {planActions(line)}
-        </m.div>
-      ))}
+            <div className="relative min-w-0 justify-self-start">
+              <select
+                aria-label="Time zone"
+                value={zones.includes(zone) ? zone : tz}
+                onChange={(event) => setZone(event.target.value)}
+                className="max-w-full appearance-none rounded-full border border-line bg-raised py-1.5 pl-3 pr-8 text-xs font-semibold text-fg focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                {zones.map((choice) => (
+                  <option key={choice} value={choice}>
+                    {zoneLabel(choice, date)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+            </div>
+          </div>
+          <ol aria-label="Timeline">
+            {marks.map((hour) => {
+              const plans = byHour.get(hour) ?? [];
+              const marked = plans.some((slot) => slot.item.id === highlightId);
+              return (
+                <li key={hour} className="grid grid-cols-[3.25rem_1.25rem_minmax(0,1fr)]">
+                  <time dateTime={hourText(hour)} className="pt-1.5 pr-2 text-right text-[11px] font-medium tabular-nums leading-none text-muted">
+                    {hourText(hour)}
+                  </time>
+                  <div className="relative flex justify-center" aria-hidden="true">
+                    <span className="absolute inset-y-0 w-px bg-line" />
+                    {plans.length > 0 && (
+                      <span className={cn("relative z-10 mt-1.5 size-2 rounded-full ring-4 ring-bg", marked ? "bg-accent" : "bg-fg")} />
+                    )}
+                  </div>
+                  <div className={cn("min-h-8 pb-1", plans.length > 0 && "flex flex-col gap-3 pb-3")}>
+                    {plans.map((slot) => {
+                      const block = slot.item;
+                      if (slot.kind === "optional") {
+                        return (
+                          <m.section key={block.id} aria-label={block.title} variants={ITEM}>
+                            <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+                              <div className="flex items-start justify-between gap-2">
+                                <button
+                                  type="button"
+                                  aria-label={`Open ${block.title}`}
+                                  onClick={() => setSelected(block)}
+                                  className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-accent"
+                                >
+                                  <p className="flex flex-wrap items-center gap-2">
+                                    {pollOf(block) ? <PollTag onHero={false} /> : <KindTag kind={block.kind} />}
+                                    <span className="text-xs font-semibold text-muted">{timeLabel(block, zone)}</span>
+                                    <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-semibold">Optional</span>
+                                  </p>
+                                  <p className="mt-1 font-display text-lg font-bold">{block.title}</p>
+                                  <p className="text-sm text-muted">Added by {person(block.ownerId).name}</p>
+                                </button>
+                                {planActions(block)}
+                              </div>
+                              {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={false} />}
+                              {block.locationUrl && (
+                                <div className="mt-1">
+                                  <Directions item={block} />
+                                </div>
+                              )}
+                              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                <FacePile ids={goingByItem[block.id] ?? []} person={person} limit={CARD_FACES} />
+                                <div className="flex flex-wrap items-center gap-2">{rsvpButton(block)}</div>
+                              </div>
+                            </div>
+                          </m.section>
+                        );
+                      }
+                      if (slot.kind === "private") {
+                        return (
+                          <m.section key={block.id} aria-label={block.title} variants={ITEM}>
+                            <div className="rounded-card border border-dashed border-line bg-surface p-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="flex flex-wrap items-center gap-2">
+                                    {pollOf(block) ? <PollTag onHero={false} /> : <KindTag kind={block.kind} />}
+                                    <span className="text-xs font-semibold text-muted">{timeLabel(block, zone)}</span>
+                                    <span className="rounded-full bg-raised px-2 py-0.5 text-xs font-semibold">Only you</span>
+                                  </p>
+                                  <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
+                                </div>
+                                {planActions(block)}
+                              </div>
+                              {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={false} />}
+                              {block.locationUrl && (
+                                <div className="mt-1">
+                                  <Directions item={block} />
+                                </div>
+                              )}
+                            </div>
+                          </m.section>
+                        );
+                      }
+                      const spotlight = block.id === highlightId;
+                      return (
+                        <m.section key={block.id} aria-label={block.title} variants={ITEM}>
+                          <div className={cn("rounded-card p-4", spotlight ? "bg-hero text-hero-fg" : "border border-line bg-surface shadow-card")}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="flex flex-wrap items-center gap-2">
+                                  {pollOf(block) ? <PollTag onHero={spotlight} /> : <KindTag kind={block.kind} onHero={spotlight} />}
+                                  <span className={cn("text-xs font-semibold", spotlight ? "text-hero-muted" : "text-muted")}>{timeLabel(block, zone)}</span>
+                                </p>
+                                <p className="mt-1 font-display text-lg font-bold">{renderBlockTitle ? renderBlockTitle(block) : block.title}</p>
+                              </div>
+                              {planActions(block, spotlight ? "dark" : "light")}
+                            </div>
+                            {pollOf(block) && <PollResults poll={pollOf(block)!} votes={votes} onHero={spotlight} />}
+                            {block.locationUrl && (
+                              <div className="mt-1">
+                                <Directions item={block} tone={spotlight ? "dark" : "light"} />
+                              </div>
+                            )}
+                          </div>
+                        </m.section>
+                      );
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
       </m.div>
 
       <Sheet
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
         title={selected?.title ?? ""}
-        description={selected ? `Added by ${person(selected.ownerId).name} · ${timeLabel(selected)}` : undefined}
+        description={selected ? `Added by ${person(selected.ownerId).name} · ${timeLabel(selected, zone)}` : undefined}
       >
         {selected && (
           <div className="flex flex-col gap-4">

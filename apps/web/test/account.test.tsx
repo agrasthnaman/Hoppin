@@ -23,9 +23,9 @@ describe("account screen", () => {
     return { ...fake, ...utils };
   }
 
-  it("links back to today while a trip is happening", async () => {
+  it("links back to the day plan while a trip is happening", async () => {
     await open();
-    expect(await screen.findByRole("link", { name: "Back to your trips" })).toHaveAttribute("href", "/trips/t1/today");
+    expect(await screen.findByRole("link", { name: "Back to your trips" })).toHaveAttribute("href", "/trips/t1/days");
   });
 
   it("shows a loader until the name arrives", async () => {

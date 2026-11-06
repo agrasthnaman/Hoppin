@@ -58,3 +58,22 @@ export function currentTripId(
 ): string | null {
   return trips.find((trip) => trip.startDate && trip.endDate && trip.startDate <= today && today <= trip.endDate)?.id ?? null;
 }
+
+/** "now", "in 25 min", "in 2 h 10 min", "in 3 days": how far away a moment is, in words people say. */
+export function untilLabel(ms: number): string {
+  if (ms < 60_000) return "now";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 6) return minutes % 60 === 0 ? `in ${hours} h` : `in ${hours} h ${minutes % 60} min`;
+  if (hours < 36) return `in ${Math.round(minutes / 60)} h`;
+  return `in ${Math.round(hours / 24)} days`;
+}
+
+/** How far through a plan it is, from 0 to 1 (a plan with no end time counts as an hour long). */
+export function planProgress(item: Item, now: number): number {
+  const start = ms(item.startsAt);
+  const end = endOf(item);
+  if (end <= start) return 0;
+  return Math.min(1, Math.max(0, (now - start) / (end - start)));
+}

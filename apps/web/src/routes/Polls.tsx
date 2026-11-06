@@ -1,4 +1,4 @@
-import { applyVote, PollError, winnerPlanDefaults, type Poll, type TallyLine, type Vote } from "@hoppin/core";
+import { applyVote, localDate, planZone, PollError, winnerPlanDefaults, type Poll, type TallyLine, type Vote } from "@hoppin/core";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -132,7 +132,8 @@ export default function Polls() {
       <Sheet open={winner !== null} onOpenChange={(next) => !next && setWinner(null)} title="Add to the plan" description="Choose when it happens. The whole group will see it.">
         {winner && (
           <ItemForm
-            tz={clock.timeZone}
+            tz={planZone(snapshot.items, localDate(clock.now(), clock.timeZone), clock.timeZone)}
+            near={snapshot.trip.destination}
             prefill={winnerPlanDefaults(winner.poll, winner.line)}
             onCancel={() => setWinner(null)}
             onSubmit={async (values) => {

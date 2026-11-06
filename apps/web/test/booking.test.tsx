@@ -304,6 +304,44 @@ describe("ItemForm: choosing what kind of plan it is", () => {
     setup();
     expect(screen.getByText("Times are in Asia/Kolkata.")).toBeInTheDocument();
   });
+
+  it("lets the person say the plan is in another zone, keeping the clock time they typed", async () => {
+    const { onSubmit } = setup();
+    await userEvent.type(screen.getByLabelText("Title"), "Breakfast");
+    await userEvent.type(screen.getByLabelText("Starts"), "2027-03-30T08:00");
+    const zone = screen.getByLabelText("Time zone");
+    await userEvent.clear(zone);
+    await userEvent.type(zone, "Asia/Makassar");
+    expect(screen.getByText("Times are in Asia/Makassar.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ tz: "Asia/Makassar", startsAt: "2027-03-30T00:00:00.000Z" }));
+  });
+
+  it("refuses a time zone that does not exist", async () => {
+    const { onSubmit } = setup();
+    await userEvent.type(screen.getByLabelText("Title"), "Breakfast");
+    await userEvent.type(screen.getByLabelText("Starts"), "2027-03-30T08:00");
+    const zone = screen.getByLabelText("Time zone");
+    await userEvent.clear(zone);
+    await userEvent.type(zone, "Bali");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByText("Enter a time zone like Asia/Makassar")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe("a place on the plan", () => {
+  it("shows the place name under the title, including one read from a map link", () => {
+    const withPlace = { ...flight, title: "Uluwatu", details: { place: { lat: -8.8291, lon: 115.0849, label: "Uluwatu Temple" } } };
+    const { unmount } = render(<BookingDetail item={withPlace} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={vi.fn()} onOpenDocument={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Uluwatu" })).toBeInTheDocument();
+    expect(screen.getByText("Uluwatu Temple")).toBeInTheDocument();
+    unmount();
+
+    const fromLink = { ...flight, title: "Temple", locationUrl: "https://www.google.com/maps/place/Uluwatu+Temple/@-8.8291,115.0849,17z", details: {} };
+    render(<BookingDetail item={fromLink} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={vi.fn()} onOpenDocument={vi.fn()} />);
+    expect(screen.getByText("Uluwatu Temple")).toBeInTheDocument();
+  });
 });
 
 describe("flight across time zones", () => {

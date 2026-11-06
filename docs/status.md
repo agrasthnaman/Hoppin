@@ -12,6 +12,9 @@ Run `npm run demo` to click through all of it on sample data. A signed-in person
 | partly | #1 accounts: dev project done, email service, prod project and hosting not done |
 | open | everything else on the [issues page](https://github.com/agrasthnaman/Hoppin/issues) |
 
+## Navigation
+The bottom bar is **Days, Map, Money, Docs, More**. Map is a main tab because it is a key feature. There is no Today tab any more: Days opens on today's date during the trip, and its top card ("Happening now", "Up next", "Tonight you're at") is the old Today screen. `/trips/:id/today` still works and redirects to Days. "All trips" is in More.
+
 ## Look and feel
 The app has a "soft pop" look with three palettes (Rose & teal, Lilac & lime, Tangerine & sky), each in light and dark, chosen in More > Appearance. **Read [design-brief.md](design-brief.md) before building any screen**: use only the semantic colour classes, and check your screen in all palettes and both modes in `npm run demo`.
 
@@ -52,4 +55,4 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 - Email sending is limited until a custom email service is set up (#1).
 
 ## Weather and privacy
-Each day shows a forecast for the trip's destination (set when creating the trip, or by an organizer under More). The place name you type is sent once to Open-Meteo's free search to get its coordinates, which are saved with the trip; after that only the coordinates and the date are sent to Open-Meteo for the forecast. No names, emails or trip details leave the app. Forecasts are kept on the device so the last one still shows offline ("Saved forecast, updated 14:05"); days more than 16 days ahead say "not available yet". A trip without a destination shows no weather. Migration `013_trip_destination.sql` adds the destination columns and must be applied before the app that sends them is deployed.
+Each day shows a forecast for the trip's destination (set when creating the trip, or by an organizer under More). The place name you type is sent once to Open-Meteo's free search to get its coordinates, which are saved with the trip; after that only the coordinates and the date are sent to Open-Meteo for the forecast. No names, emails or trip details leave the app for the forecast. When you search for a place on a plan, the words you type, and the trip destination's coordinates when it has one, are sent to Photon (OpenStreetMap) to find a pin. A full map link is read on the device. A short maps.app.goo.gl link is opened so Google can turn it into the full address. Opening a map loads tiles from OpenFreeMap, so that service sees the connection. Tiles are not kept for offline use. Forecasts are kept on the device so the last one still shows offline ("Saved forecast, updated 14:05"); days more than 16 days ahead say "not available yet". A trip without a destination shows no weather. Migration `013_trip_destination.sql` adds the destination columns and must be applied before the app that sends them is deployed.

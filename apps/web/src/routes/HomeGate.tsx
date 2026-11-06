@@ -33,7 +33,7 @@ export function WelcomePage() {
   );
 }
 
-/** Signed-in home: Today for the trip that is happening, otherwise the trip list. */
+/** Signed-in home: the day plan for the trip that is happening, otherwise the trip list. */
 function SignedInHome() {
   const { actions, clock } = useServices();
   const [tripId, setTripId] = useState<string | null | undefined>(undefined);
@@ -52,7 +52,7 @@ function SignedInHome() {
   }, [actions, clock]);
 
   if (tripId === undefined) return <Loading label="Loading" />;
-  if (tripId) return <Navigate to={`/trips/${tripId}/today`} replace />;
+  if (tripId) return <Navigate to={`/trips/${tripId}/days`} replace />;
   return <TripsHome />;
 }
 

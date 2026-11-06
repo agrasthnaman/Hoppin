@@ -1,0 +1,58 @@
+/* A pin lands with a little bounce as the route reaches it. */
+@keyframes pin-pop {
+  0% { transform: scale(0) translateY(-10px); opacity: 0; }
+  60% { transform: scale(1.18) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* The chosen pin hops. */
+@keyframes pin-hop {
+  0%, 100% { transform: scale(1.25) translateY(0); }
+  40% { transform: scale(1.3) translateY(-8px); }
+}
+.map-marker {
+  position: relative;
+}
+.map-pin {
+  transform-origin: bottom center;
+  animation: pin-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.map-pin-card {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  z-index: 30;
+  display: none;
+  width: max-content;
+  max-width: 15rem;
+  transform: translateX(-50%);
+  padding-bottom: 0.4rem;
+}
+.map-pin-start {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 0.35rem;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.1rem 0.4rem;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+.map-marker:hover .map-pin-card,
+.map-marker:focus-within .map-pin-card,
+.map-marker[data-open="true"] .map-pin-card {
+  display: block;
+}
+.map-pin[aria-current="true"] {
+  animation: pin-hop 0.6s ease-in-out 1;
+  transform: scale(1.25);
+  z-index: 10;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-pin,
+  .map-pin[aria-current="true"] {
+    animation: none;
+  }
+}

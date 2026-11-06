@@ -123,6 +123,13 @@ export interface DocumentSource {
   download(doc: TripDocument): Promise<{ data: ArrayBuffer; contentType: string }>;
 }
 
+/** A point on a plan. Stored in `details.place`. (0, 0) is rejected so an empty pin is never a real place. */
+export interface Place {
+  lat: number;
+  lon: number;
+  label?: string;
+}
+
 /** The editable fields of an item, as one set of values (what the add and edit form works with). */
 export interface ItemValues {
   kind: ItemKind;
@@ -138,6 +145,8 @@ export interface ItemValues {
   notes: string;
   /** Set when this plan was added from a poll, so the day can show each option's votes. */
   pollId?: string;
+  /** Null clears a saved place. Absent leaves the saved place alone. */
+  place?: Place | null;
 }
 
 /** One person's part of an expense. `who` is a member's user id or a named guest's id. */

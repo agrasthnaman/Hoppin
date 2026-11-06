@@ -88,3 +88,21 @@ export function formatTimeRange(startIso: string, endIso: string | null, tz: str
   if (endLocal.slice(0, 10) === startDay) return `${start} – ${formatTime(endIso, endZone)}`;
   return `${start} – ${Number(endLocal.slice(8, 10))} ${MONTHS[Number(endLocal.slice(5, 7)) - 1]} ${formatTime(endIso, endZone)}`;
 }
+
+/**
+ * The time zone a new plan on `date` should be entered in: where the group is on that day, not where the person
+ * typing it happens to be. It is the most common zone of the other plans on that day, then of the whole trip, and
+ * only then the phone's own zone. Flights are left out because they start in one place and end in another.
+ */
+export function planZone(items: { kind: string; startsAt: string; tz: string }[], date: string, deviceTz: string): string {
+  const common = (list: { tz: string }[]): string | null => {
+    const counts = new Map<string, number>();
+    for (const { tz } of list) counts.set(tz, (counts.get(tz) ?? 0) + 1);
+    let best: string | null = null;
+    for (const [tz, n] of counts) if (best === null || n > counts.get(best)!) best = tz;
+    return best;
+  };
+  const ground = items.filter((item) => item.kind !== "flight");
+  const sameDay = ground.filter((item) => localDate(Date.parse(item.startsAt), item.tz) === date);
+  return common(sameDay) ?? common(ground) ?? deviceTz;
+}

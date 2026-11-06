@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { homePath } from "../app/home-path";
 import { useServices } from "../app/services";
 
-/** A link to Today when a trip is underway, and to the trip list otherwise. */
+/** A link to the day plan when a trip is underway, and to the trip list otherwise. */
 export function HomeLink({ className, children }: { className?: string; children: React.ReactNode }) {
   const { actions, clock } = useServices();
   const [to, setTo] = useState<string | null>(null);

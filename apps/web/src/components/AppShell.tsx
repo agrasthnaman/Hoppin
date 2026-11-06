@@ -1,5 +1,5 @@
 import { formatSyncedAgo, syncBanners, type SyncState } from "@hoppin/core";
-import { CalendarCheck, CalendarDays, FileText, MapPin, Menu, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarDays, FileText, Map as MapIcon, MapPin, Menu, Wallet, type LucideIcon } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { cn } from "../lib/cn";
@@ -18,8 +18,8 @@ export interface AppShellProps {
 }
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "today", label: "Today", icon: CalendarCheck },
   { to: "days", label: "Days", icon: CalendarDays },
+  { to: "map", label: "Map", icon: MapIcon },
   { to: "money", label: "Money", icon: Wallet },
   { to: "docs", label: "Docs", icon: FileText },
   { to: "more", label: "More", icon: Menu },
