@@ -52,6 +52,15 @@ describe("posters studio", () => {
     expect(await screen.findByRole("link", { name: "Make a poster" })).toHaveAttribute("href", "/trips/t1/posters");
   });
 
+  it("offers a trip poster and a day card, and nothing about uploading photos", async () => {
+    await openStudio();
+    const kinds = screen.getByRole("radiogroup", { name: "Kind of poster" });
+    expect(within(kinds).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Trip poster", "Day card"]);
+    const sheet = await pickTemplateWithPhotos("Route Poster", 1);
+    expect(within(sheet).queryByText(/Add my photos|group poster|coming soon/i)).toBeNull();
+    expect(within(sheet).getByText(/Nothing is uploaded/)).toBeInTheDocument();
+  });
+
   it("lists every template and filters by photo count and style", async () => {
     await openStudio();
     const list = screen.getByRole("list");
