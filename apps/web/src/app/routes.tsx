@@ -47,6 +47,7 @@ export function createAppRoutes(): RouteObject[] {
             { path: "docs", ...lazyPage(() => import("../routes/Docs")) },
             { path: "polls", ...lazyPage(() => import("../routes/Polls")) },
             { path: "map", ...lazyPage(() => import("../routes/TripMap")) },
+            { path: "updates", ...lazyPage(() => import("../routes/Updates")) },
           ],
         },
       ],
