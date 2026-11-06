@@ -7,12 +7,27 @@ import type { Ctx, Frame, PosterData, PosterPalette, PosterSize, PosterTemplate 
 export const SIZES: Record<PosterSize, { w: number; h: number; label: string }> = {
   story: { w: 1080, h: 1920, label: "Story" },
   square: { w: 1080, h: 1080, label: "Square" },
-  poster: { w: 2480, h: 3508, label: "Poster" },
+  poster: { w: 2480, h: 3508, label: "Print A4" },
 };
 
 export function frameFor(size: PosterSize): Frame {
   const { w, h } = SIZES[size];
   return { w, h, size, sq: size === "square", u: w / 100 };
+}
+
+/** White border around the art on an A4 print, in page pixels (1 cm at 300 dpi). Home printers can't print to the edge. */
+export const PRINT_MARGIN = 118;
+
+/**
+ * Where the template's layout sits on the page. Story and Square fill the page. A4 is shorter than 9:16, so the Story
+ * layout is placed in the middle at its true shape (never squashed), on a white sheet.
+ */
+export function artArea(size: PosterSize): { frame: Frame; x: number; y: number; scale: number } {
+  if (size !== "poster") return { frame: frameFor(size), x: 0, y: 0, scale: 1 };
+  const page = frameFor("poster");
+  const story = frameFor("story");
+  const scale = (page.h - 2 * PRINT_MARGIN) / story.h;
+  return { frame: story, x: (page.w - story.w * scale) / 2, y: PRINT_MARGIN, scale };
 }
 
 export interface DrawOptions {
@@ -42,7 +57,27 @@ export function makeCtx(frame: Frame, P: PosterPalette, d: PosterData, opts: Dra
 
 /** Draws a whole poster through a painter: background, photos, then the brand and text on top. */
 export function drawPoster(p: Painter, tpl: PosterTemplate, d: PosterData, P: PosterPalette, opts: DrawOptions): Ctx {
-  const c = makeCtx(p.frame, P, d, opts);
+  if (p.frame.size !== "poster") return drawLayout(p, p.frame, tpl, d, P, opts);
+  const art = artArea("poster");
+  const w = art.frame.w * art.scale;
+  const h = art.frame.h * art.scale;
+  p.save();
+  p.rect(0, 0, p.frame.w, p.frame.h, "#ffffff");
+  p.shadow("rgba(0,0,0,0.18)", 30, 0, 10);
+  p.rect(art.x, art.y, w, h, P.bg);
+  p.noShadow();
+  p.translate(art.x, art.y);
+  p.scale(art.scale);
+  p.begin();
+  p.rectPath(0, 0, art.frame.w, art.frame.h);
+  p.clip();
+  const c = drawLayout(p, art.frame, tpl, d, P, opts);
+  p.restore();
+  return c;
+}
+
+function drawLayout(p: Painter, frame: Frame, tpl: PosterTemplate, d: PosterData, P: PosterPalette, opts: DrawOptions): Ctx {
+  const c = makeCtx(frame, P, d, opts);
   const edits = opts.edits ?? [];
   p.save();
   p.rect(0, 0, c.f.w, c.f.h, P.bg);

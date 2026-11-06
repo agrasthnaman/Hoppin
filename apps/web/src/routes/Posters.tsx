@@ -18,7 +18,7 @@ import { demoPhotos } from "../poster/demo";
 import { posterData } from "../poster/from-recap";
 import { POSTER_PALETTES, posterPalette } from "../poster/palette";
 import { getTemplate, MAX_PHOTOS, PHOTO_COUNTS, TEMPLATES } from "../poster/registry";
-import { ensurePosterFonts, frameFor, makeCtx, renderPosterBlob, SIZES } from "../poster/render";
+import { artArea, ensurePosterFonts, frameFor, makeCtx, renderPosterBlob, SIZES } from "../poster/render";
 import { editAt, placeSlots, type SlotEdits } from "../poster/slots";
 import type { PosterSize, SlotEdit } from "../poster/types";
 import { useTheme } from "../theme/ThemeProvider";
@@ -180,7 +180,8 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
   const previewData = useMemo(() => (photos.length ? data : { ...data, photos: demoPhotos(MAX_PHOTOS) }), [data, photos.length]);
   const tplEdits = useMemo(() => edits[tplId] ?? [], [edits, tplId]);
   const frame = useMemo(() => frameFor(size), [size]);
-  const ctx = useMemo(() => makeCtx(frame, posterPalette(paletteId), data, { seed }), [frame, paletteId, data, seed]);
+  const art = useMemo(() => artArea(size), [size]);
+  const ctx = useMemo(() => makeCtx(art.frame, posterPalette(paletteId), data, { seed }), [art, paletteId, data, seed]);
   const placed = useMemo(() => placeSlots(tpl, ctx, tplEdits), [tpl, ctx, tplEdits]);
   const previewW = Math.max(160, Math.min(stage.w * 0.94, (stage.h - 8) * (frame.w / frame.h)));
   const scale = previewW / frame.w;
@@ -606,8 +607,9 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
                 role="radio"
                 aria-checked={size === s}
                 onClick={() => {
+                  // Story and A4 share one layout, so edits carry over; Square has its own.
+                  if ((s === "square") !== (size === "square")) setEdits((all) => ({ ...all, [tplId]: [] }));
                   setSize(s);
-                  setEdits((all) => ({ ...all, [tplId]: [] }));
                 }}
                 className={cn("min-h-10 flex-1 rounded-xl text-sm font-semibold text-muted focus-visible:outline-2 focus-visible:outline-accent", size === s && "bg-surface text-fg shadow-card")}
               >
@@ -687,11 +689,15 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
                 className="rounded-lg shadow-[0_24px_40px_-18px_rgba(16,20,40,0.5)]"
               />
             )}
+            <div
+              className="absolute"
+              style={{ left: art.x * scale, top: art.y * scale, width: art.frame.w * art.scale * scale, height: art.frame.h * art.scale * scale }}
+            >
             <SlotHandles
               slots={placed}
-              scale={scale}
-              posterW={frame.w}
-              posterH={frame.h}
+              scale={scale * art.scale}
+              posterW={art.frame.w}
+              posterH={art.frame.h}
               selected={selected}
               mode={mode}
               filled={(i) => Boolean(photos[i])}
@@ -704,6 +710,7 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
               onToggleMode={() => setMode((m) => (m === "move" ? "crop" : "move"))}
               onReadout={(text, snapped) => setReadout(text ? { text, snapped: Boolean(snapped) } : null)}
             />
+            </div>
           </div>
           {readout && (
             <span role="status" className={cn("absolute top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold text-white", readout.snapped ? "bg-link" : "bg-fg")}>
