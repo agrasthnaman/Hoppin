@@ -23,7 +23,7 @@ import { editAt, placeSlots, type SlotEdits } from "../poster/slots";
 import type { PosterSize, SlotEdit } from "../poster/types";
 import { useTheme } from "../theme/ThemeProvider";
 
-type Kind = "mine" | "group" | "day";
+type Kind = "trip" | "day";
 type Step = "browse" | "editor";
 interface Picked {
   id: number;
@@ -31,8 +31,7 @@ interface Picked {
 }
 
 const KINDS: [Kind, string][] = [
-  ["mine", "My recap"],
-  ["group", "Group recap"],
+  ["trip", "Trip poster"],
   ["day", "Day card"],
 ];
 const MEMORY_KEY = "hoppin.poster";
@@ -119,7 +118,7 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
   const memory = useMemo(remembered, []);
 
   const [step, setStep] = useState<Step>("browse");
-  const [kind, setKind] = useState<Kind>("mine");
+  const [kind, setKind] = useState<Kind>("trip");
   const [tplId, setTplId] = useState(memory.tpl ?? "stickers");
   const [paletteId, setPaletteId] = useState(memory.palette && POSTER_PALETTES.includes(memory.palette) ? memory.palette : appPalette);
   const [size, setSize] = useState<PosterSize>(memory.size ?? "story");
@@ -504,15 +503,6 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
           <p className="text-sm text-muted">
             {photos.length < tpl.photos ? `${tpl.photos - photos.length} empty ${tpl.photos - photos.length === 1 ? "frame" : "frames"}. Tap + on the poster to fill it.` : "Tap a photo on the poster to move, turn or resize it."}
           </p>
-          {kind === "group" && (
-            <div className="flex flex-col gap-2 rounded-2xl border border-line p-3">
-              <p className="text-sm font-semibold">Add your photos to the group poster</p>
-              <p className="text-xs text-muted">Each member can add up to 6 photos so the group poster mixes everyone's. Coming soon.</p>
-              <Button variant="secondary" className="w-fit" disabled>
-                Add my photos (coming soon)
-              </Button>
-            </div>
-          )}
           <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
