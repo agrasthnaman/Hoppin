@@ -10,7 +10,7 @@ const OPTIONS = [
   { k: "Days", d: "The plan, one day at a time." },
   { k: "Money", d: "Who paid, and the fewest transfers." },
   { k: "Docs", d: "Tickets and addresses, saved on the phone." },
-  { k: "Today", d: "What's on right now, and what comes next." },
+  { k: "Map", d: "Every stop on one map, day by day." },
 ];
 
 function dayLabel(date: string): { weekday: string; rest: string } {

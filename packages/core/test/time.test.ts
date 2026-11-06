@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, dayRange, defaultDay, formatTime, formatTimeRange, instantToZonedInput, localDate, zonedTimeToInstant } from "../src/time";
+import { addDays, dayRange, defaultDay, formatTime, formatTimeRange, instantToZonedInput, localDate, planZone, zonedTimeToInstant } from "../src/time";
 
 describe("dayRange", () => {
   it("returns the instants a calendar day starts and ends in a time zone", () => {
@@ -119,5 +119,23 @@ describe("formatTimeRange across time zones", () => {
     expect(instantToZonedInput(after, "Europe/London")).toBe("2026-03-29T06:00");
     expect(formatTimeRange(before, after, "Asia/Kolkata", "Europe/London")).toBe("22:00 – 29 Mar 06:00");
     expect(Date.parse(after)).toBeGreaterThan(Date.parse(before));
+  });
+});
+
+describe("planZone", () => {
+  const bali = (id: string, startsAt: string) => ({ kind: "activity", startsAt, tz: "Asia/Makassar", id });
+  it("uses the zone of the plans on that day, not the phone's", () => {
+    expect(planZone([bali("a", "2027-03-30T01:00:00Z")], "2027-03-30", "Asia/Kolkata")).toBe("Asia/Makassar");
+  });
+  it("falls back to the rest of the trip for a day with no plans yet", () => {
+    expect(planZone([bali("a", "2027-03-30T01:00:00Z")], "2027-04-02", "Asia/Kolkata")).toBe("Asia/Makassar");
+  });
+  it("ignores flights and uses the phone's zone when there is nothing else", () => {
+    expect(planZone([{ kind: "flight", startsAt: "2027-03-30T01:00:00Z", tz: "Asia/Kolkata" }], "2027-03-30", "Europe/London")).toBe("Europe/London");
+    expect(planZone([], "2027-03-30", "Europe/London")).toBe("Europe/London");
+  });
+  it("takes the most common zone when a day mixes zones", () => {
+    const items = [bali("a", "2027-03-30T01:00:00Z"), bali("b", "2027-03-30T02:00:00Z"), { kind: "activity", startsAt: "2027-03-30T03:00:00Z", tz: "Asia/Kolkata" }];
+    expect(planZone(items, "2027-03-30", "Asia/Kolkata")).toBe("Asia/Makassar");
   });
 });

@@ -19,7 +19,7 @@ export function JoinRoute() {
       resetRedirectTo={`${window.location.origin}/reset-password`}
       auth={auth}
       redeem={invites.redeemInvite}
-      onContinue={(tripId) => navigate(`/trips/${tripId}/today`)}
+      onContinue={(tripId) => navigate(`/trips/${tripId}/days`)}
     />
   );
 }

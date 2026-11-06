@@ -66,6 +66,7 @@ export function ItemScreen() {
           await trip.refresh();
         }}
         onOpenDocument={openDocument}
+        near={snapshot.trip.destination}
       />
     </div>
   );

@@ -59,7 +59,7 @@ describe("DayView", () => {
   it("shows group blocks in time order with their local times", () => {
     setup();
     const regions = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
-    expect(regions).toEqual(["Old town tour", "Museum", "Lunch"]);
+    expect(regions).toEqual(["Old town tour", "Museum", "Lunch", "ABC place"]);
     expect(within(screen.getByRole("region", { name: "Old town tour" })).getByText("10:00 – 12:00")).toBeInTheDocument();
   });
 
@@ -96,10 +96,22 @@ describe("DayView", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("shows the viewer's private items muted and marked 'Only you'", () => {
+  it("puts a private plan on the timeline at its hour and skips hours with nothing planned", () => {
     setup();
-    const line = screen.getByText("ABC place").closest("div");
-    expect(line).toHaveTextContent("Only you");
+    const timeline = screen.getByRole("list", { name: "Timeline" });
+    const place = screen.getByRole("region", { name: "ABC place" });
+    expect(place).toHaveTextContent("Only you");
+    expect(within(timeline).getByText("15:00", { selector: "time" }).closest("li")).toContainElement(place);
+    const marks = within(timeline).getAllByText(/^\d{2}:00$/, { selector: "time" }).map((mark) => mark.textContent);
+    expect(marks).toEqual(["10:00", "13:00", "15:00"]);
+  });
+
+  it("shows the same day in another time zone from the control on the timeline", async () => {
+    setup();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Time zone" }), "Europe/London");
+    const tourCard = screen.getByRole("region", { name: "Old town tour" });
+    expect(tourCard).toHaveTextContent("04:30");
+    expect(screen.getByText("04:00", { selector: "time" }).closest("li")).toContainElement(tourCard);
   });
 
   it("opening an optional card shows the notes, the map, and who joined", async () => {

@@ -1,9 +1,11 @@
-import { instantToZonedInput, zonedTimeToInstant, type Item, type ItemKind, type ItemValues } from "@hoppin/core";
+import { instantToZonedInput, itemPlace, zonedTimeToInstant, type Item, type ItemKind, type ItemValues, type Place } from "@hoppin/core";
 import { BedDouble, Bus, Lock, MapPin, PartyPopper, Plane, Sparkles, Users, type LucideIcon } from "lucide-react";
 import { useId, useState, type ChangeEvent, type FormEvent } from "react";
+import { useOptionalServices } from "../app/services";
 import { useOnline } from "../hooks/useOnline";
 import { inputClass } from "../lib/forms";
 import { firstFileProblem, mergeFiles } from "../lib/upload-many";
+import { PlacePicker } from "./PlacePicker";
 import { Button } from "./ui/Button";
 
 export type ItemFormValues = ItemValues;
@@ -17,6 +19,8 @@ export interface ItemFormProps {
   defaultDate?: string;
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
+  /** Bias place search toward the trip's destination. */
+  near?: { lat: number; lon: number } | null;
   /** `documents` is set only when creating a booking and at least one file was chosen. */
   onSubmit: (values: ItemFormValues, documents?: File[]) => void | Promise<void>;
   onCancel: () => void;
@@ -73,14 +77,21 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 /** Add or edit a trip item: a booking (flight, stay, transport), a group activity, an optional plan, or a private plan. */
-export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel }: ItemFormProps) {
-  const zone = initial?.tz ?? tz;
-  const [arrivalZone, setArrivalZone] = useState(initial?.endTz ?? zone);
+export function ItemForm({ initial, prefill, defaultDate, tz, near, onSubmit, onCancel }: ItemFormProps) {
+  const [zoneInput, setZoneInput] = useState(initial?.tz ?? tz);
+  // Typed times keep their clock reading when the zone changes: 8:00 in Bali stays 8:00, it just moves to Bali time.
+  const zone = isZone(zoneInput) ? zoneInput : (initial?.tz ?? tz);
+  const [arrivalPick, setArrivalPick] = useState<string | null>(initial?.endTz ?? null);
+  const arrivalZone = arrivalPick ?? zone;
+  const setArrivalZone = setArrivalPick;
   const [kind, setKind] = useState<ItemKind>(initial?.kind ?? prefill?.kind ?? "activity");
   const [title, setTitle] = useState(initial?.title ?? prefill?.title ?? "");
   const [starts, setStarts] = useState(initial ? instantToZonedInput(initial.startsAt, zone) : defaultDate ? `${defaultDate}T09:00` : "");
   const [ends, setEnds] = useState(initial?.endsAt ? instantToZonedInput(initial.endsAt, initial.endTz ?? zone) : "");
   const [location, setLocation] = useState(initial?.locationUrl ?? "");
+  const [generatedLink, setGeneratedLink] = useState(false);
+  const [place, setPlace] = useState<Place | null>(initial ? itemPlace(initial) : null);
+  const places = useOptionalServices()?.places ?? null;
   const [notes, setNotes] = useState(typeof initial?.details.notes === "string" ? initial.details.notes : (prefill?.notes ?? ""));
   const [audience, setAudience] = useState<Audience>(
     initial ? (initial.visibility === "private" ? "private" : initial.groupItem ? "group" : "optional") : "group",
@@ -101,6 +112,7 @@ export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel
     const next: Record<string, string> = {};
     if (!title.trim()) next.title = "Enter a title";
     if (!starts) next.starts = "Choose when it starts";
+    if (!isZone(zoneInput)) next.zone = "Enter a time zone like Asia/Makassar";
     if (travels && !isZone(arrivalZone)) next.arrivalZone = "Enter a time zone like Europe/London";
     if (starts && ends && !next.arrivalZone && zonedTimeToInstant(ends, endZone) <= zonedTimeToInstant(starts, zone)) {
       next.ends = "The end must be after the start";
@@ -123,6 +135,7 @@ export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel
       tz: zone,
       endTz: endZone === zone ? null : endZone,
       locationUrl: location.trim() || null,
+      place,
       visibility: audience === "private" ? "private" : "shared",
       groupItem: audience === "group",
       notes: notes.trim(),
@@ -184,6 +197,29 @@ export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel
       <p className="-mt-3 text-xs text-muted">
         {travels && endZone !== zone ? `Starts in ${zone} time, ends in ${endZone} time.` : `Times are in ${zone}.`}
       </p>
+      <Field label="Time zone" error={errors.zone}>
+        {(p) => (
+          <>
+            <input
+              id={p.id}
+              list={`${p.id}-zones`}
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={p.invalid}
+              aria-describedby={p.describedBy}
+              value={zoneInput}
+              onChange={(e) => setZoneInput(e.target.value)}
+              className={inputClass}
+            />
+            <datalist id={`${p.id}-zones`}>
+              {zoneNames().map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+            <span className="text-xs text-muted">Where the plan happens. The times above are in this zone, whatever your phone says.</span>
+          </>
+        )}
+      </Field>
       {travels && (
         <Field label="Arrival time zone" error={errors.arrivalZone}>
           {(p) => (
@@ -230,8 +266,35 @@ export function ItemForm({ initial, prefill, defaultDate, tz, onSubmit, onCancel
       </fieldset>
 
       <Field label="Location link" error={errors.location}>
-        {(p) => <input id={p.id} type="url" inputMode="url" placeholder="Paste a Maps link" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} />}
+        {(p) => (
+          <input
+            id={p.id}
+            type="url"
+            inputMode="url"
+            placeholder="Paste a Maps link"
+            aria-invalid={p.invalid}
+            aria-describedby={p.describedBy}
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              setGeneratedLink(false);
+            }}
+            className={inputClass}
+          />
+        )}
       </Field>
+      <PlacePicker
+        locationUrl={location}
+        place={place}
+        generated={generatedLink}
+        places={places}
+        near={near}
+        onPlace={setPlace}
+        onLocationUrl={(url, generated) => {
+          setLocation(url);
+          setGeneratedLink(generated);
+        }}
+      />
       {!initial && (
         <div className="flex flex-col gap-1">
           <label htmlFor={documentId} className="text-sm font-semibold">

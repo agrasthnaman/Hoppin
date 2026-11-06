@@ -34,7 +34,7 @@ describe("a new person with no trip", () => {
     expect(screen.getByText("Days")).toBeInTheDocument();
     expect(screen.getByText("Money")).toBeInTheDocument();
     expect(screen.getByText("Docs")).toBeInTheDocument();
-    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Map")).toBeInTheDocument();
     expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Start a trip" }));

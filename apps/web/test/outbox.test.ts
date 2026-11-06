@@ -52,6 +52,15 @@ describe("queueItemEdit", () => {
     expect(records).toContainEqual(expect.objectContaining({ field: "notes", value: "tickets", baseValue: "" }));
   });
 
+  it("keeps a chosen place through the outbox", async () => {
+    const place = { lat: -8.8291, lon: 115.0849, label: "Uluwatu" };
+    const itemId = await queueCreate(deps, { tripId: "t1", ownerId: "me", values: values({ title: "Temple", place }) });
+    const records = await listOutbox(db, "t1");
+    expect(records[0]).toMatchObject({ kind: "create", itemId, values: expect.objectContaining({ place }) });
+    await flushOutbox(deps, "t1");
+    expect(writer.createItem).toHaveBeenCalledWith("t1", "me", expect.objectContaining({ place }), itemId);
+  });
+
   it("does nothing when nothing changed", async () => {
     await queueItemEdit(deps, { tripId: "t1", item: item(), values: values() });
     expect(await listOutbox(db, "t1")).toEqual([]);

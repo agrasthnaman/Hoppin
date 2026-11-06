@@ -1,4 +1,4 @@
-import { canEdit, documentFileKind, documentTitle, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
+import { canEdit, planZone, documentFileKind, documentTitle, formatTimeRange, localDate, validateDocumentFile, visibleDocuments, type Item, type ItemKind, type TripDocument } from "@hoppin/core";
 import { ChevronDown, FileText, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { openFile } from "../lib/open-file";
 import { firstFileProblem, uploadEach, uploadFailure } from "../lib/upload-many";
@@ -402,6 +402,7 @@ export default function Docs() {
           <ItemForm
             initial={editing}
             tz={editing.tz}
+            near={snapshot.trip.destination}
             onCancel={() => setEditing(null)}
             onSubmit={async (values) => {
               await trip.editItem(editing, values);
@@ -413,7 +414,8 @@ export default function Docs() {
 
       <Sheet open={adding} onOpenChange={setAdding} title="Add a booking">
         <ItemForm
-          tz={clock.timeZone}
+          tz={planZone(snapshot.items, localDate(clock.now(), clock.timeZone), clock.timeZone)}
+          near={snapshot.trip.destination}
           onCancel={() => setAdding(false)}
           onSubmit={async (values, files) => {
             const id = await trip.addItem(values);

@@ -26,6 +26,7 @@ import type { Services } from "../app/services";
 import { ConflictError } from "../data/writes";
 import { openOfflineDb } from "../offline/db";
 import { createRateService, createRateStore, RatesUnavailableError } from "../providers/rates";
+import { createDemoPlaces, createPhotonPlaces } from "../providers/places";
 import { createWeatherService, createWeatherStore, type Geocoder, type WeatherProvider } from "../providers/weather";
 
 /** A pretend server living in memory, so the whole app can be tried with no accounts, no email and no network. */
@@ -444,6 +445,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
     rates: createRateService({ provider: demoRates, store: createRateStore(null), source: "Sample" }),
     weather: createWeatherService({ provider: demoWeather, store: createWeatherStore(null), now: () => Date.now() }),
     geocoder: demoGeocoder,
+    places: createDemoPlaces(createPhotonPlaces()),
   };
 }
 

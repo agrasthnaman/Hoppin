@@ -62,7 +62,7 @@ describe("weather on a day", () => {
   it("shows nothing when there is no forecast to show, and never breaks the day", async () => {
     const { services } = fakeServices({ snapshot: withDestination(GOA) });
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    expect(await screen.findByText("Old town tour")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Old town tour" })).toBeInTheDocument();
     await waitFor(() => expect(services.weather.forDay).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByRole("region", { name: "Weather" })).toBeNull());
   });
@@ -70,7 +70,7 @@ describe("weather on a day", () => {
   it("a trip with no destination asks for no weather at all", async () => {
     const { services } = fakeServices({ snapshot: withDestination(null) });
     renderApp("/trips/t1/days?date=2026-12-02", services);
-    expect(await screen.findByText("Old town tour")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Old town tour" })).toBeInTheDocument();
     expect(services.weather.forDay).not.toHaveBeenCalled();
     expect(screen.queryByRole("region", { name: "Weather" })).toBeNull();
   });

@@ -1,4 +1,4 @@
-import { type RouteObject } from "react-router";
+import { Navigate, type RouteObject } from "react-router";
 import { AccountScreen } from "../routes/AccountScreen";
 import { DaysScreen } from "../routes/DaysScreen";
 import { ItemScreen } from "../routes/ItemScreen";
@@ -42,10 +42,11 @@ export function createAppRoutes(): RouteObject[] {
             { path: "items/:itemId", element: <ItemScreen /> },
             { path: "more", element: <MoreScreen /> },
             { path: "members", element: <MembersScreen /> },
-            { path: "today", ...lazyPage(() => import("../routes/Today")) },
+            { path: "today", element: <Navigate to="../days" replace /> }, // Today now lives at the top of today's page on Days; old links still work
             { path: "money", ...lazyPage(() => import("../routes/Money")) },
             { path: "docs", ...lazyPage(() => import("../routes/Docs")) },
             { path: "polls", ...lazyPage(() => import("../routes/Polls")) },
+            { path: "map", ...lazyPage(() => import("../routes/TripMap")) },
           ],
         },
       ],

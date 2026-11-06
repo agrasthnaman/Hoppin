@@ -80,10 +80,10 @@ describe("sign in and gating", () => {
     expect(services.auth.signIn).toHaveBeenCalledWith({ email: "aman@example.com", password: "a long enough password" });
   });
 
-  it("sends someone who is already signed in on to today", async () => {
+  it("sends someone who is already signed in on to the day plan", async () => {
     const { services } = fakeServices();
     const { router } = renderApp("/sign-in", services);
-    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/today"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/days"));
     expect(screen.queryByRole("heading", { name: "Hop back in" })).toBeNull();
   });
 
@@ -189,12 +189,12 @@ describe("join route", () => {
     expect(await screen.findByLabelText("Your name")).toBeInTheDocument();
   });
 
-  it("opens today once the organizer has approved the join", async () => {
+  it("opens the day plan once the organizer has approved the join", async () => {
     const { services } = fakeServices();
     services.invites.redeemInvite.mockResolvedValue({ tripId: "t1", status: "approved" });
     const { router } = renderApp(`/join/${"ab".repeat(32)}`, services);
     await userEvent.click(await screen.findByRole("button", { name: "Open trip" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/today"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/days"));
   });
 
   it("joins once when signed in, and waits for approval", async () => {
@@ -231,14 +231,12 @@ describe("trip gate", () => {
     expect(document.querySelector("[data-silk-anchor]")).not.toBeNull();
   });
 
-  it("loads the trip and opens today while the trip is happening", async () => {
+  it("loads the trip and opens the day plan, with what is on next at the top, while the trip is happening", async () => {
     const { services } = fakeServices();
-    renderApp("/trips/t1", services);
+    const { router } = renderApp("/trips/t1", services);
     expect(await screen.findAllByText("Goa")).toHaveLength(1);
-    const today = await screen.findByRole("heading", { name: "Today" });
-    expect(today).toHaveClass("page-title");
-    expect(today.parentElement?.querySelector(".editorial")).not.toBeNull();
-    expect(screen.getByRole("region", { name: "Next" })).toHaveTextContent("Old town tour");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/days"));
+    expect(await screen.findByRole("region", { name: "Right now" })).toHaveTextContent("Old town tour");
   });
 
   it("tells a removed person they lost access and wipes the copy", async () => {
@@ -257,12 +255,12 @@ describe("trip gate", () => {
   it("opens from the device copy with no signal", async () => {
     const first = fakeServices();
     const { unmount } = renderApp("/trips/t1/days", first.services);
-    await screen.findByText("Old town tour");
+    await screen.findByRole("region", { name: "Old town tour" });
     unmount();
     setOnline(false);
     first.fetchSnapshot.mockClear();
     renderApp("/trips/t1/days", first.services);
-    expect(await screen.findByText("Old town tour")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Old town tour" })).toBeInTheDocument();
     expect(await screen.findByText("You're offline. Showing your saved trip.")).toBeInTheDocument();
     expect(first.fetchSnapshot).not.toHaveBeenCalled();
   });

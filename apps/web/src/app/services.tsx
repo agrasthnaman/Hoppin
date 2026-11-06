@@ -9,6 +9,7 @@ import { createTripSource } from "../data/trip-source";
 import { addGuest, castVote, closePoll, createItem, createPoll, deleteExpense, deleteItem, deletePoll, saveExpense, setRsvp, updateItem } from "../data/writes";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
+import { createPhotonPlaces, type PlacesApi } from "../providers/places";
 import { createOpenMeteoGeocoder, createOpenMeteoWeather, createWeatherService, createWeatherStore, type Geocoder, type WeatherService } from "../providers/weather";
 import type { SessionClient } from "./session";
 
@@ -72,6 +73,8 @@ export interface Services {
   weather: WeatherService;
   /** Turns a typed place name into coordinates, once, when a destination is set. */
   geocoder: Geocoder;
+  /** Place search for a plan pin. Typed text is sent only when the person searches. */
+  places: PlacesApi;
 }
 
 const ServicesContext = createContext<Services | null>(null);
@@ -84,6 +87,11 @@ export function useServices(): Services {
   const services = useContext(ServicesContext);
   if (!services) throw new Error("useServices must be used inside a ServicesProvider");
   return services;
+}
+
+/** Services when a form is rendered outside the app, otherwise null. */
+export function useOptionalServices(): Services | null {
+  return useContext(ServicesContext);
 }
 
 /** The real services, built on a Supabase client. */
@@ -220,5 +228,6 @@ export function createServices(client: any): Services {
     rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),
     weather: createWeatherService({ provider: createOpenMeteoWeather(), store: createWeatherStore() }),
     geocoder: createOpenMeteoGeocoder(),
+    places: createPhotonPlaces(),
   };
 }

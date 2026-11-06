@@ -48,7 +48,7 @@ describe("valuesOf, diffItem and applyValues", () => {
   it("reads an item as form values, with notes from the details", () => {
     expect(valuesOf(item())).toEqual({
       kind: "activity", title: "Museum", startsAt: "2026-12-01T04:30:00.000Z", endsAt: null, tz: "Asia/Kolkata", endTz: null,
-      locationUrl: null, visibility: "shared", groupItem: false, notes: "old",
+      locationUrl: null, visibility: "shared", groupItem: false, notes: "old", place: null,
     });
   });
 
@@ -59,6 +59,20 @@ describe("valuesOf, diffItem and applyValues", () => {
       { field: "notes", value: "bring tickets", baseValue: "old" },
     ]);
     expect(diffItem(item(), valuesOf(item()))).toEqual([]);
+  });
+
+  it("edits a place, treats the same coordinates as the same place, and clears it without touching other details", () => {
+    const base = item();
+    const place = { lat: -8.8291, lon: 115.0849, label: "Uluwatu" };
+    expect(diffItem(base, { ...valuesOf(base), place })).toEqual([{ field: "place", value: place, baseValue: null }]);
+    const saved = applyValues(base, { ...valuesOf(base), place });
+    expect(saved.details).toEqual({ flightNo: "6E 1", notes: "old", place });
+    const again = { lat: -8.8291, lon: 115.0849, label: "Temple" };
+    expect(diffItem(saved, { ...valuesOf(saved), place: again })).toEqual([]);
+    const other = { lat: 1, lon: 2, label: "Elsewhere" };
+    expect(diffItem(saved, { ...valuesOf(saved), place: other })).toEqual([{ field: "place", value: other, baseValue: place }]);
+    const cleared = applyValues(saved, { ...valuesOf(saved), place: null });
+    expect(cleared.details).toEqual({ flightNo: "6E 1", notes: "old" });
   });
 
   it("applies values to an item, keeping other details and removing an emptied note", () => {

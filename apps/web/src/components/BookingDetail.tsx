@@ -1,4 +1,4 @@
-import { canEdit, formatTimeRange, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
+import { canEdit, formatTimeRange, itemPlace, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import type { Person } from "./DayView";
@@ -21,6 +21,8 @@ export interface BookingDetailProps {
   onRemove?: () => void | Promise<void>;
   onUpload: (file: File, scope: DocumentScope) => Promise<void>;
   onOpenDocument: (doc: TripDocument) => void | Promise<void>;
+  /** Bias place search toward the trip destination. */
+  near?: { lat: number; lon: number } | null;
 }
 
 const KIND_LABEL: Record<Item["kind"], string> = { flight: "Flight", stay: "Stay", activity: "Activity", transport: "Transport", plan: "Plan" };
@@ -30,7 +32,7 @@ function audienceLabel(item: Item): string {
 }
 
 /** One booking or plan: its details, its documents, and (only for people who may) edit and attach controls. */
-export function BookingDetail({ item, member, documents, people, onSave, onUpload, onOpenDocument, onRemove }: BookingDetailProps) {
+export function BookingDetail({ item, member, documents, people, onSave, onUpload, onOpenDocument, onRemove, near }: BookingDetailProps) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [scope, setScope] = useState<DocumentScope>("shared");
@@ -39,6 +41,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
 
   const mayEdit = canEdit(item, member);
   const notes = typeof item.details.notes === "string" ? item.details.notes : "";
+  const place = itemPlace(item);
   const date = new Intl.DateTimeFormat("en-GB", { timeZone: item.tz, weekday: "long", day: "numeric", month: "long" }).format(new Date(item.startsAt));
   const time = formatTimeRange(item.startsAt, item.endsAt, item.tz, item.endTz);
 
@@ -68,6 +71,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
               {KIND_LABEL[item.kind]} · {audienceLabel(item)}
             </p>
             <h2 className="mt-2 font-display text-2xl font-extrabold">{item.title}</h2>
+            {place?.label && <p className="text-sm text-muted">{place.label}</p>}
           </div>
           {mayEdit && !editing && (
             <div className="flex shrink-0 gap-1">
@@ -96,6 +100,7 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
           <ItemForm
             initial={item}
             tz={item.tz}
+            near={near}
             onCancel={() => setEditing(false)}
             onSubmit={async (values) => {
               await onSave(values);

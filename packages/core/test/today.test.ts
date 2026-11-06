@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentTripId, nowAndNext } from "../src/today";
+import { currentTripId, nowAndNext, planProgress, untilLabel } from "../src/today";
 import type { Item } from "../src/types";
 
 const ME = "me";
@@ -114,5 +114,30 @@ describe("currentTripId", () => {
     expect(currentTripId(trips, "2026-12-01")).toBe("goa");
     expect(currentTripId(trips, "2026-11-01")).toBeNull();
     expect(currentTripId([{ id: "open" }], "2026-12-01")).toBeNull();
+  });
+});
+
+describe("untilLabel", () => {
+  const min = 60_000;
+  it("speaks in minutes, then hours, then days", () => {
+    expect(untilLabel(10_000)).toBe("now");
+    expect(untilLabel(25 * min)).toBe("in 25 min");
+    expect(untilLabel(60 * min)).toBe("in 1 h");
+    expect(untilLabel(130 * min)).toBe("in 2 h 10 min");
+    expect(untilLabel(10 * 60 * min)).toBe("in 10 h");
+    expect(untilLabel(72 * 60 * min)).toBe("in 3 days");
+  });
+});
+
+describe("planProgress", () => {
+  const plan = (startsAt: string, endsAt: string | null) => ({ startsAt, endsAt }) as Item;
+  it("runs from 0 at the start to 1 at the end, and stays inside that range", () => {
+    const p = plan("2026-12-01T10:00:00Z", "2026-12-01T12:00:00Z");
+    expect(planProgress(p, Date.parse("2026-12-01T09:00:00Z"))).toBe(0);
+    expect(planProgress(p, Date.parse("2026-12-01T11:00:00Z"))).toBe(0.5);
+    expect(planProgress(p, Date.parse("2026-12-01T13:00:00Z"))).toBe(1);
+  });
+  it("treats a plan with no end as an hour long", () => {
+    expect(planProgress(plan("2026-12-01T10:00:00Z", null), Date.parse("2026-12-01T10:30:00Z"))).toBe(0.5);
   });
 });
