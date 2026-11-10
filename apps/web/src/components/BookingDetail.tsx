@@ -1,4 +1,4 @@
-import { canEdit, formatTimeRange, itemPlace, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
+import { canEdit, formatTimeRange, itemPlace, safeWebUrl, type DocumentScope, type Item, type MemberRef, type TripDocument } from "@hoppin/core";
 import { MapPin } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import type { Person } from "./DayView";
@@ -86,8 +86,8 @@ export function BookingDetail({ item, member, documents, people, onSave, onUploa
         <p>{time}</p>
         {item.endTz && item.endTz !== item.tz && <p className="text-xs text-muted">Starts in {item.tz} time, ends in {item.endTz} time.</p>}
         {item.ownerId !== member.userId && <p className="text-sm text-muted">Added by {people[item.ownerId]?.name ?? "someone"}</p>}
-        {item.locationUrl && (
-          <a href={item.locationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-link underline">
+        {safeWebUrl(item.locationUrl) && (
+          <a href={safeWebUrl(item.locationUrl)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-link underline">
             <MapPin aria-hidden="true" className="size-4" />
             Open location
           </a>

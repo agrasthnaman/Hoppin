@@ -31,7 +31,7 @@ Work happens in "lanes" that touch different files. Claim an issue (assign yours
 ## Files that cause merge conflicts (be careful)
 - `apps/web/src/app/routes.tsx`: the route table. Add your one line at the end of the list and rebase often.
 - `packages/core/src/types.ts` and `packages/core/src/index.ts`: only append. Do not reorder or rename existing exports.
-- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 006 notifications, 014 and up free (005 expenses, 010 account, 011 arrival time zone, 012 polls and 013 trip destination are taken). Never edit a migration that is already applied (001, 007, 008, 009, 010): add a new one. Add a test in `supabase/test/` first.
+- `supabase/migrations/`: **reserved numbers**: 002 polls, 003 share links, 004 images, 006 notifications, 016 used (security hardening), 017 and up free (005 expenses, 010 account, 011 arrival time zone, 012 polls and 013 trip destination are taken). Never edit a migration that is already applied (001, 007, 008, 009, 010): add a new one. Add a test in `supabase/test/` first.
 - `apps/web/src/app/services.tsx` (the `Actions` list) and `apps/web/test/helpers.tsx` (the fake services): add at the end.
 
 ## Get set up

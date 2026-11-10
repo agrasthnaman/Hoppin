@@ -11,11 +11,11 @@ export interface PasswordClient {
     signUp(args: {
       email: string;
       password: string;
-      options: { emailRedirectTo: string; data: { display_name: string } };
+      options: { emailRedirectTo: string; data: { display_name: string }; captchaToken?: string };
     }): PromiseLike<{ data: { session: unknown | null; user?: { identities?: unknown[] | null } | null }; error: ServerError }>;
-    signInWithPassword(args: { email: string; password: string }): PromiseLike<{ data: unknown; error: ServerError }>;
-    resend(args: { type: "signup"; email: string; options: { emailRedirectTo: string } }): PromiseLike<{ error: ServerError }>;
-    resetPasswordForEmail(email: string, options: { redirectTo: string }): PromiseLike<{ error: ServerError }>;
+    signInWithPassword(args: { email: string; password: string; options?: { captchaToken?: string } }): PromiseLike<{ data: unknown; error: ServerError }>;
+    resend(args: { type: "signup"; email: string; options: { emailRedirectTo: string; captchaToken?: string } }): PromiseLike<{ error: ServerError }>;
+    resetPasswordForEmail(email: string, options: { redirectTo: string; captchaToken?: string }): PromiseLike<{ error: ServerError }>;
     updateUser(attrs: { password: string }): PromiseLike<{ error: ServerError }>;
     verifyOtp(args: { token_hash: string; type: EmailLinkType }): PromiseLike<{ error: ServerError }>;
   };
@@ -38,7 +38,7 @@ function queueAnswer<T extends string>(data: unknown, allowed: readonly T[]): T 
   return found;
 }
 
-export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "already-registered" | "other";
+export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "already-registered" | "captcha" | "other";
 
 /** An auth failure the screens can explain in plain words. */
 export class AuthError extends Error {
@@ -54,6 +54,7 @@ export class AuthError extends Error {
 function toAuthError(e: NonNullable<ServerError>): AuthError {
   if (e.code === "invalid_credentials" || /invalid login credentials/i.test(e.message)) return new AuthError("invalid-credentials", e.message);
   if (e.code === "email_not_confirmed" || /email not confirmed/i.test(e.message)) return new AuthError("email-not-confirmed", e.message);
+  if (e.code === "captcha_failed" || /captcha/i.test(e.message)) return new AuthError("captcha", e.message);
   if (e.code === "weak_password") return new AuthError("weak-password", e.message);
   if (e.status === 429 || e.code === "over_email_send_rate_limit" || e.code === "over_request_rate_limit") return new AuthError("rate-limited", e.message);
   return new AuthError("other", e.message);
@@ -70,12 +71,12 @@ export function createAuthApi(client: PasswordClient) {
      * Creates the account. The email link only confirms the address (it is single-use and expires); after that the
      * person signs in with their password. The name is stored with the account and becomes the profile name.
      */
-    async signUp(args: { email: string; password: string; name: string; redirectTo: string }): Promise<{ confirmationNeeded: boolean }> {
+    async signUp(args: { email: string; password: string; name: string; redirectTo: string; captchaToken?: string }): Promise<{ confirmationNeeded: boolean }> {
       checkPassword(args.password);
       const { data, error } = await client.auth.signUp({
         email: args.email,
         password: args.password,
-        options: { emailRedirectTo: args.redirectTo, data: { display_name: args.name } },
+        options: { emailRedirectTo: args.redirectTo, data: { display_name: args.name }, ...(args.captchaToken ? { captchaToken: args.captchaToken } : {}) },
       });
       if (error) throw toAuthError(error);
       // For an address that already has an account the service answers as if sign-up worked, but sends no email and
@@ -100,20 +101,20 @@ export function createAuthApi(client: PasswordClient) {
       return queueAnswer(data, QUEUE_JOIN);
     },
 
-    async signIn(args: { email: string; password: string }): Promise<void> {
-      const { error } = await client.auth.signInWithPassword({ email: args.email, password: args.password });
+    async signIn(args: { email: string; password: string; captchaToken?: string }): Promise<void> {
+      const { error } = await client.auth.signInWithPassword({ email: args.email, password: args.password, ...(args.captchaToken ? { options: { captchaToken: args.captchaToken } } : {}) });
       if (error) throw toAuthError(error);
     },
 
     /** Sends a fresh confirmation link (the old one stops working). */
-    async resendConfirmation(args: { email: string; redirectTo: string }): Promise<void> {
-      const { error } = await client.auth.resend({ type: "signup", email: args.email, options: { emailRedirectTo: args.redirectTo } });
+    async resendConfirmation(args: { email: string; redirectTo: string; captchaToken?: string }): Promise<void> {
+      const { error } = await client.auth.resend({ type: "signup", email: args.email, options: { emailRedirectTo: args.redirectTo, ...(args.captchaToken ? { captchaToken: args.captchaToken } : {}) } });
       if (error) throw toAuthError(error);
     },
 
     /** Emails a reset link. It never reveals whether the address has an account. */
-    async requestPasswordReset(args: { email: string; redirectTo: string }): Promise<void> {
-      const { error } = await client.auth.resetPasswordForEmail(args.email, { redirectTo: args.redirectTo });
+    async requestPasswordReset(args: { email: string; redirectTo: string; captchaToken?: string }): Promise<void> {
+      const { error } = await client.auth.resetPasswordForEmail(args.email, { redirectTo: args.redirectTo, ...(args.captchaToken ? { captchaToken: args.captchaToken } : {}) });
       if (error) throw toAuthError(error);
     },
 

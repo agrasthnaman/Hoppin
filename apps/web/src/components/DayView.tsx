@@ -1,4 +1,4 @@
-import { formatTimeRange, pollOnPlan, stayNote, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
+import { formatTimeRange, pollOnPlan, safeWebUrl, stayNote, tallyPoll, type DayLayout, type Item, type Poll, type Vote } from "@hoppin/core";
 import { m } from "motion/react";
 import { BedDouble, ChevronDown, Navigation, Vote as VoteIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -175,10 +175,11 @@ function dateParts(date: string): { weekday: string; rest: string } {
 
 /** "Get directions" for a plan with a map link, right on its card so nobody has to open the plan first. */
 function Directions({ item, tone = "light" }: { item: Item; tone?: "light" | "dark" }) {
-  if (!item.locationUrl) return null;
+  const url = safeWebUrl(item.locationUrl);
+  if (!url) return null;
   return (
     <a
-      href={item.locationUrl}
+      href={url}
       target="_blank"
       rel="noreferrer"
       aria-label={`Get directions to ${item.title}`}
@@ -508,9 +509,9 @@ export function DayView({ date, tz, layout, people, viewerId, goingByItem, onJoi
           <div className="flex flex-col gap-4">
             {pollOf(selected) && <PollResults poll={pollOf(selected)!} votes={votes} onHero={false} />}
             {planNotes(selected) && <p className="text-sm">{planNotes(selected)}</p>}
-            {selected.locationUrl && (
+            {safeWebUrl(selected.locationUrl) && (
               <a
-                href={selected.locationUrl}
+                href={safeWebUrl(selected.locationUrl)!}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-link underline"

@@ -440,3 +440,12 @@ describe("several documents for one booking", () => {
     expect(within(screen.getByRole("list", { name: "Chosen documents" })).getAllByRole("listitem")).toHaveLength(2);
   });
 });
+
+describe("a plan's link that is not a web address", () => {
+  it("never becomes a tappable link (so a hand-made request cannot plant a javascript: link)", () => {
+    const unsafe: Item = { ...flight, locationUrl: "javascript:alert(1)" };
+    render(<BookingDetail item={unsafe} member={member()} documents={[]} people={people} onSave={vi.fn()} onUpload={vi.fn()} onOpenDocument={vi.fn()} />);
+    expect(document.querySelector('a[href^="javascript:"]')).toBeNull();
+    expect(screen.queryByRole("link", { name: /map|directions/i })).toBeNull();
+  });
+});

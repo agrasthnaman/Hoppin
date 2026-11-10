@@ -1,4 +1,4 @@
-import { formatTime, type DayStops, type Item, type Stop } from "@hoppin/core";
+import { formatTime, safeWebUrl, type DayStops, type Item, type Stop } from "@hoppin/core";
 import { dayColor, STAY_COLOR } from "../../lib/map-colors";
 import type { MapLine, MapPoint } from "./MapView";
 
@@ -38,7 +38,7 @@ export function withPlanLinks(points: MapPoint[], items: Item[], tripId: string)
   return points.map((point) => {
     const itemId = point.id.slice(point.id.indexOf(":") + 1);
     const item = items.find((entry) => entry.id === itemId);
-    return { ...point, planHref: `/trips/${tripId}/items/${itemId}`, ...(item?.locationUrl ? { directions: item.locationUrl } : {}) };
+    return { ...point, planHref: `/trips/${tripId}/items/${itemId}`, ...(safeWebUrl(item?.locationUrl) ? { directions: safeWebUrl(item?.locationUrl)! } : {}) };
   });
 }
 
