@@ -1,7 +1,8 @@
 import { describeChange, localDate, type ItemKind, type NotifiedChange, type TripNotification } from "@hoppin/core";
+import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useServices } from "../app/services";
 import { useTripData } from "../app/trip-data";
 import { KIND_STYLE } from "../components/kind";
@@ -110,13 +111,9 @@ export default function Updates() {
   const now = clock.now();
   return (
     <div className="flex flex-col gap-4">
-      <Link to={`/trips/${tripId}/more`} className="w-fit text-sm font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
-        Back to More
-      </Link>
-      <div className="flex flex-col gap-1">
-        <h2 className="page-title text-5xl">Updates</h2>
-        <p className="text-sm text-muted">When someone adds, changes or removes a plan you can see, it shows up here. Changes made within a few minutes of each other arrive together.</p>
-      </div>
+      <Dialog.Description className="text-sm text-muted">
+        When someone adds, changes or removes a plan you can see, it shows up here. Changes made within a few minutes of each other arrive together.
+      </Dialog.Description>
 
       <Card className="flex flex-col gap-2">
         <button
@@ -182,4 +179,13 @@ export default function Updates() {
       )}
     </div>
   );
+}
+
+/** Old links to the updates page open the panel over Days instead of leaving the trip. */
+export function OpenUpdates() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate("../days", { replace: true, state: { updates: true } });
+  }, [navigate]);
+  return null;
 }

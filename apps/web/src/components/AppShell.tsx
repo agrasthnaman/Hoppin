@@ -1,5 +1,5 @@
 import { formatSyncedAgo, syncBanners, type SyncState } from "@hoppin/core";
-import { CalendarDays, FileText, Map as MapIcon, MapPin, Menu, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, FileText, Map as MapIcon, MapPin, Menu, Wallet, type LucideIcon } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { cn } from "../lib/cn";
@@ -15,6 +15,12 @@ export interface AppShellProps {
   above?: React.ReactNode;
   /** Marks More when the organizer has someone waiting to join. */
   memberWaiting?: boolean;
+  /** Unread updates, shown on the bell opposite the trip name. */
+  unreadUpdates?: number;
+  /** The bell is open. */
+  updatesOpen?: boolean;
+  /** Opens the updates panel over the current page. */
+  onOpenUpdates?: () => void;
 }
 
 const NAV: { to: string; label: string; icon: LucideIcon }[] = [
@@ -29,7 +35,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  * Frame around every trip screen: sync status and banners on top, the page in the middle, main navigation
  * as a bottom bar on phones and a sidebar on wide screens.
  */
-export function AppShell({ basePath, tripName, status, above, memberWaiting = false }: AppShellProps) {
+export function AppShell({ basePath, tripName, status, above, memberWaiting = false, unreadUpdates = 0, updatesOpen = false, onOpenUpdates }: AppShellProps) {
   const banners = syncBanners(status);
   const location = useLocation();
   return (
@@ -82,9 +88,25 @@ export function AppShell({ basePath, tripName, status, above, memberWaiting = fa
 
       <div className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-3xl">
-        <header className="flex items-baseline justify-between gap-3 px-4 pb-2 pt-4 md:px-8">
-          <p className="page-title truncate text-4xl">{tripName}</p>
-          <p className="shrink-0 text-xs text-muted">{formatSyncedAgo(status.lastSyncedAt, status.now)}</p>
+        <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-4 md:px-8">
+          <p className="page-title min-w-0 truncate text-4xl">{tripName}</p>
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
+            <button
+              type="button"
+              aria-label="Updates"
+              aria-expanded={updatesOpen}
+              aria-describedby={unreadUpdates > 0 ? "updates-new" : undefined}
+              onClick={onOpenUpdates}
+              className="inline-flex size-11 items-center justify-center rounded-full text-fg focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <span className="relative">
+                <Bell aria-hidden="true" className="size-5" />
+                {unreadUpdates > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 size-2.5 rounded-full bg-accent" />}
+              </span>
+            </button>
+            {unreadUpdates > 0 && <span id="updates-new" className="sr-only">You have new updates</span>}
+            <p className="text-right text-xs leading-none text-muted">{formatSyncedAgo(status.lastSyncedAt, status.now)}</p>
+          </div>
         </header>
         <div className="flex flex-col px-4 md:px-8">
           <AnimatePresence initial={false}>

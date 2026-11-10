@@ -47,7 +47,7 @@ export function createAppRoutes(): RouteObject[] {
             { path: "docs", ...lazyPage(() => import("../routes/Docs")) },
             { path: "polls", ...lazyPage(() => import("../routes/Polls")) },
             { path: "map", ...lazyPage(() => import("../routes/TripMap")) },
-            { path: "updates", ...lazyPage(() => import("../routes/Updates")) },
+            { path: "updates", lazy: async () => ({ Component: (await import("../routes/Updates")).OpenUpdates }) },
             { path: "export", ...lazyPage(() => import("../routes/Export")) },
             { path: "posters", ...lazyPage(() => import("../routes/Posters")) },
           ],
