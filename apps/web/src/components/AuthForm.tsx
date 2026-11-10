@@ -2,6 +2,8 @@ import { MIN_PASSWORD_LENGTH, validatePassword } from "@hoppin/core";
 import { useId, useState, type FormEvent } from "react";
 import { AuthError, type AuthApi } from "../lib/auth-api";
 import { inputClass } from "../lib/forms";
+import { TURNSTILE_SITE_KEY } from "../lib/turnstile";
+import { Turnstile } from "./Turnstile";
 import { Banner } from "./ui/Banner";
 import { Button } from "./ui/Button";
 
@@ -38,6 +40,7 @@ function Field({ label, hint, error, ...input }: { label: string; hint?: string;
 function explain(error: unknown, mode: Mode, purpose: "waitlist" | "trip"): string {
   const code = error instanceof AuthError ? error.code : "other";
   if (code === "invalid-credentials") return "That email and password don't match. Check them and try again, or reset your password.";
+  if (code === "captcha") return "We couldn't confirm that you're a person. Refresh the page and try again. If it keeps happening, turn off any ad or script blockers for this page.";
   if (code === "rate-limited") return "We're a little busy right now. Nothing is lost. Please try again in about an hour.";
   if (code === "weak-password" && error instanceof Error) return error.message;
   if (mode === "signup") return purpose === "waitlist" ? "We couldn't add you just now. Please try again in a moment." : "We couldn't create your account just now. Please try again in a moment.";
@@ -56,6 +59,7 @@ export function AuthForm({
   initialMode = "signin",
   purpose = "trip",
   titled = false,
+  captchaSiteKey = TURNSTILE_SITE_KEY,
 }: {
   api: AuthFormApi;
   /** Where the confirmation link brings the person back to. */
@@ -67,6 +71,8 @@ export function AuthForm({
   purpose?: "waitlist" | "trip";
   /** Draw the landing-page headline. The trip join page brings its own. */
   titled?: boolean;
+  /** Cloudflare Turnstile site key. Empty turns the bot check off (tests, the demo). */
+  captchaSiteKey?: string;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
@@ -77,6 +83,19 @@ export function AuthForm({
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<Sent>(null);
   const [resent, setResent] = useState(false);
+  // The bot check gives a token that works once. It is taken for a request, and a fresh one is fetched straight after.
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaTry, setCaptchaTry] = useState(0);
+  const [captchaBroken, setCaptchaBroken] = useState(false); // the check could not run (blocked script): stop waiting
+  const checking = captchaSiteKey !== "" && captcha === null && !captchaBroken;
+  function takeCaptcha(): string | undefined {
+    const token = captcha ?? undefined;
+    if (captchaSiteKey) {
+      setCaptcha(null);
+      setCaptchaTry((n) => n + 1);
+    }
+    return token;
+  }
 
   function switchTo(next: Mode) {
     setMode(next);
@@ -98,6 +117,8 @@ export function AuthForm({
     setErrors(next);
     setFailure(null);
     if (next.name || next.email || next.password) return;
+    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    const captchaToken = takeCaptcha();
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -107,7 +128,7 @@ export function AuthForm({
         if (known === "waiting" || known === "invited") return setSent({ kind: "inqueue", email: trimmed });
         if (known === "registered") return setSent({ kind: "exists", email: trimmed });
         try {
-          const { confirmationNeeded } = await api.signUp({ email: trimmed, password, name: name.trim(), redirectTo: confirmRedirectTo });
+          const { confirmationNeeded } = await api.signUp({ email: trimmed, password, name: name.trim(), redirectTo: confirmRedirectTo, ...(captchaToken ? { captchaToken } : {}) });
           if (confirmationNeeded) setSent({ kind: "confirm", email: trimmed });
         } catch (error) {
           if (!(error instanceof AuthError && error.code === "rate-limited")) throw error;
@@ -120,9 +141,9 @@ export function AuthForm({
           }
         }
       } else if (mode === "signin") {
-        await api.signIn({ email: trimmed, password });
+        await api.signIn({ email: trimmed, password, ...(captchaToken ? { captchaToken } : {}) });
       } else {
-        await api.requestPasswordReset({ email: trimmed, redirectTo: resetRedirectTo });
+        await api.requestPasswordReset({ email: trimmed, redirectTo: resetRedirectTo, ...(captchaToken ? { captchaToken } : {}) });
         setSent({ kind: "reset", email: trimmed });
       }
     } catch (error) {
@@ -136,10 +157,12 @@ export function AuthForm({
 
   async function sendReset() {
     if (!sent) return;
+    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    const captchaToken = takeCaptcha();
     setBusy(true);
     setFailure(null);
     try {
-      await api.requestPasswordReset({ email: sent.email, redirectTo: resetRedirectTo });
+      await api.requestPasswordReset({ email: sent.email, redirectTo: resetRedirectTo, ...(captchaToken ? { captchaToken } : {}) });
       setSent({ kind: "reset", email: sent.email });
     } catch (error) {
       setFailure(explain(error, "forgot", purpose));
@@ -150,10 +173,12 @@ export function AuthForm({
 
   async function resend() {
     if (!sent) return;
+    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    const captchaToken = takeCaptcha();
     setBusy(true);
     setFailure(null);
     try {
-      await api.resendConfirmation({ email: sent.email, redirectTo: confirmRedirectTo });
+      await api.resendConfirmation({ email: sent.email, redirectTo: confirmRedirectTo, ...(captchaToken ? { captchaToken } : {}) });
       setResent(true);
     } catch (error) {
       setFailure(explain(error, "signup", purpose));
@@ -299,6 +324,7 @@ export function AuthForm({
       )}
       <div className={titled ? "auth-card on-cream" : undefined} {...(titled ? { "data-silk-anchor": "" } : {})}>
         {fields}
+        <Turnstile siteKey={captchaSiteKey} onToken={(token) => { setCaptcha(token); if (token) setCaptchaBroken(false); }} onFail={() => setCaptchaBroken(true)} resetKey={captchaTry} />
       </div>
     </>
   );

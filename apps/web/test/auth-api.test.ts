@@ -121,3 +121,23 @@ describe("verifyEmailLink", () => {
     await expect(createAuthApi(c).verifyEmailLink({ tokenHash: "x", type: "recovery" })).rejects.toMatchObject({ code: "invalid-link" });
   });
 });
+
+describe("the bot check token", () => {
+  it("goes to the auth service with each request that has one, and is left out when there is none", async () => {
+    const c = client();
+    const api = createAuthApi(c);
+    await api.signIn({ email: "a@b.co", password: "longenoughpw", captchaToken: "t1" });
+    expect(c.auth.signInWithPassword).toHaveBeenCalledWith({ email: "a@b.co", password: "longenoughpw", options: { captchaToken: "t1" } });
+    await api.signIn({ email: "a@b.co", password: "longenoughpw" });
+    expect(c.auth.signInWithPassword).toHaveBeenLastCalledWith({ email: "a@b.co", password: "longenoughpw" });
+    await api.requestPasswordReset({ email: "a@b.co", redirectTo: "r", captchaToken: "t2" });
+    expect(c.auth.resetPasswordForEmail).toHaveBeenCalledWith("a@b.co", { redirectTo: "r", captchaToken: "t2" });
+    await api.resendConfirmation({ email: "a@b.co", redirectTo: "r", captchaToken: "t3" });
+    expect(c.auth.resend).toHaveBeenCalledWith({ type: "signup", email: "a@b.co", options: { emailRedirectTo: "r", captchaToken: "t3" } });
+  });
+
+  it("turns the service's refusal into a clear error", async () => {
+    const c = client({ signInWithPassword: vi.fn().mockResolvedValue({ data: null, error: { code: "captcha_failed", message: "captcha verification process failed" } }) });
+    await expect(createAuthApi(c).signIn({ email: "a@b.co", password: "longenoughpw" })).rejects.toMatchObject({ code: "captcha" });
+  });
+});

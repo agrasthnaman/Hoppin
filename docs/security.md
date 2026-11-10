@@ -27,7 +27,7 @@ The key that can bypass all of this (the `service_role` key) is never in the app
 
 ## Still open (in order of importance)
 1. **Rotate the credentials that were pasted into chat** (Supabase access token, database password, Cloudflare token, Resend key, GitHub token) and update `.env.release`. They allow full control of the project.
-2. **Bot protection on sign-up** (Cloudflare Turnstile): sign-up sends emails and the email limit is shared by everyone, so a bot can use it up or fill the waiting list. Needs Turnstile keys, then turn on "CAPTCHA protection" in Supabase Auth.
+2. **Bot protection on sign-up** (Cloudflare Turnstile): the sign-in, sign-up and password-reset forms now carry a Turnstile check (invisible unless Cloudflare is unsure). Still to do: turn on "CAPTCHA protection" in Supabase Auth with the secret key, **after** this version of the app is live (see `docs/turnstile.md`). The waiting-list join function is not covered by Supabase's check.
 3. **Content-Security-Policy**: the full policy is in `_headers` as report-only. Browse the app with the console open; when nothing is reported, make it enforced. (Tickets are read on the phone with a text-recognition library that downloads its language file from a public CDN: host it ourselves, then remove that CDN from the policy.)
 4. **A separate test project.** Local development and the live site use the same Supabase project, so the live sign-in list allows `localhost` addresses. Create a second project for development, then remove `localhost` from the allowed redirect list.
 5. **Account lookups:** the sign-up form says when an email already has an account, which lets someone check whether an address is registered. A deliberate friendliness trade-off; Turnstile limits abuse.
