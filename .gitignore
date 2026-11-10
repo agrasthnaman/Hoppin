@@ -6,3 +6,6 @@ dist/
 .DS_Store
 .jfrog/
 .boost/
+.claude/
+skills-lock.json
+.agents/
