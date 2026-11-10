@@ -7,8 +7,8 @@ Sign-in is email and password only. There is no Google or Facebook login, so Sig
 ## What you need
 
 - Node 22 or newer, and the repo's `npm install` (the lockfile uses the JFrog registry).
-- iOS: Xcode, and CocoaPods (`pod --version`). An Apple developer account is only needed for a real phone.
-- Android: Android Studio, and JDK 17. The emulator is an Android system image with a WebView from the last few years (API 24 is the minimum; WebGL maps need a current WebView).
+- iOS: Xcode (Mac App Store). The project uses Swift Package Manager, so CocoaPods is not needed. An Apple developer account is only needed for a real phone.
+- Android: Android Studio, and JDK 21 (the Gradle files target Java 21; Android Studio bundles one). The emulator is an Android system image with a WebView from the last few years (API 24 is the minimum; WebGL maps need a current WebView).
 
 ## Build and run
 
