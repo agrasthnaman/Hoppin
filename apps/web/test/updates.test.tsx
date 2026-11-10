@@ -26,18 +26,57 @@ const digest = (over: Partial<TripNotification> = {}): TripNotification => ({
 });
 
 describe("updates", () => {
-  it("is reachable from More, which says when there is something new", async () => {
+  it("sits opposite the trip name, above when it was synced, and says when there is something new", async () => {
+    const { services } = fakeServices({ updates: [digest()] });
+    renderApp("/trips/t1/days", services);
+    const button = await screen.findByRole("button", { name: "Updates" });
+    const header = button.closest("header");
+    expect(header).not.toBeNull();
+    expect(await within(header as HTMLElement).findByText("Goa")).toBeInTheDocument();
+    expect(within(header as HTMLElement).getByText(/Synced/)).toBeInTheDocument();
+    await waitFor(() => expect(button).toHaveAccessibleDescription("You have new updates"));
+  });
+
+  it("opens a panel from the left over the current page, and closing it returns there", async () => {
+    const { services } = fakeServices({ updates: [digest()] });
+    const { router } = renderApp("/trips/t1/days", services);
+    expect(await screen.findByRole("link", { name: "Days" })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(screen.getByRole("button", { name: "Updates" }));
+    const panel = await screen.findByRole("dialog", { name: "Updates" });
+    expect(panel).toHaveAttribute("data-side", "left");
+    expect(screen.queryByRole("link", { name: "Back to More" })).toBeNull();
+    expect(router.state.location.pathname).toBe("/trips/t1/days");
+    expect(screen.getByRole("link", { name: "Days", hidden: true })).toHaveAttribute("aria-current", "page");
+    expect(await within(panel).findByText("Sea view hotel was changed")).toBeInTheDocument();
+    await userEvent.click(within(panel).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Updates" })).toBeNull());
+    expect(router.state.location.pathname).toBe("/trips/t1/days");
+    expect(screen.getByRole("link", { name: "Days" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("closes when a plan in the panel is opened", async () => {
+    const { services } = fakeServices({ updates: [digest()] });
+    const { router } = renderApp("/trips/t1/days", services);
+    await userEvent.click(await screen.findByRole("button", { name: "Updates" }));
+    const panel = await screen.findByRole("dialog", { name: "Updates" });
+    await userEvent.click(await within(panel).findByRole("link", { name: "Open Sea view hotel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Updates" })).toBeNull());
+    expect(router.state.location.pathname).toBe("/trips/t1/items/i1");
+  });
+
+  it("is not listed inside More", async () => {
     const { services } = fakeServices({ updates: [digest()] });
     renderApp("/trips/t1/more", services);
-    const link = await screen.findByRole("link", { name: "Updates" });
-    expect(link).toHaveAttribute("href", "/trips/t1/updates");
-    await waitFor(() => expect(link).toHaveAccessibleDescription("You have new updates"));
+    expect(await screen.findByRole("heading", { name: "More" })).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).queryByRole("link", { name: "Updates" })).toBeNull();
   });
 
   it("explains an empty list", async () => {
     const { services } = fakeServices({ updates: [] });
     renderApp("/trips/t1/updates", services);
     expect(await screen.findByText("No updates yet")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back to More" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Days", hidden: true })).toHaveAttribute("aria-current", "page");
     expect(services.actions.markUpdatesRead).not.toHaveBeenCalled();
   });
 

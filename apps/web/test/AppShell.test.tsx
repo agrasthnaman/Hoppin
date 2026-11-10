@@ -93,6 +93,8 @@ describe("AppShell sync status", () => {
   it("always shows when the trip was last synced", () => {
     setup();
     expect(screen.getByText("Synced 5 min ago")).toBeInTheDocument();
+    const updates = screen.getByRole("button", { name: "Updates" });
+    expect(updates.closest("header")).toBe(screen.getByText("Synced 5 min ago").closest("header"));
     expect(screen.getAllByText("Goa")).toHaveLength(1);
   });
 
