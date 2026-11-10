@@ -25,6 +25,12 @@ end $$;
 
 grant usage on schema auth to authenticated, anon;
 
+-- Supabase gives the API roles broad rights on everything created later; copy that, so the tests prove the migrations
+-- take the extra rights away again (see 016_security_hardening.sql).
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+
 -- Stand-in for Supabase Storage: buckets, objects (row-level security on) and storage.foldername().
 create schema if not exists storage;
 create table if not exists storage.buckets (id text primary key, name text not null, public boolean not null default false);

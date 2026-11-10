@@ -1,4 +1,4 @@
-import { formatTimeRange, type Stop } from "@hoppin/core";
+import { formatTimeRange, safeWebUrl, type Stop } from "@hoppin/core";
 import { Link } from "react-router";
 import { KindTag } from "../kind";
 import { Sheet } from "../ui/Sheet";
@@ -20,8 +20,8 @@ export function StopSheet({ stop, locationUrl, tripId, onClose }: StopSheetProps
           <p className="font-display text-2xl font-extrabold">{stop.title}</p>
           <p>{formatTimeRange(stop.startsAt, stop.endsAt, stop.tz, stop.endTz)}</p>
           {stop.place.label && <p className="text-sm text-muted">{stop.place.label}</p>}
-          {locationUrl && (
-            <a href={locationUrl} className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+          {safeWebUrl(locationUrl) && (
+            <a href={safeWebUrl(locationUrl)!} className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
               Get directions
             </a>
           )}

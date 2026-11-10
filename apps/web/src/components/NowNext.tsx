@@ -1,4 +1,4 @@
-import { formatTimeRange, nowAndNext, planProgress, untilLabel, type Item } from "@hoppin/core";
+import { formatTimeRange, nowAndNext, planProgress, safeWebUrl, untilLabel, type Item } from "@hoppin/core";
 import { BedDouble, Navigation } from "lucide-react";
 import { Link } from "react-router";
 import { cn } from "../lib/cn";
@@ -12,10 +12,11 @@ export interface NowNextProps {
 }
 
 function Directions({ item, onHero }: { item: Item; onHero?: boolean }) {
-  if (!item.locationUrl) return null;
+  const url = safeWebUrl(item.locationUrl);
+  if (!url) return null;
   return (
     <a
-      href={item.locationUrl}
+      href={url}
       target="_blank"
       rel="noreferrer"
       className={cn(
