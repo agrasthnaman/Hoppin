@@ -1,3 +1,5 @@
+import { apiBase } from "./native-shell";
+
 /** A Google short map link, which hides its coordinates until it is opened. */
 export function isShortMapLink(url: string): boolean {
   try {
@@ -37,10 +39,10 @@ export async function resolveShortMapLink(url: string, fetchImpl: FetchLike = fe
 }
 
 /** Ask this app to open a short map link. The coordinates come back in the full address. */
-export async function expandMapLink(url: string): Promise<string | null> {
+export async function expandMapLink(url: string, native = false): Promise<string | null> {
   if (!isShortMapLink(url)) return null;
   try {
-    const response = await fetch(`/api/expand-map-link?url=${encodeURIComponent(url.trim())}`);
+    const response = await fetch(`${apiBase(native)}/api/expand-map-link?url=${encodeURIComponent(url.trim())}`);
     if (!response.ok) return null;
     const body = (await response.json()) as { url?: unknown };
     return typeof body.url === "string" && body.url.startsWith("http") ? body.url : null;

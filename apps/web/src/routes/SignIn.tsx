@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { useServices } from "../app/services";
 import { useSession } from "../app/session";
 import { AuthForm } from "../components/AuthForm";
@@ -35,6 +35,15 @@ export function SignIn() {
         <a href={supportMailto({ subject: "Help signing in to Hoppin" })} className="font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
           Email support
         </a>
+      </p>
+      <p className="auth-lede">
+        <Link to="/privacy" className="font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          Privacy
+        </Link>
+        {" · "}
+        <Link to="/terms" className="font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          Terms
+        </Link>
       </p>
     </AuthStage>
   );

@@ -34,12 +34,29 @@ export interface Email {
   text: string;
 }
 
+export interface PushTarget {
+  user_id: string;
+  token: string;
+  platform: "ios" | "android";
+}
+
+export interface PushNote {
+  token: string;
+  title: string;
+  body: string;
+  url: string;
+}
+
 export interface SendDeps {
   claim(): Promise<TripBatch[]>;
   /** False when another run already recorded this batch: nothing may be sent then. */
   record(tripId: string, fromId: number, throughId: number, windowStart: string, rows: { user_id: string; changes: StoredChange[] }[]): Promise<boolean>;
   /** Sends a trip's emails in one call. Throws on failure. */
   sendEmails(emails: Email[]): Promise<void>;
+  /** Tokens for members who turned phone updates on. Absent when push is not configured. */
+  pushTargets?(tripId: string): Promise<PushTarget[]>;
+  /** Sends one trip's phone notifications. Throws on failure. Best effort, like email. */
+  sendPushes?(notes: PushNote[]): Promise<void>;
   siteUrl: string;
   /** Only counts and fixed words are ever passed here, never a name, title or address. */
   log(line: string): void;
@@ -49,6 +66,7 @@ export interface SendResult {
   trips: number;
   notified: number;
   emailed: number;
+  pushed: number;
   failedTrips: number;
 }
 
@@ -106,7 +124,7 @@ export function digestEmail(tripName: string, tripUrl: string, changes: StoredCh
 /** One run: every trip whose window has closed gets its digests recorded, then emailed. One trip failing never stops the rest. */
 export async function sendDigests(deps: SendDeps): Promise<SendResult> {
   const batches = await deps.claim();
-  const result: SendResult = { trips: batches.length, notified: 0, emailed: 0, failedTrips: 0 };
+  const result: SendResult = { trips: batches.length, notified: 0, emailed: 0, pushed: 0, failedTrips: 0 };
 
   for (const batch of batches) {
     try {
@@ -140,11 +158,34 @@ export async function sendDigests(deps: SendDeps): Promise<SendResult> {
           deps.log("emails for a trip could not be sent");
         }
       }
+      if (deps.pushTargets && deps.sendPushes) {
+        try {
+          const wanted = new Set(rows.map((row) => row.user_id));
+          const counts = new Map(rows.map((row) => [row.user_id, row.changes.length]));
+          const notes = (await deps.pushTargets(batch.trip_id))
+            .filter((target) => wanted.has(target.user_id))
+            .map((target) => {
+              const n = counts.get(target.user_id) ?? 0;
+              return {
+                token: target.token,
+                title: oneLine(batch.trip_name, 80),
+                body: n === 1 ? "1 change in the plan" : `${n} changes in the plan`,
+                url: `${tripUrl}/days`,
+              };
+            });
+          if (notes.length > 0) {
+            await deps.sendPushes(notes);
+            result.pushed += notes.length;
+          }
+        } catch {
+          deps.log("pushes for a trip could not be sent");
+        }
+      }
     } catch {
       result.failedTrips += 1;
       deps.log("a trip could not be processed; it stays waiting for the next run");
     }
   }
-  deps.log(`trips ${result.trips}, notified ${result.notified}, emailed ${result.emailed}, failed ${result.failedTrips}`);
+  deps.log(`trips ${result.trips}, notified ${result.notified}, emailed ${result.emailed}, pushed ${result.pushed}, failed ${result.failedTrips}`);
   return result;
 }

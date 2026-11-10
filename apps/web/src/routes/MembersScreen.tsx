@@ -1,5 +1,7 @@
 import { inviteUrl, type MemberInfo } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useState } from "react";
+import { browserSharePorts, shareLink } from "../lib/share";
 import { peopleFrom } from "../app/people";
 import { useServices } from "../app/services";
 import { tripGate, useTripData } from "../app/trip-data";
@@ -191,8 +193,16 @@ export function MembersScreen() {
                 <Button variant="secondary" onClick={() => void copy(invite)}>
                   Copy link
                 </Button>
-                {typeof navigator.share === "function" && (
-                  <Button variant="secondary" onClick={() => void navigator.share({ title: `Join ${trip.snapshot?.trip.name}`, url: inviteUrl(window.location.origin, invite.token) }).catch(() => {})}>
+                {(Capacitor.isNativePlatform() || typeof navigator.share === "function") && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      void shareLink(
+                        { title: `Join ${trip.snapshot?.trip.name ?? "a trip"}`, url: inviteUrl(window.location.origin, invite.token) },
+                        browserSharePorts(Capacitor.isNativePlatform()),
+                      ).catch(() => {})
+                    }
+                  >
                     Share
                   </Button>
                 )}

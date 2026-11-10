@@ -9,3 +9,19 @@ dist/
 .claude/
 skills-lock.json
 .agents/
+
+# Capacitor native build output. The ios/ and android/ projects themselves are committed.
+apps/web/ios/App/Pods/
+apps/web/ios/App/build/
+apps/web/ios/DerivedData/
+apps/web/ios/App/App/public
+apps/web/android/.gradle/
+apps/web/android/build/
+apps/web/android/app/build/
+apps/web/android/local.properties
+apps/web/android/app/google-services.json
+apps/web/ios/App/App/GoogleService-Info.plist
+apps/web/android/app/src/main/assets/public
+apps/web/android/app/src/main/assets/capacitor.config.json
+apps/web/android/app/src/main/assets/capacitor.plugins.json
+apps/web/android/capacitor-cordova-android-plugins/build/

@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAMID.club.hoppinclub.app"],
+        "components": [
+          { "/": "/join/*" },
+          { "/": "/auth/*" },
+          { "/": "/reset-password" },
+          { "/": "/reset-password/*" },
+          { "/": "/trips/*" }
+        ]
+      }
+    ]
+  }
+}

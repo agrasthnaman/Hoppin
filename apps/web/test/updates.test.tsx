@@ -116,6 +116,16 @@ describe("updates", () => {
     expect(email).not.toBeChecked();
   });
 
+  it("the phone switch starts off and saves the choice", async () => {
+    const { services } = fakeServices({ updates: [] });
+    renderApp("/trips/t1/updates", services);
+    const push = await screen.findByRole("switch", { name: "Phone notifications" });
+    expect(push).not.toBeChecked();
+    await userEvent.click(push);
+    expect(services.actions.setPushUpdates).toHaveBeenCalledWith("t1", true);
+    await waitFor(() => expect(push).toBeChecked());
+  });
+
   it("says so when the list cannot be loaded, and can try again", async () => {
     const { services } = fakeServices({ updates: [digest()] });
     services.actions.listUpdates.mockRejectedValueOnce(new Error("down"));

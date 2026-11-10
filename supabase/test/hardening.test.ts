@@ -29,7 +29,7 @@ async function asPerson(userId: string, sql: string): Promise<string | null> {
   }
 }
 
-const TABLES = ["trips", "members", "items", "rsvps", "documents", "change_log", "profiles", "invites", "polls", "poll_options", "poll_votes", "expenses", "expense_shares", "trip_guests", "notifications"];
+const TABLES = ["trips", "members", "items", "rsvps", "documents", "change_log", "profiles", "invites", "polls", "poll_options", "poll_votes", "expenses", "expense_shares", "trip_guests", "notifications", "push_tokens"];
 
 describe("the public API key (not signed in)", () => {
   it.each(TABLES)("cannot even look at %s", async (table) => {

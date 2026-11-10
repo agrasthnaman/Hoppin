@@ -7,7 +7,7 @@ import { deleteDocument, getDocumentUrl, uploadDocument } from "../lib/documents
 import { createDocumentSource } from "../data/document-source";
 import { createTripSource } from "../data/trip-source";
 import { addGuest, castVote, closePoll, createItem, createPoll, deleteExpense, deleteItem, deletePoll, saveExpense, setRsvp, updateItem } from "../data/writes";
-import { listUpdates, markUpdatesRead, setEmailUpdates, unreadUpdates } from "../data/updates";
+import { listUpdates, markUpdatesRead, setEmailUpdates, setPushUpdates, unreadUpdates } from "../data/updates";
 import { sharedOfflineDb, type OfflineDb } from "../offline/db";
 import { createFrankfurterRates, createRateService, createRateStore, type RateService } from "../providers/rates";
 import { createPhotonPlaces, type PlacesApi } from "../providers/places";
@@ -56,11 +56,16 @@ export interface Actions {
   saveExpense(expense: ExpenseRecord, guestIds: ReadonlySet<string>): Promise<void>;
   deleteExpense(expenseId: string): Promise<void>;
   addGuest(guest: TripGuest): Promise<void>;
-  /** The signed-in person's change digests for a trip, and whether they also get them by email. */
-  listUpdates(tripId: string): Promise<{ notifications: TripNotification[]; emailOn: boolean }>;
+  /** The signed-in person's change digests for a trip, and whether they also get them by email or on the phone. */
+  listUpdates(tripId: string): Promise<{ notifications: TripNotification[]; emailOn: boolean; pushOn: boolean }>;
   unreadUpdates(tripId: string): Promise<number>;
   markUpdatesRead(tripId: string): Promise<void>;
   setEmailUpdates(tripId: string, on: boolean): Promise<void>;
+  setPushUpdates(tripId: string, on: boolean): Promise<void>;
+  /** Saves this device's notification token. The phone shell calls this after the person allows notifications. */
+  savePushToken(token: string, platform: "ios" | "android"): Promise<void>;
+  /** Removes this device's token. Called on sign-out. */
+  forgetPushToken(token: string): Promise<void>;
 }
 
 export interface Services {
@@ -233,6 +238,20 @@ export function createServices(client: any): Services {
       unreadUpdates: (tripId) => unreadUpdates(client, tripId),
       markUpdatesRead: (tripId) => markUpdatesRead(client, tripId),
       setEmailUpdates: (tripId, on) => setEmailUpdates(client, tripId, on),
+      setPushUpdates: (tripId, on) => setPushUpdates(client, tripId, on),
+      savePushToken: async (token, platform) => {
+        const me = await signedInId();
+        const { error } = await client.from("push_tokens").upsert(
+          { user_id: me, token, platform, last_seen_at: new Date().toISOString() },
+          { onConflict: "user_id,token" },
+        );
+        if (error) throw new Error(error.message);
+      },
+      forgetPushToken: async (token) => {
+        const me = await signedInId();
+        const { error } = await client.from("push_tokens").delete().eq("user_id", me).eq("token", token);
+        if (error) throw new Error(error.message);
+      },
     },
     clock: { now: () => Date.now(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     rates: createRateService({ provider: createFrankfurterRates(), store: createRateStore() }),

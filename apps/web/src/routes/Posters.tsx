@@ -1,4 +1,5 @@
 import { shareText, tripRecap, tripStops, type TripSnapshot } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { ArrowLeft, Dices, ImagePlus, Lock, Plus, Share2, Shuffle, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
@@ -13,6 +14,8 @@ import { Button } from "../components/ui/Button";
 import { Sheet } from "../components/ui/Sheet";
 import { cn } from "../lib/cn";
 import { downloadBlob, safeFileName } from "../lib/download";
+import { hapticTap } from "../lib/haptic";
+import { browserSharePorts, shareFile } from "../lib/share";
 import { loadForPoster, PhotoProblem } from "../lib/photo-process";
 import { demoPhotos } from "../poster/demo";
 import { posterData } from "../poster/from-recap";
@@ -265,18 +268,23 @@ function Studio({ snapshot, tripId }: { snapshot: TripSnapshot; tripId: string }
     setSelected(-1);
     try {
       // The full-size picture exists only inside this function; its canvas is freed by renderPosterBlob.
+      if (action === "save") {
+        void hapticTap(Capacitor.isNativePlatform(), async () => {
+          const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
+          await Haptics.impact({ style: ImpactStyle.Light });
+        });
+      }
       const blob = await renderPosterBlob(tpl, data, paletteId, size, { seed, edits: tplEdits });
       const name = `${safeFileName(snapshot.trip.name)}-${tpl.id}.png`;
-      const file = new File([blob], name, { type: "image/png" });
       let shared = false;
-      if (action === "share" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], text: shareText(recap, snapshot.trip.name) });
-          shared = true;
-        } catch (error) {
-          if ((error as { name?: string }).name === "AbortError") return;
-          throw error;
-        }
+      if (action === "share") {
+        const result = await shareFile(
+          { filename: name, blob, text: shareText(recap, snapshot.trip.name) },
+          browserSharePorts(Capacitor.isNativePlatform()),
+        );
+        if (result === "cancelled") return;
+        if (result === "shared") shared = true;
+        else downloadBlob(name, blob);
       } else downloadBlob(name, blob);
       setDone(shared ? "shared" : "saved");
     } catch {

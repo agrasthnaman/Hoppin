@@ -1,9 +1,11 @@
 import { formatTime, untilLabel, type DayStops, type Item, type Stop } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { Navigation, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { cn } from "../../lib/cn";
 import { useThemeTick } from "../../hooks/useThemeTick";
+import { hapticTap } from "../../lib/haptic";
 import { legsFor, PLAY_DAY_GAP_MS, totalMs } from "../../lib/map-arc";
 import { dayColor } from "../../lib/map-colors";
 import { Card } from "../ui/Card";
@@ -71,6 +73,10 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
   const playable = days.reduce((total, day) => total + day.stops.length, 0) >= 2;
   const playMs = days.reduce((total, day) => total + (day.stops.length >= 2 ? totalMs(legsFor(day.stops.map((stop) => [stop.place.lon, stop.place.lat])), "play") + PLAY_DAY_GAP_MS : 0), 0) + 1600;
   function play() {
+    void hapticTap(Capacitor.isNativePlatform(), async () => {
+      const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
+      await Haptics.impact({ style: ImpactStyle.Light });
+    });
     setWhich("all");
     setSelected(null);
     setOpened(null);

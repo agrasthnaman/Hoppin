@@ -37,7 +37,7 @@ describe("sendDigests", () => {
   it("records one digest per member who may see the change, and emails those with email on", async () => {
     const { d } = deps([batch()]);
     const result = await sendDigests(d);
-    expect(result).toEqual({ trips: 1, notified: 2, emailed: 1, failedTrips: 0 });
+    expect(result).toEqual({ trips: 1, notified: 2, emailed: 1, pushed: 0, failedTrips: 0 });
     const [trip, from, through, windowStart, rows] = d.record.mock.calls[0]!;
     expect([trip, from, through, windowStart]).toEqual(["goa", 10, 11, T.replace("Z", ".000Z")]);
     expect(rows.map((r) => r.user_id)).toEqual(["alice", "bob"]); // not the organizer, who made the change
@@ -77,6 +77,30 @@ describe("sendDigests", () => {
   it("a failed email does not undo the saved digests", async () => {
     const { d } = deps([batch()], { sendEmails: vi.fn<SendDeps["sendEmails"]>(async () => Promise.reject(new Error("resend 500"))) });
     expect(await sendDigests(d)).toMatchObject({ notified: 2, emailed: 0, failedTrips: 0 });
+  });
+
+  it("sends a phone notification only to someone who received this digest", async () => {
+    const sendPushes = vi.fn(async () => {});
+    const { d } = deps([batch()], {
+      pushTargets: async () => [
+        { user_id: "alice", token: "alice-phone", platform: "ios" },
+        { user_id: "stranger", token: "nope", platform: "android" },
+      ],
+      sendPushes,
+    });
+    const result = await sendDigests(d);
+    expect(result.pushed).toBe(1);
+    expect(sendPushes).toHaveBeenCalledWith([
+      { token: "alice-phone", title: "Goa", body: "1 change in the plan", url: "https://hoppinclub.com/trips/goa/days" },
+    ]);
+  });
+
+  it("a failed phone notification does not undo the saved digests", async () => {
+    const { d } = deps([batch()], {
+      pushTargets: async () => [{ user_id: "alice", token: "alice-phone", platform: "ios" }],
+      sendPushes: async () => Promise.reject(new Error("fcm 500")),
+    });
+    expect(await sendDigests(d)).toMatchObject({ notified: 2, emailed: 1, failedTrips: 0, pushed: 0 });
   });
 });
 

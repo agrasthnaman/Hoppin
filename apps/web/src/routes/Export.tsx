@@ -1,4 +1,5 @@
 import { buildIcs, exportableItems, zoneLabel } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { CalendarPlus, Printer } from "lucide-react";
 import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -7,6 +8,7 @@ import { tripGate, useTripData } from "../app/trip-data";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { downloadText, safeFileName } from "../lib/download";
+import { browserSharePorts, deliverIcs } from "../lib/share";
 
 function Option({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   const id = useId();
@@ -37,7 +39,9 @@ export default function Export() {
   const joined = new Set(snapshot.rsvps.filter((r) => r.userId === trip.viewerId).map((r) => r.itemId));
   const calendarCount = exportableItems(snapshot.items, trip.viewerId, joined, { includePrivate: calPrivate, includeOptional: calOptional }).length;
 
-  function downloadCalendar() {
+  const native = Capacitor.isNativePlatform();
+
+  async function downloadCalendar() {
     const ics = buildIcs(snapshot.items, {
       calendarName: snapshot.trip.name,
       now: new Date(clock.now()),
@@ -47,8 +51,10 @@ export default function Export() {
       joined,
     });
     const filename = `${safeFileName(snapshot.trip.name)}.ics`;
-    downloadText(filename, "text/calendar;charset=utf-8", ics);
-    setSaved(`Saved ${filename} with ${plansCount(calendarCount)}. Open it to add them to your calendar.`);
+    const result = await deliverIcs(native, filename, ics, { download: downloadText, ports: browserSharePorts(native) });
+    if (result === "cancelled") return;
+    const verb = result === "shared" ? "Shared" : "Saved";
+    setSaved(`${verb} ${filename} with ${plansCount(calendarCount)}. Open it to add them to your calendar.`);
   }
 
   return (
@@ -75,8 +81,8 @@ export default function Export() {
         <p className="text-sm text-muted">
           {calendarCount === 0 ? "There are no plans to add yet." : `${plansCount(calendarCount)} will be added. Downloading it again later updates them instead of adding copies.`}
         </p>
-        <Button className="w-fit" disabled={calendarCount === 0} onClick={downloadCalendar}>
-          Download calendar file
+        <Button className="w-fit" disabled={calendarCount === 0} onClick={() => void downloadCalendar()}>
+          {native ? "Add to calendar" : "Download calendar file"}
         </Button>
         {saved && (
           <p role="status" className="text-sm">

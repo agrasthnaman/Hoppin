@@ -36,6 +36,15 @@ describe("the short map link function", () => {
     expect(response.status).toBe(403);
   });
 
+  it("answers the native app and says which origin may read the result", async () => {
+    const response = await expandMapLink(
+      ask("https://maps.app.goo.gl/6mNLXEN6ewQYKyRe8", { "sec-fetch-site": "cross-site", origin: "capacitor://localhost" }),
+      async (url) => (url.startsWith("https://maps.app.goo.gl") ? { status: 302, headers: new Headers({ location: full }) } : { status: 200, headers: new Headers() }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("capacitor://localhost");
+  });
+
   it("says so when Google cannot be reached", async () => {
     const response = await expandMapLink(ask("https://maps.app.goo.gl/6mNLXEN6ewQYKyRe8"), async () => {
       throw new Error("down");

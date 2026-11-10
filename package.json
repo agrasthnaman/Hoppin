@@ -12,6 +12,9 @@
     "test": "npm test --workspaces --if-present",
     "typecheck": "tsc -p packages/core --noEmit && tsc -p supabase --noEmit && tsc -p apps/web --noEmit",
     "demo": "npm run dev:demo -w apps/web",
+    "cap:sync": "npm run cap:sync -w @hoppin/web",
+    "cap:ios": "npm run cap:ios -w @hoppin/web",
+    "cap:android": "npm run cap:android -w @hoppin/web",
     "dev": "npm run dev -w apps/web",
     "release": "node scripts/release.mjs"
   },

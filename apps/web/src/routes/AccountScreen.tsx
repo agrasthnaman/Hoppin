@@ -147,6 +147,16 @@ export function AccountScreen() {
         </div>
       </Card>
 
+      <p className="text-sm">
+        <Link to="/privacy" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+          Privacy
+        </Link>
+        {" · "}
+        <Link to="/terms" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+          Terms
+        </Link>
+      </p>
+
       <Sheet
         open={confirming}
         onOpenChange={(open) => !deleting && setConfirming(open)}

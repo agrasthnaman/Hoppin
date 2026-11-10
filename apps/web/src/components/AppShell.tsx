@@ -50,7 +50,7 @@ export function AppShell({ basePath, tripName, status, above, memberWaiting = fa
       <nav
         aria-label="Main"
         className={cn(
-          "fixed inset-x-3 bottom-3 z-20 flex justify-around rounded-full bg-nav px-2 shadow-card",
+          "fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-20 flex justify-around rounded-full bg-nav px-2 shadow-card",
           "md:sticky md:inset-auto md:top-0 md:z-30 md:h-dvh md:w-60 md:shrink-0 md:flex-col md:justify-start md:gap-1 md:self-start md:overflow-y-auto md:rounded-none md:p-4 md:pt-6 md:shadow-none",
       )}
     >
@@ -88,7 +88,7 @@ export function AppShell({ basePath, tripName, status, above, memberWaiting = fa
 
       <div className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-3xl">
-        <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-4 md:px-8">
+        <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] md:px-8">
           <p className="page-title min-w-0 truncate text-4xl">{tripName}</p>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             <button
@@ -124,7 +124,7 @@ export function AppShell({ basePath, tripName, status, above, memberWaiting = fa
           </AnimatePresence>
         </div>
         {above && <div className="flex flex-col gap-2 px-4 pt-2 md:px-8">{above}</div>}
-        <main id="content" className="p-4 pb-28 md:p-8 md:pb-8">
+        <main id="content" className="p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] md:p-8 md:pb-8">
           <m.div key={location.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={springSoft}>
             <Outlet />
           </m.div>
