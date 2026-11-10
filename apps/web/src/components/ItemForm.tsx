@@ -17,6 +17,8 @@ export interface ItemFormProps {
   prefill?: { title?: string; kind?: ItemKind; notes?: string; pollId?: string };
   /** `YYYY-MM-DD` of the day this form was opened from. A new plan starts that day at 09:00, and can be changed. Ignored when editing. */
   defaultDate?: string;
+  /** Inclusive trip days. When set, the start and end must fall on one of them. */
+  dates?: { start: string; end: string } | null;
   /** Time zone the times are entered in (the trip's current location). Editing keeps the item's own zone. */
   tz: string;
   /** Bias place search toward the trip's destination. */
@@ -77,7 +79,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 /** Add or edit a trip item: a booking (flight, stay, transport), a group activity, an optional plan, or a private plan. */
-export function ItemForm({ initial, prefill, defaultDate, tz, near, onSubmit, onCancel }: ItemFormProps) {
+export function ItemForm({ initial, prefill, defaultDate, dates, tz, near, onSubmit, onCancel }: ItemFormProps) {
   const [zoneInput, setZoneInput] = useState(initial?.tz ?? tz);
   // Typed times keep their clock reading when the zone changes: 8:00 in Bali stays 8:00, it just moves to Bali time.
   const zone = isZone(zoneInput) ? zoneInput : (initial?.tz ?? tz);
@@ -106,12 +108,23 @@ export function ItemForm({ initial, prefill, defaultDate, tz, near, onSubmit, on
   // Only a flight or other transport ends somewhere else. Anything else ends where it starts.
   const travels = kind === "flight" || kind === "transport";
   const endZone = travels && isZone(arrivalZone) ? arrivalZone : zone;
+  const tripDays = dates && dates.end >= dates.start ? dates : null;
+  const earliest = tripDays ? `${tripDays.start}T00:00` : undefined;
+  const latest = tripDays ? `${tripDays.end}T23:59` : undefined;
+
+  function outsideTrip(value: string): boolean {
+    if (!tripDays) return false;
+    const day = value.slice(0, 10);
+    return day < tripDays.start || day > tripDays.end;
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
     if (!title.trim()) next.title = "Enter a title";
     if (!starts) next.starts = "Choose when it starts";
+    else if (outsideTrip(starts)) next.starts = "Choose a day of this trip";
+    if (ends && outsideTrip(ends)) next.ends = "Choose a day of this trip";
     if (!isZone(zoneInput)) next.zone = "Enter a time zone like Asia/Makassar";
     if (travels && !isZone(arrivalZone)) next.arrivalZone = "Enter a time zone like Europe/London";
     if (starts && ends && !next.arrivalZone && zonedTimeToInstant(ends, endZone) <= zonedTimeToInstant(starts, zone)) {
@@ -188,10 +201,10 @@ export function ItemForm({ initial, prefill, defaultDate, tz, near, onSubmit, on
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Starts" error={errors.starts}>
-          {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={starts} onChange={(e) => setStarts(e.target.value)} className={inputClass} />}
+          {(p) => <input id={p.id} type="datetime-local" min={earliest} max={latest} aria-invalid={p.invalid} aria-describedby={p.describedBy} value={starts} onChange={(e) => setStarts(e.target.value)} className={inputClass} />}
         </Field>
         <Field label="Ends" error={errors.ends}>
-          {(p) => <input id={p.id} type="datetime-local" aria-invalid={p.invalid} aria-describedby={p.describedBy} value={ends} onChange={(e) => setEnds(e.target.value)} className={inputClass} />}
+          {(p) => <input id={p.id} type="datetime-local" min={earliest} max={latest} aria-invalid={p.invalid} aria-describedby={p.describedBy} value={ends} onChange={(e) => setEnds(e.target.value)} className={inputClass} />}
         </Field>
       </div>
       <p className="-mt-3 text-xs text-muted">

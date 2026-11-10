@@ -134,6 +134,7 @@ export default function Polls() {
           <ItemForm
             tz={planZone(snapshot.items, localDate(clock.now(), clock.timeZone), clock.timeZone)}
             near={snapshot.trip.destination}
+            dates={snapshot.trip.startDate && snapshot.trip.endDate ? { start: snapshot.trip.startDate, end: snapshot.trip.endDate } : null}
             prefill={winnerPlanDefaults(winner.poll, winner.line)}
             onCancel={() => setWinner(null)}
             onSubmit={async (values) => {

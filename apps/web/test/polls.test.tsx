@@ -141,7 +141,16 @@ describe("winner becomes a plan", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add to the plan" });
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Palolem");
     expect(within(dialog).getByLabelText("Notes")).toHaveValue("Which beach?");
-    await userEvent.type(within(dialog).getByLabelText("Starts"), "2026-12-03T10:00");
+    const starts = within(dialog).getByLabelText("Starts");
+    expect(starts).toHaveAttribute("min", "2026-12-01T00:00");
+    expect(starts).toHaveAttribute("max", "2026-12-05T23:59");
+    expect(within(dialog).getByLabelText("Ends")).toHaveAttribute("max", "2026-12-05T23:59");
+    await userEvent.type(starts, "2027-01-01T10:00");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByText("Choose a day of this trip")).toBeInTheDocument();
+    expect(services.actions.createItem).not.toHaveBeenCalled();
+    await userEvent.clear(starts);
+    await userEvent.type(starts, "2026-12-03T10:00");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add to the plan" })).toBeNull());
     // it is saved on this device first and sent at once because there is a connection

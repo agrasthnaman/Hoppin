@@ -128,12 +128,15 @@ export function buildPrintPlan(snapshot: TripSnapshot, opts: PrintOptions): Prin
     return { from, to: s.endsAt ? localDate(Date.parse(s.endsAt), stayZone(s)) : from };
   };
 
-  const dates = [
-    snapshot.trip.startDate,
-    snapshot.trip.endDate,
-    ...plans.map((p) => localDate(Date.parse(p.startsAt), zone)),
-    ...stays.flatMap((s) => Object.values(stayRange(s))),
-  ].filter((d): d is string => !!d);
+  const tripStart = snapshot.trip.startDate;
+  const tripEnd = snapshot.trip.endDate;
+  // A dated trip prints only its own days. A plan saved outside them (a poll winner on a random date) must not
+  // stretch the page across every empty day in between.
+  const bounded = !!(tripStart && tripEnd && tripEnd >= tripStart);
+  const dates = (bounded
+    ? [tripStart, tripEnd]
+    : [...plans.map((p) => localDate(Date.parse(p.startsAt), zone)), ...stays.flatMap((s) => Object.values(stayRange(s)))]
+  ).filter((d): d is string => !!d);
   const first = dates.reduce<string | null>((a, b) => (a === null || b < a ? b : a), null);
   const last = dates.reduce<string | null>((a, b) => (a === null || b > a ? b : a), null);
 

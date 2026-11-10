@@ -85,6 +85,13 @@ describe("buildPrintPlan", () => {
     expect(noOptional).not.toContain("Rafting");
   });
 
+  it("stays inside the trip's days when a plan is dated outside them", () => {
+    const stray = plan({ id: "stray", title: "Poll winner", startsAt: at("2027-06-01", "10:00"), details: { pollId: "p1" } });
+    const days = buildPrintPlan({ ...trip, items: [...trip.items, stray] }, opts()).days;
+    expect(days.map((d) => d.date)).toEqual(["2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31"]);
+    expect(days.flatMap((d) => d.plans.map((p) => p.title))).not.toContain("Poll winner");
+  });
+
   it("covers plans outside the trip's dates, and a trip with no dates", () => {
     const early = plan({ id: "early", title: "Visa run", startsAt: at("2026-03-26", "10:00") });
     const days = buildPrintPlan({ ...trip, trip: { ...trip.trip, startDate: null, endDate: null }, items: [early, temple] }, opts()).days;
