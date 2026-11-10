@@ -75,6 +75,8 @@ export default defineConfig({
     }),
   ],
   test: {
+    // The bot check is off in tests, whatever is in .env.local.
+    env: { VITE_TURNSTILE_SITE_KEY: "" },
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
     css: false,
