@@ -4,6 +4,7 @@
 // Secrets (set as function secrets, never in the repo):
 //   DIGEST_SECRET  shared secret the caller must send in the x-digest-secret header
 //   RESEND_API_KEY Resend API key; without it digests are still saved for the app, and no email is sent
+//   FCM_SERVICE_ACCOUNT  Firebase service-account JSON; without it no phone notification is sent
 //   DIGEST_FROM    sender, e.g. "Hoppin <updates@hoppinclub.com>" (a domain verified in Resend)
 //   SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided to every Edge Function by Supabase
 //   SITE_URL       optional, defaults to https://hoppinclub.com
@@ -11,7 +12,8 @@
 // Deploy with --no-verify-jwt: the caller is the database itself and proves who it is with DIGEST_SECRET.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { authorized } from "../drain-signup-queue/drain.ts";
-import { sendDigests, WINDOW_MS, type Email, type TripBatch } from "./run.ts";
+import { fcmAccessToken, postFcm, readServiceAccount } from "../send-push/fcm.ts";
+import { sendDigests, WINDOW_MS, type Email, type PushTarget, type TripBatch } from "./run.ts";
 
 const MAX_TRIPS = 50;
 const MAX_ENTRIES = 500;
@@ -26,6 +28,7 @@ Deno.serve(async (request: Request) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return new Response("Not configured", { status: 500 });
   const resendKey = Deno.env.get("RESEND_API_KEY");
+  const fcmAccount = readServiceAccount(Deno.env.get("FCM_SERVICE_ACCOUNT") ?? "");
   const from = Deno.env.get("DIGEST_FROM") ?? "Hoppin <updates@hoppinclub.com>";
   const site = (Deno.env.get("SITE_URL") ?? "https://hoppinclub.com").replace(/\/$/, "");
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -52,6 +55,27 @@ Deno.serve(async (request: Request) => {
         if (error) throw new Error("record failed");
         return data === true;
       },
+      pushTargets: fcmAccount
+        ? async (tripId) => {
+            const { data, error } = await admin.rpc("push_targets", { p_trip: tripId });
+            if (error) throw new Error("push targets failed");
+            return (Array.isArray(data) ? data : []).filter((row): row is PushTarget => {
+              if (typeof row !== "object" || row === null) return false;
+              return "user_id" in row && typeof row.user_id === "string"
+                && "token" in row && typeof row.token === "string"
+                && "platform" in row && (row.platform === "ios" || row.platform === "android");
+            });
+          }
+        : undefined,
+      sendPushes: fcmAccount
+        ? async (notes) => {
+            const access = await fcmAccessToken(fcmAccount, fetch);
+            for (const note of notes) {
+              const response = await postFcm(fcmAccount.project_id, access, note, fetch);
+              if (!response.ok) throw new Error(`fcm ${response.status}`);
+            }
+          }
+        : undefined,
       sendEmails: async (emails: Email[]) => {
         if (!resendKey) return;
         // Resend takes up to 100 emails per batch call.

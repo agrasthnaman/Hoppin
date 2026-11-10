@@ -363,7 +363,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       addGuest: writer.addGuest,
       // In the demo nobody else edits the trip, so there are no updates to show.
       async listUpdates() {
-        return { notifications: [], emailOn: demoEmailUpdates };
+        return { notifications: [], emailOn: demoEmailUpdates, pushOn: false };
       },
       async unreadUpdates() {
         return 0;
@@ -372,6 +372,9 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       async setEmailUpdates(_tripId, on) {
         demoEmailUpdates = on;
       },
+      async setPushUpdates() {},
+      async savePushToken() {},
+      async forgetPushToken() {},
       async deleteDocument(doc) {
         const t = trips.find((x) => x.documents.some((d) => d.id === doc.id));
         const found = t?.documents.find((d) => d.id === doc.id);

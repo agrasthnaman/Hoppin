@@ -1,5 +1,12 @@
 # Security headers for every page and file (Cloudflare Pages reads this file at deploy time).
 
+# These two files must be real JSON, not the app's HTML fallback.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+
+/.well-known/assetlinks.json
+  Content-Type: application/json
+
 /*
   Strict-Transport-Security: max-age=15552000
   X-Content-Type-Options: nosniff

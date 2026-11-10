@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { Capacitor } from "@capacitor/core";
 import { useServices } from "../app/services";
+import { PushOffer } from "../components/PushOffer";
+import { turnOnPush } from "../lib/push-register";
 import { TripDataProvider } from "../app/trip-data";
 import { useTripRoute } from "../app/useTripRoute";
 import { waitingForOrganizer } from "../app/people";
@@ -62,7 +65,19 @@ export function TripShell() {
         unreadUpdates={unread}
         updatesOpen={updatesOpen}
         onOpenUpdates={() => setUpdatesOpen(true)}
-        above={<NoticeList notices={trip.notices} onDismiss={(id) => void trip.dismissNotice(id)} />}
+        above={
+          <>
+            <PushOffer
+              native={Capacitor.isNativePlatform()}
+              onTurnOn={() => {
+                void turnOnPush((token, platform) => actions.savePushToken(token, platform)).then((token) => {
+                  if (token) return actions.setPushUpdates(trip.tripId, true);
+                });
+              }}
+            />
+            <NoticeList notices={trip.notices} onDismiss={(id) => void trip.dismissNotice(id)} />
+          </>
+        }
       />
       <UpdatesPanel open={updatesOpen} onOpenChange={setUpdatesOpen} />
     </TripDataProvider>

@@ -10,6 +10,8 @@ import { Button } from "../components/ui/Button";
 import { Spinner } from "../components/ui/Spinner";
 import { Card } from "../components/ui/Card";
 import { useOnline } from "../hooks/useOnline";
+import { Capacitor } from "@capacitor/core";
+import { turnOnPush } from "../lib/push-register";
 
 type Load = { status: "loading" } | { status: "failed" } | { status: "ready"; notifications: TripNotification[] };
 
@@ -68,6 +70,9 @@ export default function Updates() {
   const [emailOn, setEmailOn] = useState(true);
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [pushOn, setPushOn] = useState(false);
+  const [savingPush, setSavingPush] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
   const tripId = trip.tripId;
 
   const fetchUpdates = useCallback(async (isCurrent: () => boolean) => {
@@ -77,6 +82,7 @@ export default function Updates() {
       if (!isCurrent()) return;
       setLoad({ status: "ready", notifications: result.notifications });
       setEmailOn(result.emailOn);
+      setPushOn(result.pushOn);
       // "New" stays on screen for this visit; next time these show as read.
       if (result.notifications.some((n) => !n.readAt)) void actions.markUpdatesRead(tripId).catch(() => {});
     } catch {
@@ -92,6 +98,24 @@ export default function Updates() {
       current = false;
     };
   }, [fetchUpdates, online]);
+
+  async function togglePush() {
+    const next = !pushOn;
+    setPushOn(next);
+    setPushError(null);
+    setSavingPush(true);
+    try {
+      await actions.setPushUpdates(tripId, next);
+      if (next && Capacitor.isNativePlatform()) {
+        await turnOnPush((token, platform) => actions.savePushToken(token, platform));
+      }
+    } catch {
+      setPushOn(!next);
+      setPushError("Couldn't save. Check your connection and try again.");
+    } finally {
+      setSavingPush(false);
+    }
+  }
 
   async function toggleEmail() {
     const next = !emailOn;
@@ -136,6 +160,28 @@ export default function Updates() {
         {emailError && (
           <p role="alert" className="text-sm text-danger-fg">
             {emailError}
+          </p>
+        )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={pushOn}
+          aria-describedby="push-updates-help"
+          disabled={!online || savingPush || load.status === "loading"}
+          onClick={() => void togglePush()}
+          className="group mt-2 flex min-h-11 w-full items-center justify-between gap-3 border-t border-line pt-3 text-left font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+        >
+          Phone notifications
+          <span aria-hidden="true" className="relative h-6.5 w-11 shrink-0 rounded-full border border-line bg-raised transition-colors group-aria-checked:border-accent group-aria-checked:bg-accent">
+            <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow-card transition-transform duration-300 group-aria-checked:translate-x-[18px]" />
+          </span>
+        </button>
+        <p id="push-updates-help" className="text-sm text-muted">
+          {pushOn ? "This phone gets a short note when the plan changes. At most every 5 minutes." : "No phone notes for this trip. Updates still show here."}
+        </p>
+        {pushError && (
+          <p role="alert" className="text-sm text-danger-fg">
+            {pushError}
           </p>
         )}
       </Card>

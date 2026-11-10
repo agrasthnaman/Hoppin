@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { placeFromUrl, type Place } from "@hoppin/core";
 import { expandMapLink, isShortMapLink } from "../lib/expand-map-link";
 import { MapPin } from "lucide-react";
@@ -57,7 +58,7 @@ export function PlacePicker({ locationUrl, place, generated, places, near, onPla
     let cancelled = false;
     const timer = setTimeout(() => {
       setOpeningLink(true);
-      expandMapLink(url).then((long) => {
+      expandMapLink(url, Capacitor.isNativePlatform()).then((long) => {
         if (cancelled) return;
         opened.current.add(url);
         setOpeningLink(false);

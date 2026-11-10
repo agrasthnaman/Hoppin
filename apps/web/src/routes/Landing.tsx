@@ -544,6 +544,11 @@ export default function Landing() {
         <footer className="hp-foot" data-silk-anchor>
           <span>hoppin · one shared place for the group trip</span>
           <span>2026</span>
+          <span>
+            <Link to="/privacy">Privacy</Link>
+            {" · "}
+            <Link to="/terms">Terms</Link>
+          </span>
           <a href={supportMailto({ subject: "A question from the Hoppin site" })}>Email support at support@hoppinclub.com</a>
         </footer>
       </section>

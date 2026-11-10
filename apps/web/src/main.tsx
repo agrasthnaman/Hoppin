@@ -1,16 +1,23 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
+import { Capacitor } from "@capacitor/core";
 import { registerSW } from "virtual:pwa-register";
 import { createServices, ServicesProvider, type Services } from "./app/services";
 import { DemoBadge } from "./components/DemoBadge";
 import { createAppRoutes } from "./app/routes";
+import { bootNativeShell, listenForAppLinks } from "./lib/native-boot";
+import { listenForPushOpens } from "./lib/push-register";
+import { shouldRegisterServiceWorker } from "./lib/native-shell";
 import { createSupabaseClient } from "./lib/supabase";
 import { MotionRoot } from "./lib/motion";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import "./styles/tokens.css";
 
-registerSW({ immediate: true }); // installs the service worker (production builds only)
+if (shouldRegisterServiceWorker(Capacitor.isNativePlatform())) {
+  registerSW({ immediate: true }); // website only; the shell ships its own files
+}
+void bootNativeShell();
 
 const root = createRoot(document.getElementById("root")!);
 
@@ -22,6 +29,8 @@ async function start() {
     ? (await import("./demo/demo-services")).createDemoServices()
     : createServices(createSupabaseClient(import.meta.env));
   const router = createBrowserRouter(createAppRoutes());
+  listenForAppLinks((path) => void router.navigate(path));
+  listenForPushOpens((path) => void router.navigate(path));
   root.render(
     <StrictMode>
       <ThemeProvider>

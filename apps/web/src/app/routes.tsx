@@ -8,6 +8,7 @@ import { MoreScreen } from "../routes/MoreScreen";
 import { ConfirmEmail } from "../routes/ConfirmEmail";
 import { ResetPassword } from "../routes/ResetPassword";
 import { RequireSession } from "../routes/RequireSession";
+import { PrivacyPage, TermsPage } from "../routes/Legal";
 import { SignIn } from "../routes/SignIn";
 import { HomeGate, WelcomePage } from "../routes/HomeGate";
 import { TripEntry } from "../routes/TripEntry";
@@ -24,6 +25,8 @@ export function createAppRoutes(): RouteObject[] {
     { path: "/", element: <HomeGate /> },
     { path: "/welcome", element: <WelcomePage /> },
     { path: "/sign-in", element: <SignIn /> },
+    { path: "/privacy", element: <PrivacyPage /> },
+    { path: "/terms", element: <TermsPage /> },
     { path: "/auth/confirm", element: <ConfirmEmail /> },
     { path: "/reset-password", element: <ResetPassword /> },
     { path: "/join/:token", element: <JoinRoute /> },

@@ -6,17 +6,26 @@ export const UPDATES_SHOWN = 50;
 
 type NotificationRow = { id: string; created_at: string; read_at: string | null; changes: NotifiedChange[] };
 
-/** The signed-in person's digests for a trip, newest first, and whether they get them by email. Row-level security limits both to them. */
-export async function listUpdates(client: MoneyClient, tripId: string, userId: string): Promise<{ notifications: TripNotification[]; emailOn: boolean }> {
+function memberFlags(data: unknown): { emailOn: boolean; pushOn: boolean } {
+  if (typeof data !== "object" || data === null) return { emailOn: true, pushOn: false };
+  const emailOn = "email_digest" in data && typeof data.email_digest === "boolean" ? data.email_digest : true;
+  const pushOn = "push_on" in data && typeof data.push_on === "boolean" ? data.push_on : false;
+  return { emailOn, pushOn };
+}
+
+/** The signed-in person's digests for a trip, newest first, and whether they get them by email or on the phone. */
+export async function listUpdates(client: MoneyClient, tripId: string, userId: string): Promise<{ notifications: TripNotification[]; emailOn: boolean; pushOn: boolean }> {
   const [list, member] = await Promise.all([
     client.from("notifications").select("id, created_at, read_at, changes").eq("trip_id", tripId).order("created_at", { ascending: false }).limit(UPDATES_SHOWN),
-    client.from("members").select("email_digest").eq("trip_id", tripId).eq("user_id", userId).maybeSingle(),
+    client.from("members").select("email_digest, push_on").eq("trip_id", tripId).eq("user_id", userId).maybeSingle(),
   ]);
   if (list.error) throw new Error(list.error.message);
   if (member.error) throw new Error(member.error.message);
+  const flags = memberFlags(member.data);
   return {
     notifications: ((list.data ?? []) as NotificationRow[]).map((r) => ({ id: r.id, createdAt: r.created_at, readAt: r.read_at, changes: r.changes ?? [] })),
-    emailOn: (member.data as { email_digest: boolean } | null)?.email_digest ?? true,
+    emailOn: flags.emailOn,
+    pushOn: flags.pushOn,
   };
 }
 
@@ -34,5 +43,10 @@ export async function markUpdatesRead(client: MoneyClient, tripId: string): Prom
 
 export async function setEmailUpdates(client: MoneyClient, tripId: string, on: boolean): Promise<void> {
   const { error } = await client.rpc("set_email_digest", { p_trip: tripId, p_on: on });
+  if (error) throw new Error(error.message);
+}
+
+export async function setPushUpdates(client: MoneyClient, tripId: string, on: boolean): Promise<void> {
+  const { error } = await client.rpc("set_push_updates", { p_trip: tripId, p_on: on });
   if (error) throw new Error(error.message);
 }

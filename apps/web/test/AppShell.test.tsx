@@ -58,7 +58,7 @@ describe("AppShell navigation", () => {
   it("is a floating bar on phones and becomes a sidebar on wide screens", () => {
     setup();
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(nav).toHaveClass("fixed", "bottom-3", "rounded-full"); // a floating pill on phones
+    expect(nav).toHaveClass("fixed", "bottom-[max(0.75rem,env(safe-area-inset-bottom))]", "rounded-full"); // a floating pill, above the home indicator
     expect(nav).toHaveClass("md:sticky", "md:top-0", "md:h-dvh", "md:z-30", "md:flex-col");
   });
 
