@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { downloadBlob } from "../src/lib/download";
 import { loadForPoster, PhotoProblem } from "../src/lib/photo-process";
+import { TEMPLATES } from "../src/poster/registry";
 import { renderPosterBlob } from "../src/poster/render";
 import { fakeServices, renderApp } from "./helpers";
 
@@ -64,7 +65,13 @@ describe("posters studio", () => {
   it("lists every template and filters by photo count and style", async () => {
     await openStudio();
     const list = screen.getByRole("list");
-    expect(within(list).getAllByRole("button")).toHaveLength(14);
+    expect(within(list).getAllByRole("button")).toHaveLength(TEMPLATES.length);
+    expect(TEMPLATES.filter((t) => t.photos === 1)).toHaveLength(6);
+    await userEvent.click(screen.getByRole("button", { name: "1 photo" }));
+    expect(within(list).getAllByRole("button").map((b) => b.textContent)).toEqual(
+      ["Big Polaroid", "Boarding Pass", "Sticky Note", "Cinema Still", "Solo Cover", "Postage Stamp"].map((name) => expect.stringContaining(name)),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Any number" }));
     await userEvent.click(screen.getByRole("button", { name: "8 photos" }));
     expect(within(list).getAllByRole("button").map((b) => b.textContent)).toEqual([expect.stringContaining("Cork Board"), expect.stringContaining("Photo Dump")]);
     await userEvent.click(screen.getByRole("button", { name: "Aesthetic" }));
