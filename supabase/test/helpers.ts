@@ -21,6 +21,13 @@ export const id = {
   bobPassport: "00000000-0000-0000-0000-0000000000c3", // personal document
 } as const;
 
+/** Where the seeded documents' files live: <trip>/<uploader>/<document id>-<file name>, as the app writes them. */
+export const path = {
+  ticket: `${id.trip}/${id.organizer}/${id.ticketDoc}-ticket.pdf`,
+  alicePassport: `${id.trip}/${id.alice}/${id.alicePassport}-passport.pdf`,
+  bobPassport: `${id.trip}/${id.bob}/${id.bobPassport}-passport.pdf`,
+} as const;
+
 const SEED = `
 insert into auth.users (id) values
   ('${id.organizer}'), ('${id.alice}'), ('${id.bob}'), ('${id.pending}'),
@@ -46,9 +53,9 @@ insert into items (id, trip_id, owner_id, kind, visibility, group_item, starts_a
   ('${id.otherTripItem}', '${id.otherTrip}', '${id.otherOrganizer}', 'stay', 'shared', true, '2026-12-05T10:00:00Z', 'Asia/Kolkata', 'Mountain lodge');
 
 insert into documents (id, trip_id, item_id, owner_id, scope, storage_path, kind) values
-  ('${id.ticketDoc}', '${id.trip}', '${id.stay}', '${id.organizer}', 'shared', 'trip/ticket.pdf', 'ticket'),
-  ('${id.alicePassport}', '${id.trip}', null, '${id.alice}', 'personal', 'trip/alice-passport.pdf', 'passport'),
-  ('${id.bobPassport}', '${id.trip}', null, '${id.bob}', 'personal', 'trip/bob-passport.pdf', 'passport');
+  ('${id.ticketDoc}', '${id.trip}', '${id.stay}', '${id.organizer}', 'shared', '${path.ticket}', 'ticket'),
+  ('${id.alicePassport}', '${id.trip}', null, '${id.alice}', 'personal', '${path.alicePassport}', 'passport'),
+  ('${id.bobPassport}', '${id.trip}', null, '${id.bob}', 'personal', '${path.bobPassport}', 'passport');
 `;
 
 /** A fresh database with the schema and a small seeded trip (runs as superuser, so seeding skips the privacy rules). */

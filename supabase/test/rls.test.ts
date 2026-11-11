@@ -244,8 +244,8 @@ describe("documents", () => {
     await expect(
       asUser(db, id.bob, (tx) =>
         tx.query(
-          "insert into documents (trip_id, owner_id, scope, storage_path, kind) values ($1, $2, 'personal', 'x.pdf', 'visa')",
-          [id.trip, id.alice],
+          "insert into documents (trip_id, owner_id, scope, storage_path, kind) values ($1, $2, 'personal', $3, 'visa')",
+          [id.trip, id.alice, `${id.trip}/${id.alice}/x.pdf`],
         ),
       ),
     ).rejects.toThrow();
@@ -263,8 +263,8 @@ describe("documents", () => {
   it("a document cannot point at an item from another trip", async () => {
     await expect(
       db.query(
-        "insert into documents (trip_id, item_id, owner_id, scope, storage_path, kind) values ($1, $2, $3, 'shared', 'x.pdf', 'ticket')",
-        [id.trip, id.otherTripItem, id.organizer],
+        "insert into documents (trip_id, item_id, owner_id, scope, storage_path, kind) values ($1, $2, $3, 'shared', $4, 'ticket')",
+        [id.trip, id.otherTripItem, id.organizer, `${id.trip}/${id.organizer}/x.pdf`],
       ),
     ).rejects.toThrow();
   });
