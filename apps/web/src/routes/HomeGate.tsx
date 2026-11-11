@@ -1,4 +1,5 @@
 import { currentTripId, localDate } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Navigate } from "react-router";
 import { useServices } from "../app/services";
@@ -64,7 +65,8 @@ export function HomeGate() {
   const { sessionClient } = useServices();
   const session = useSession(sessionClient);
   if (session.status === "loading") return <Loading label="Loading" />;
-  if (session.status === "signedOut") return <WelcomePage />;
+  // The installed app is not a marketing page: signed-out people go straight to sign-in.
+  if (session.status === "signedOut") return Capacitor.isNativePlatform() ? <Navigate to="/sign-in" replace /> : <WelcomePage />;
   return (
     <UserContext.Provider value={{ userId: session.userId, email: session.email }}>
       <SignedInHome />

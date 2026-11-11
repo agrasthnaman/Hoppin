@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { Capacitor } from "@capacitor/core";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthForm } from "../src/components/AuthForm";
@@ -115,6 +116,17 @@ describe("the bot check on the sign-in forms", () => {
     await signIn();
     expect(a.signIn).toHaveBeenCalledWith({ email: "neha@example.com", password: "a long enough password" });
     expect(await screen.findByText(/couldn't confirm that you're a person/)).toBeInTheDocument();
+  });
+
+  it("in the installed app the refusal does not talk about refreshing a page", async () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    fake.load.mockRejectedValue(new Error("blocked"));
+    const a = api({ signIn: vi.fn().mockRejectedValue(new AuthError("captcha", "captcha verification process failed")) });
+    show(a, "site-key");
+    await signIn();
+    expect(await screen.findByText(/couldn't verify this device/)).toBeInTheDocument();
+    expect(screen.queryByText(/Refresh the page/)).toBeNull();
+    vi.restoreAllMocks();
   });
 
   it("removes the widget when the form goes away", async () => {

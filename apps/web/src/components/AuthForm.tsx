@@ -1,4 +1,5 @@
 import { MIN_PASSWORD_LENGTH, validatePassword } from "@hoppin/core";
+import { Capacitor } from "@capacitor/core";
 import { useId, useState, type FormEvent } from "react";
 import { AuthError, type AuthApi } from "../lib/auth-api";
 import { inputClass } from "../lib/forms";
@@ -48,6 +49,7 @@ function Field({ label, hint, error, ...input }: { label: string; hint?: string;
 function explain(error: unknown, mode: Mode, purpose: "waitlist" | "trip"): string {
   const code = error instanceof AuthError ? error.code : "other";
   if (code === "invalid-credentials") return "That email and password don't match. Check them and try again, or reset your password.";
+  if (code === "captcha" && Capacitor.isNativePlatform()) return "We couldn't verify this device. Check your connection and try again. If it keeps happening, contact support.";
   if (code === "captcha") return "We couldn't confirm that you're a person. Refresh the page and try again. If it keeps happening, turn off any ad or script blockers for this page.";
   if (code === "rate-limited") return "We're a little busy right now. Nothing is lost. Please try again in about an hour.";
   if (code === "weak-password" && error instanceof Error) return error.message;
