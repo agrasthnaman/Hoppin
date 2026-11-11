@@ -111,6 +111,67 @@ describe("recording digests", () => {
   });
 });
 
+describe("a trip whose digest could not be made", () => {
+  const claimOne = async () => (await asService<{ b: Batch[] }>("select claim_digest_batch(300, 1, 500) as b"))[0]!.b.map((b) => b.trip_id);
+  const defer = (trip: string, from: number) => asService("select defer_digest($1, $2)", [trip, from]);
+  const retry = async (trip: string) =>
+    (
+      await db.query<{ failures: number; minutes: number | null }>(
+        "select failures, round(extract(epoch from retry_at - now()) / 60)::int as minutes from digest_queue where trip_id = $1",
+        [trip],
+      )
+    ).rows[0]!;
+  /** Both trips waiting, Goa's changes the oldest, so Goa is first in line. */
+  async function twoWaiting() {
+    await editStay("A");
+    await age(10);
+    await asUser(db, id.otherOrganizer, (tx) => tx.query("update items set title = 'Lodge' where id = $1", [id.otherTripItem]));
+    await age(6);
+  }
+
+  it("steps out of the way, so the trips behind it are handed out", async () => {
+    await twoWaiting();
+    expect(await claimOne()).toEqual([id.trip]);
+    const [goa] = await claim();
+    await defer(id.trip, goa!.through_id);
+    expect(await claimOne()).toEqual([id.otherTrip]);
+  });
+
+  it("is tried again later, waiting twice as long after each failure, at most a day", async () => {
+    await twoWaiting();
+    const from = (await claim())[0]!.through_id;
+    await defer(id.trip, from);
+    expect(await retry(id.trip)).toEqual({ failures: 1, minutes: 5 });
+    await defer(id.trip, from);
+    expect(await retry(id.trip)).toEqual({ failures: 2, minutes: 10 });
+    await db.exec(`update digest_queue set failures = 1000 where trip_id = '${id.trip}'`);
+    await defer(id.trip, from);
+    expect(await retry(id.trip)).toEqual({ failures: 1001, minutes: 24 * 60 });
+  });
+
+  it("is handed out again once its time comes, and a success clears the failures", async () => {
+    await twoWaiting();
+    const goa = (await claim())[0]!;
+    await defer(id.trip, goa.through_id);
+    await db.exec(`update digest_queue set retry_at = now() - interval '1 second' where trip_id = '${id.trip}'`);
+    expect(await claimOne()).toEqual([id.trip]);
+    expect(await record(id.trip, goa.through_id, goa.entries.at(-1)!.id, [])).toBe(true);
+    expect(await retry(id.trip)).toEqual({ failures: 0, minutes: null });
+  });
+
+  it("is not pushed back by a run that lost the race to another run", async () => {
+    await twoWaiting();
+    const goa = (await claim())[0]!;
+    await record(id.trip, goa.through_id, goa.entries.at(-1)!.id, []);
+    await defer(id.trip, goa.through_id);
+    expect(await retry(id.trip)).toEqual({ failures: 0, minutes: null });
+  });
+
+  it("only the scheduled job can push a trip back", async () => {
+    await expect(asUser(db, id.organizer, (tx) => tx.query(`select defer_digest('${id.trip}', 0)`))).rejects.toThrow(/permission denied/);
+  });
+});
+
 describe("reading notifications", () => {
   beforeEach(async () => {
     await db.exec(`

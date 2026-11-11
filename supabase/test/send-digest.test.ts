@@ -26,6 +26,7 @@ function deps(batches: TripBatch[], over: Partial<SendDeps> = {}) {
   const base = {
     claim: vi.fn<SendDeps["claim"]>(async () => batches),
     record: vi.fn<SendDeps["record"]>(async () => true),
+    defer: vi.fn<SendDeps["defer"]>(async () => {}),
     sendEmails: vi.fn<SendDeps["sendEmails"]>(async () => {}),
     siteUrl: "https://hoppinclub.com",
     log: (line: string) => void lines.push(line),
@@ -60,7 +61,7 @@ describe("sendDigests", () => {
     expect(d.record.mock.calls[0]![4]).toEqual([]);
   });
 
-  it("one trip failing leaves it waiting and the others still go out", async () => {
+  it("one trip failing is put back for later and the others still go out", async () => {
     let first = true;
     const record = vi.fn<SendDeps["record"]>(async () => {
       if (first) {
@@ -71,7 +72,17 @@ describe("sendDigests", () => {
     });
     const { d, lines } = deps([batch(), batch({ trip_id: "manali" })], { record });
     expect(await sendDigests(d)).toMatchObject({ trips: 2, failedTrips: 1, notified: 2 });
+    expect(d.defer.mock.calls).toEqual([["goa", 10]]);
     expect(lines.join("\n")).not.toMatch(/@|Goa|hotel|Alice/); // logs never carry personal details
+  });
+
+  it("a trip that cannot even be put back still does not stop the others", async () => {
+    const record = vi.fn<SendDeps["record"]>(async (tripId) => {
+      if (tripId === "goa") throw new Error("down");
+      return true;
+    });
+    const { d } = deps([batch(), batch({ trip_id: "manali" })], { record, defer: vi.fn<SendDeps["defer"]>(async () => Promise.reject(new Error("down"))) });
+    expect(await sendDigests(d)).toMatchObject({ trips: 2, failedTrips: 1, notified: 2 });
   });
 
   it("a failed email does not undo the saved digests", async () => {
