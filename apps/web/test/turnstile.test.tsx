@@ -66,7 +66,12 @@ describe("the bot check on the sign-in forms", () => {
     expect(fake.options).toMatchObject({ sitekey: "site-key", appearance: "interaction-only" });
     await signIn();
     expect(a.signIn).not.toHaveBeenCalled(); // the check has not finished
-    expect(screen.getByText(/checking that you're a person/)).toBeInTheDocument();
+    const wait = screen.getByText(/checking that you're a person/);
+    expect(wait).toBeInTheDocument();
+    // A wait is not an error: it uses the neutral info style, not the red conflict style.
+    expect(wait.closest("[role]")).toHaveAttribute("role", "status");
+    expect(wait.closest("div")).toHaveClass("bg-info-bg", "text-info-fg");
+    expect(wait.closest("div")).not.toHaveClass("bg-danger-bg");
     give("token-1");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     await waitFor(() => expect(a.signIn).toHaveBeenCalledWith({ email: "neha@example.com", password: "a long enough password", captchaToken: "token-1" }));

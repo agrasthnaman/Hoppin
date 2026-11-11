@@ -102,6 +102,35 @@
 .lp-root .lp-feat.lp-flip .lp-copy { order: 0; }
 }
 
+@media (max-width: 760px) {
+  .lp-root section { padding: 40px 0; }
+  .lp-root .lp-wrap { width: min(var(--maxw), calc(100% - 40px)); }
+  .lp-root h2 { font-size: 32px; }
+  .lp-root .lp-lede { margin-top: 12px; font-size: 17px; }
+  .lp-root .lp-head { margin-bottom: 24px; align-items: flex-start; }
+  .lp-root .lp-pain-grid,
+  .lp-root .lp-ba,
+  .lp-root .lp-feat,
+  .lp-root .lp-steps { grid-template-columns: 1fr; }
+  .lp-root .lp-feat { gap: 20px; padding: 28px 0; }
+  .lp-root .lp-feat h2 { font-size: 28px; }
+  .lp-root .lp-mock { padding: 16px 16px 18px; border-radius: 20px; }
+  .lp-root .lp-slot { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  .lp-root .lp-slot .lp-chip { grid-column: 2; justify-self: start; }
+  .lp-root .lp-ba > div,
+  .lp-root .lp-step,
+  .lp-root .lp-pain-card { padding: 18px; }
+  .lp-root .lp-step::before { margin-bottom: 16px; }
+  .lp-root .lp-steps { margin-top: 24px; }
+  .lp-root .lp-sec-cta {
+    flex-direction: column; align-items: stretch; margin-top: 28px; padding: 16px;
+  }
+  .lp-root .lp-sec-cta .lp-btn,
+  .lp-root .lp-final .lp-btn { justify-content: center; min-height: 52px; width: 100%; box-sizing: border-box; }
+  .lp-root .lp-final .lp-cta-row { flex-direction: column; align-items: stretch; margin-top: 28px; }
+  .lp-root .lp-final h2 { font-size: 36px; }
+}
+
   @media (prefers-reduced-motion: reduce) {
 html { scroll-behavior: auto; }
 .lp-root .lp-btn { transition: none; }

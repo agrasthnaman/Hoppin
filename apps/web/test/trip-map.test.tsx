@@ -165,7 +165,13 @@ describe("trip map", () => {
     expect(play.parentElement?.className ?? "").not.toMatch(/overflow-hidden/);
     await user.click(play);
     expect(screen.getByRole("button", { name: "All days" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Playing the trip" })).toBeDisabled();
+    const pause = screen.getByRole("button", { name: "Pause" });
+    expect(pause).toBeEnabled();
+    await user.click(pause);
+    const resume = screen.getByRole("button", { name: "Resume" });
+    expect(resume).toBeEnabled();
+    await user.click(resume);
+    expect(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
   });
 
   it("has nothing to play when the whole trip has a single stop", () => {

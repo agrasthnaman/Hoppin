@@ -1,4 +1,5 @@
-import { Navigate, type RouteObject } from "react-router";
+import { Navigate, Outlet, type RouteObject } from "react-router";
+import { DemoBadge } from "../components/DemoBadge";
 import { AccountScreen } from "../routes/AccountScreen";
 import { DaysScreen } from "../routes/DaysScreen";
 import { ItemScreen } from "../routes/ItemScreen";
@@ -20,8 +21,20 @@ const lazyPage = (load: () => Promise<{ default: React.ComponentType }>) => ({
   lazy: async () => ({ Component: (await load()).default }),
 });
 
+function DemoFrame() {
+  return (
+    <>
+      {import.meta.env.VITE_DEMO === "true" ? <DemoBadge /> : null}
+      <Outlet />
+    </>
+  );
+}
+
 export function createAppRoutes(): RouteObject[] {
   return [
+    {
+      element: <DemoFrame />,
+      children: [
     { path: "/", element: <HomeGate /> },
     { path: "/welcome", element: <WelcomePage /> },
     { path: "/sign-in", element: <SignIn /> },
@@ -56,6 +69,8 @@ export function createAppRoutes(): RouteObject[] {
           ],
         },
         { path: "/trips/:tripId/print", ...lazyPage(() => import("../routes/PrintPlan")) }, // outside the trip shell: no navigation on paper
+      ],
+    },
       ],
     },
   ];

@@ -3,6 +3,7 @@ import { Camera, type LucideIcon } from "lucide-react";
 import { createRoot, type Root } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { drawnAt, legMs, legsFor, PLAY_DAY_GAP_MS, totalMs, type DrawPace, type LngLat } from "../../lib/map-arc";
+import { tickPlay, type PlayClock } from "../../lib/map-play";
 import { KIND_STYLE } from "../kind";
 import { Banner } from "../ui/Banner";
 import "./map.css";
@@ -56,6 +57,8 @@ export interface MapViewProps {
   tilt?: number;
   /** Raise this number to replay the trip: the days draw one after another and the camera follows from stop to stop. */
   playKey?: number;
+  /** Freeze a replay where it is. The map stays put until this is false again. */
+  paused?: boolean;
   onFailed?: () => void;
 }
 
@@ -189,8 +192,10 @@ export function MapFrame({ online, ...props }: MapViewProps & { online: boolean 
 }
 
 /** OpenFreeMap tiles. This file is the only place that loads maplibre. */
-export function MapView({ points, lines, onSelect, selectedId, height, cooperativeGestures = false, interactive = true, tilt = 0, playKey = 0, onFailed }: MapViewProps) {
+export function MapView({ points, lines, onSelect, selectedId, height, cooperativeGestures = false, interactive = true, tilt = 0, playKey = 0, paused = false, onFailed }: MapViewProps) {
   const host = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const mapRef = useRef<{ easeTo: (options: { center: [number, number]; duration: number }) => void } | null>(null);
   const select = useRef(onSelect);
   const fail = useRef(onFailed);
@@ -211,6 +216,8 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
     const frames: number[] = [];
     const timeouts: number[] = [];
     const still = reducedMotion();
+    // One clock for the route and the camera, so pausing or waiting for tiles stops both.
+    const playClock: PlayClock = { elapsed: 0, flown: 0, holding: false };
     // A replay runs the days one after another. Each day starts when the one before it has finished.
     const replay = playKey > 0 && !still;
     const pace: DrawPace = replay ? "play" : "draw";
@@ -275,7 +282,7 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
           const began = performance.now() + (dayStart.get(line.day ?? 0) ?? 0);
           const step = () => {
             if (cancelled) return;
-            const elapsed = performance.now() - began;
+            const elapsed = replay ? playClock.elapsed - (dayStart.get(line.day ?? 0) ?? 0) : performance.now() - began;
             if (elapsed < 0) {
               frames.push(requestAnimationFrame(step));
               return;
@@ -307,17 +314,7 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
       });
       const stopsPerDay = new Map<number, number>();
       for (const point of pins) if (point.kind === "stop") stopsPerDay.set(point.day, (stopsPerDay.get(point.day) ?? 0) + 1);
-      if (replay && pins.length > 1) {
-        const finish = [...dayStart.entries()].reduce((latest, [, start]) => Math.max(latest, start), 0);
-        const total = lines.reduce((sum, line) => sum + totalMs(legsFor(line.coords), "play") + PLAY_DAY_GAP_MS, 0);
-        timeouts.push(
-          window.setTimeout(() => {
-            const bounds = new ml.LngLatBounds();
-            for (const point of pins) bounds.extend([point.lon, point.lat]);
-            (next as unknown as { fitBounds?: (b: unknown, o: unknown) => void }).fitBounds?.(bounds, { padding: fitPadding(interactive, typeof height === "number" ? height : null), maxZoom: 15, duration: 900 });
-          }, Math.max(total, finish) + 600),
-        );
-      }
+      const cameraStops: { at: number; lon: number; lat: number; wrap: HTMLElement }[] = [];
       for (const point of pins) {
         const wrap = document.createElement("div");
         wrap.className = "map-marker";
@@ -331,19 +328,7 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
         // Each pin lands as the route reaches it.
         const hops = Math.max(0, (stopsPerDay.get(point.day) ?? 1) - 1);
         const delay = still || point.kind !== "stop" ? 0 : Math.max(0, (point.order ?? 1) - 1) * legMs(hops, pace) + (dayStart.get(point.day) ?? 0);
-        if (replay && point.kind === "stop") {
-          // The camera moves to the stop and leaves its card open, so the place can be read.
-          timeouts.push(window.setTimeout(() => {
-            container.querySelectorAll(".map-marker").forEach((node) => node.removeAttribute("data-open"));
-            wrap.setAttribute("data-open", "true");
-            (next as unknown as { easeTo?: (o: unknown) => void }).easeTo?.({
-              center: [point.lon, point.lat],
-              zoom: 12.5,
-              duration: 1400,
-              padding: { top: 140, bottom: 160, left: 48, right: 48 },
-            });
-          }, delay));
-        }
+        if (replay && point.kind === "stop") cameraStops.push({ at: delay, lon: point.lon, lat: point.lat, wrap });
         button.style.animationDelay = `${Math.round(delay)}ms`;
         if (point.id === current) {
           button.setAttribute("aria-current", "true");
@@ -372,6 +357,67 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
         }
         if (interactive) wrap.append(pinCard(point));
         new ml.Marker({ element: wrap, anchor: "bottom" }).setLngLat([point.lon, point.lat]).addTo(next);
+      }
+      cameraStops.sort((a, b) => a.at - b.at);
+      if (replay && cameraStops.length > 0) {
+        const mapApi = next as unknown as {
+          easeTo?: (options: unknown) => void;
+          once?: (event: string, cb: () => void) => void;
+          areTilesLoaded?: () => boolean;
+          stop?: () => void;
+          fitBounds?: (bounds: unknown, options: unknown) => void;
+        };
+        const canWait = typeof mapApi.once === "function" && typeof mapApi.areTilesLoaded === "function";
+        let tilesSettled = !canWait || mapApi.areTilesLoaded?.() === true;
+        let playLast = performance.now();
+        let wasPaused = false;
+        const settle = () => {
+          tilesSettled = true;
+          playLast = performance.now();
+        };
+        const waitForTiles = () => {
+          if (!canWait) return;
+          tilesSettled = false;
+          mapApi.once?.("idle", settle);
+          // A tile that never arrives should not freeze the trip.
+          timeouts.push(window.setTimeout(settle, 4000));
+        };
+        if (canWait && !tilesSettled) waitForTiles();
+        const total = lines.reduce((sum, line) => sum + totalMs(legsFor(line.coords), "play") + PLAY_DAY_GAP_MS, 0);
+        const loop = () => {
+          if (cancelled) return;
+          const now = performance.now();
+          const dt = Math.min(100, now - playLast);
+          playLast = now;
+          const pausedNow = pausedRef.current;
+          if (pausedNow && !wasPaused) mapApi.stop?.();
+          wasPaused = pausedNow;
+          const tick = tickPlay(playClock, dt, pausedNow, tilesSettled, cameraStops);
+          playClock.elapsed = tick.clock.elapsed;
+          playClock.flown = tick.clock.flown;
+          playClock.holding = tick.clock.holding;
+          const stop = tick.flyTo == null ? undefined : cameraStops[tick.flyTo];
+          if (stop) {
+            container.querySelectorAll(".map-marker").forEach((node) => node.removeAttribute("data-open"));
+            stop.wrap.setAttribute("data-open", "true");
+            mapApi.easeTo?.({
+              center: [stop.lon, stop.lat],
+              zoom: 12.5,
+              duration: 1400,
+              padding: { top: 140, bottom: 160, left: 48, right: 48 },
+            });
+            if (canWait) waitForTiles();
+          }
+          const finished = playClock.flown >= cameraStops.length && !playClock.holding && playClock.elapsed >= total;
+          if (finished) {
+            const bounds = new ml.LngLatBounds();
+            for (const point of pins) bounds.extend([point.lon, point.lat]);
+            mapApi.fitBounds?.(bounds, { padding: fitPadding(interactive, typeof height === "number" ? height : null), maxZoom: 15, duration: 900 });
+            return;
+          }
+          frames.push(requestAnimationFrame(loop));
+        };
+        frames.push(requestAnimationFrame(loop));
       }
     })().catch(() => {
       window.clearTimeout(timer);
@@ -409,5 +455,5 @@ export function MapView({ points, lines, onSelect, selectedId, height, cooperati
   }, [selectedId]);
 
   const heightCss = typeof height === "number" ? `${height}px` : height;
-  return <div ref={host} role="region" aria-label="Map" className="w-full overflow-hidden rounded-card" style={{ height: heightCss }} />;
+  return <div ref={host} role="region" aria-label="Map" className={`w-full overflow-hidden rounded-card${paused ? " map-paused" : ""}`} style={{ height: heightCss }} />;
 }

@@ -1,6 +1,6 @@
 import { formatTime, untilLabel, type DayStops, type Item, type Stop } from "@hoppin/core";
 import { Capacitor } from "@capacitor/core";
-import { Navigation, Play } from "lucide-react";
+import { Navigation, Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { cn } from "../../lib/cn";
@@ -59,8 +59,9 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
   const [opened, setOpened] = useState<string | null>(null);
   // "Play trip": every day's route draws one after another, with the camera following.
   const [playKey, setPlayKey] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [play, setPlay] = useState<"idle" | "playing" | "paused">("idle");
   const playTimer = useRef<number | null>(null);
+  const playEnds = useRef(0);
   useEffect(() => () => void (playTimer.current !== null && window.clearTimeout(playTimer.current)), []);
   const shown = which === "all" ? days : days.filter((day) => day.date === which);
   const indexed = useMemo(
@@ -72,7 +73,16 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
   const lines = drawn.lines;
   const playable = days.reduce((total, day) => total + day.stops.length, 0) >= 2;
   const playMs = days.reduce((total, day) => total + (day.stops.length >= 2 ? totalMs(legsFor(day.stops.map((stop) => [stop.place.lon, stop.place.lat])), "play") + PLAY_DAY_GAP_MS : 0), 0) + 1600;
-  function play() {
+  function stopPlayTimer() {
+    if (playTimer.current !== null) window.clearTimeout(playTimer.current);
+    playTimer.current = null;
+  }
+  function finishAfter(ms: number) {
+    stopPlayTimer();
+    playEnds.current = Date.now() + ms;
+    playTimer.current = window.setTimeout(() => setPlay("idle"), ms);
+  }
+  function playTrip() {
     void hapticTap(Capacitor.isNativePlatform(), async () => {
       const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
       await Haptics.impact({ style: ImpactStyle.Light });
@@ -81,9 +91,16 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
     setSelected(null);
     setOpened(null);
     setPlayKey((key) => key + 1);
-    setPlaying(true);
-    if (playTimer.current !== null) window.clearTimeout(playTimer.current);
-    playTimer.current = window.setTimeout(() => setPlaying(false), playMs);
+    setPlay("playing");
+    finishAfter(playMs);
+  }
+  function pauseTrip() {
+    stopPlayTimer();
+    setPlay("paused");
+  }
+  function resumeTrip() {
+    setPlay("playing");
+    finishAfter(Math.max(0, playEnds.current - Date.now()));
   }
   const upcoming = now ? upNext(days, now) : null;
   const placed = days.some((day) => day.stops.length > 0 || day.stays.length > 0);
@@ -122,18 +139,17 @@ export function TripMap({ days, items, tripId, online, now, today, initialDay }:
       {online && playable && points.length > 0 && (
         <button
           type="button"
-          onClick={play}
-          disabled={playing}
-          aria-label={playing ? "Playing the trip" : "Play the trip"}
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full bg-surface px-4 text-sm font-bold text-fg shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-80"
+          onClick={play === "playing" ? pauseTrip : play === "paused" ? resumeTrip : playTrip}
+          aria-label={play === "playing" ? "Pause" : play === "paused" ? "Resume" : "Play the trip"}
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full bg-surface px-4 text-sm font-bold text-fg shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          <Play aria-hidden="true" className="size-4 fill-current" />
-          {playing ? "Playing…" : "Play trip"}
+          {play === "playing" ? <Pause aria-hidden="true" className="size-4 fill-current" /> : <Play aria-hidden="true" className="size-4 fill-current" />}
+          {play === "playing" ? "Pause" : play === "paused" ? "Resume" : "Play trip"}
         </button>
       )}
       {points.length > 0 && (
         <div className="relative overflow-hidden rounded-card shadow-card">
-          <MapFrame points={points} lines={lines} height="60dvh" tilt={30} playKey={playKey} online={online} selectedId={selected} onSelect={setSelected} />
+          <MapFrame points={points} lines={lines} height="60dvh" tilt={30} playKey={playKey} paused={play === "paused"} online={online} selectedId={selected} onSelect={setSelected} />
         </div>
       )}
       {upcoming && (

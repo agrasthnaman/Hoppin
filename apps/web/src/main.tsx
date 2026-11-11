@@ -4,7 +4,6 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { Capacitor } from "@capacitor/core";
 import { registerSW } from "virtual:pwa-register";
 import { createServices, ServicesProvider, type Services } from "./app/services";
-import { DemoBadge } from "./components/DemoBadge";
 import { createAppRoutes } from "./app/routes";
 import { bootNativeShell, listenForAppLinks } from "./lib/native-boot";
 import { listenForPushOpens } from "./lib/push-register";
@@ -36,7 +35,6 @@ async function start() {
       <ThemeProvider>
         <MotionRoot>
           <ServicesProvider services={services}>
-            {demo && <DemoBadge />}
             <RouterProvider router={router} />
           </ServicesProvider>
         </MotionRoot>

@@ -80,6 +80,21 @@ function OpenCta({ line, to, label }: { line: string; to: string; label: string 
   );
 }
 
+/** A phone-width window. The collage is a desktop poster; a phone gets a single app column. */
+function usePhoneFrame(): boolean {
+  const query = "(max-width: 760px)";
+  const [phone, setPhone] = useState(() => typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(query);
+    const sync = () => setPhone(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return phone;
+}
+
 /** Phones that ask for less motion, or cannot watch scrolling, get the page with no entrance animation. */
 function canReveal(): boolean {
   const calm = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -127,9 +142,10 @@ function RiseItem({ className, children }: { className?: string; children: React
 export default function Landing() {
   const enter = appHref();
   const enterLabel = import.meta.env.VITE_DEMO === "true" ? "Open the sample trip" : "Open Hoppin";
+  const phone = usePhoneFrame();
 
   return (
-    <main className="hp-root">
+    <main className={phone ? "hp-root hp-phone" : "hp-root"}>
       <style>{HP_CSS}</style>
 
       <header className="hp-nav">
@@ -553,7 +569,7 @@ export default function Landing() {
         </footer>
       </section>
 
-      <SilkSpiderCursor bounceColor="#0d22ee" shadowColor="#000a3a" seedWebs={14} zIndex={50} />
+      {phone ? null : <SilkSpiderCursor className="hp-spider" bounceColor="#0d22ee" shadowColor="#000a3a" seedWebs={14} zIndex={50} />}
     </main>
   );
 }
@@ -688,18 +704,48 @@ const HP_CSS = `
 .hp-foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 90px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.25); font-size: 13px; font-weight: 300; opacity: 0.85; }
 .hp-foot a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 760px) {
-  .hp-links { display: none; }
-  .hp-hero { height: max(100svh, 760px); }
-  .hp-word { top: 12%; font-size: 22vw; }
-  .hp-coast { left: 8%; top: 16%; width: 82px; }
-  .hp-today { left: 5%; top: auto; bottom: 48%; width: 240px; }
-  .hp-copy { max-width: 90vw; bottom: 16%; }
-  .hp-road-wrap { left: 50%; transform: translateX(-50%); bottom: -2%; }
-  .hp-road { width: 120px; }
-  .hp-ticket { right: -8%; top: 24%; width: 170px; transform: rotate(9deg) scale(0.78); }
-  .hp-flatlay { right: 6%; top: 46%; width: 74px; }
-  .hp-note, .hp-hint { display: none; }
-  .hp-foot { flex-direction: column; }
+  .hp-spider { display: none; }
+  .hp-nav {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 6;
+    padding: max(10px, env(safe-area-inset-top)) 16px 0;
+    background: linear-gradient(#0d22ee 70%, transparent);
+  }
+  .hp-links { display: flex; }
+  .hp-links a:not(:last-child) { display: none; }
+  .hp-links a:last-child {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 40px; padding: 0 14px; border-radius: 999px;
+    background: #f6f3ec; color: #0d22ee !important; font-size: 15px; font-weight: 600;
+  }
+  .hp-logo { min-height: 44px; font-size: 18px; }
+  .hp-hero { height: 100svh; margin-top: 0; overflow: hidden; }
+  .hp-word {
+    left: 50%; top: max(62px, calc(env(safe-area-inset-top) + 42px));
+    transform: translateX(-50%); font-size: min(28vw, 12svh);
+  }
+  .hp-coast { left: 16px; top: 23%; width: 64px; }
+  .hp-today { left: 16px; bottom: 248px; width: min(210px, 56vw); padding: 10px 12px 8px; }
+  .hp-today-meta b { font-size: 13px; }
+  .hp-bar { margin-top: 8px; }
+  .hp-by { margin-top: 4px; }
+  .hp-controls { gap: 16px; margin-top: 2px; }
+  .hp-controls button { width: 36px; height: 36px; }
+  .hp-controls .hp-play { width: 42px; height: 42px; }
+  .hp-copy {
+    left: 16px; right: 16px; bottom: max(46px, env(safe-area-inset-bottom));
+    max-width: none; z-index: 4;
+  }
+  .hp-copy h2 { font-size: clamp(30px, 8.4vw, 42px); }
+  .hp-copy p { margin-top: 6px; font-size: 14px; line-height: 1.35; max-width: 36ch; }
+  .hp-hint, .hp-note, .hp-arrow { display: none; }
+  .hp-open { display: inline-flex; align-items: center; min-height: 44px; margin-top: 10px; padding: 0 16px; }
+  .hp-road-wrap { left: auto; right: 16px; bottom: 260px; transform: none; }
+  .hp-road { width: 78px; }
+  .hp-ticket { right: 12px; top: 24%; width: 150px; transform: rotate(7deg); }
+  .hp-flatlay { right: 10px; top: 54%; width: 42px; }
+  .hp-end { padding: 0 20px max(28px, env(safe-area-inset-bottom)); }
+  .hp-foot { flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 28px; }
+  .hp-foot a { display: inline-flex; min-height: 44px; align-items: center; }
 }
 @media (prefers-reduced-motion: reduce) {
   .hp-fill.run, .hp-live.on i { animation: none; }

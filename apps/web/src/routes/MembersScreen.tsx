@@ -76,13 +76,15 @@ export function MembersScreen() {
   const off = !online;
 
   const row = (member: MemberInfo, actionsNode?: React.ReactNode, subtitle?: string) => (
-    <li key={member.userId} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3">
-      <Avatar name={member.displayName} color={people[member.userId]?.color ?? "#475569"} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{member.displayName}</p>
-        {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
+    <li key={member.userId} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-3 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar name={member.displayName} color={people[member.userId]?.color ?? "#475569"} />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{member.displayName}</p>
+          {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
+        </div>
       </div>
-      {actionsNode}
+      {actionsNode && <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:max-w-[60%] sm:justify-end">{actionsNode}</div>}
     </li>
   );
 
@@ -126,7 +128,7 @@ export function MembersScreen() {
                   Make member
                 </Button>
               ) : isOrganizer && !organizer ? (
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex w-full flex-col gap-2 sm:items-end">
                   <label className="flex items-center gap-2 text-xs text-muted">
                     <input
                       type="checkbox"
@@ -138,7 +140,7 @@ export function MembersScreen() {
                     />
                     <span aria-hidden="true">Can edit others' plans</span>
                   </label>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     <Button variant="ghost" disabled={off} aria-label={`Make ${member.displayName} an organizer`} onClick={() => void run(() => actions.setMemberRole(trip.tripId, member.userId, "organizer"))}>
                       Make organizer
                     </Button>

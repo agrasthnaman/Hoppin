@@ -44,6 +44,23 @@ describe("scroll motion on the home page", () => {
     expect(days).not.toBe(bookings);
   });
 
+  it("uses a single app column on a phone, without the desktop spider", () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    renderLanding();
+    expect(document.querySelector("main")).toHaveClass("hp-phone");
+    expect(document.querySelector(".hp-spider")).toBeNull();
+    expect(screen.getByRole("heading", { name: "hoppin" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Open Hoppin" }).length).toBeGreaterThan(0);
+  });
+
   it("shows a feature straight away when the phone asks for less motion", () => {
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query.includes("reduce"),

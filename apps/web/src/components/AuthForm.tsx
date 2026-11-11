@@ -9,6 +9,14 @@ import { Button } from "./ui/Button";
 
 export type AuthFormApi = Pick<AuthApi, "signUp" | "signIn" | "resendConfirmation" | "requestPasswordReset" | "queueStatus" | "joinQueue">;
 
+/** Not an error: the bot check is still finishing, so the person only needs to wait a moment. */
+const CHECKING = "One moment, we're checking that you're a person. Try again in a few seconds.";
+
+/** Errors use the conflict style. The wait message uses the neutral info style, so it is not red on red in dark mode. */
+function FailureBanner({ text }: { text: string }) {
+  return <Banner kind={text === CHECKING ? "info" : "conflict"} text={text} />;
+}
+
 type Mode = "signin" | "signup" | "forgot";
 type Sent = { kind: "confirm" | "reset" | "exists" | "queued" | "inqueue" | "full"; email: string } | null;
 
@@ -117,7 +125,7 @@ export function AuthForm({
     setErrors(next);
     setFailure(null);
     if (next.name || next.email || next.password) return;
-    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    if (checking) return setFailure(CHECKING);
     const captchaToken = takeCaptcha();
     setBusy(true);
     try {
@@ -157,7 +165,7 @@ export function AuthForm({
 
   async function sendReset() {
     if (!sent) return;
-    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    if (checking) return setFailure(CHECKING);
     const captchaToken = takeCaptcha();
     setBusy(true);
     setFailure(null);
@@ -173,7 +181,7 @@ export function AuthForm({
 
   async function resend() {
     if (!sent) return;
-    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    if (checking) return setFailure(CHECKING);
     const captchaToken = takeCaptcha();
     setBusy(true);
     setFailure(null);
@@ -233,7 +241,7 @@ export function AuthForm({
           <p className="text-muted">
             {sent.email} is already registered, so there's no new email to wait for. Sign in with your password. If you've forgotten it, we can email you a link to choose a new one.
           </p>
-          {failure && <Banner kind="conflict" text={failure} />}
+          {failure && <FailureBanner text={failure} />}
           <Button type="button" onClick={() => { setSent(null); setResent(false); setEmail(sent.email); switchTo("signin"); }}>
             Sign in
           </Button>
@@ -251,7 +259,7 @@ export function AuthForm({
           {resent && (
             <p role="status">{purpose === "waitlist" ? "A fresh invite is on its way. The old one no longer works." : "A new link is on its way. The old one no longer works."}</p>
           )}
-          {failure && <Banner kind="conflict" text={failure} />}
+          {failure && <FailureBanner text={failure} />}
           <Button type="button" variant="ghost" disabled={busy} onClick={resend}>
             {purpose === "waitlist" ? "Send another invite" : "Send a new link"}
           </Button>
@@ -281,7 +289,7 @@ export function AuthForm({
           hint={mode === "signup" ? `At least ${MIN_PASSWORD_LENGTH} characters. A few words in a row works well.` : undefined}
         />
       )}
-      {failure && <Banner kind="conflict" text={failure} />}
+      {failure && <FailureBanner text={failure} />}
       <Button type="submit" busy={busy}>
         {mode === "signup" ? joinLabel : mode === "forgot" ? "Email me a reset link" : "Sign in"}
       </Button>

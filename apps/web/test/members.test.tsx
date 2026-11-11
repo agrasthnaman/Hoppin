@@ -61,6 +61,16 @@ describe("members screen: the organizer", () => {
     await waitFor(() => expect(services.actions.setEditRights).toHaveBeenCalledWith("t1", "riya", true));
   });
 
+  it("keeps a member's name on its own line, above the organizer controls", async () => {
+    await open();
+    const name = await screen.findByText("Riya");
+    const row = name.closest("li");
+    expect(row?.className).toMatch(/flex-col/);
+    const nameRow = name.closest("div");
+    expect(nameRow?.className).toMatch(/min-w-0/);
+    expect(within(row as HTMLElement).getByRole("button", { name: "Make Riya an organizer" })).toBeInTheDocument();
+  });
+
   it("shows the organizer themselves without controls", async () => {
     await open();
     expect(await screen.findByText("Aman")).toBeInTheDocument();
