@@ -86,6 +86,23 @@ describe("the bot check on the sign-in forms", () => {
     await waitFor(() => expect(a.signUp).toHaveBeenCalledWith(expect.objectContaining({ captchaToken: "t-signup" })));
   });
 
+  it("saving a spot in the queue uses a fresh token of its own, not the one the sign-up used", async () => {
+    const a = api({ signUp: vi.fn().mockRejectedValue(new AuthError("rate-limited", "email rate limit exceeded")) });
+    show(a, "site-key");
+    await waitFor(() => expect(fake.render).toHaveBeenCalled());
+    give("t-signup");
+    await userEvent.click(screen.getByRole("button", { name: /New here/ }));
+    await userEvent.type(screen.getByLabelText("Your name"), "Neha");
+    await userEvent.type(screen.getByLabelText("Email"), "neha@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: /Join the waitlist|Create account/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Save my spot" }));
+    expect(a.joinQueue).not.toHaveBeenCalled(); // the sign-up's token is used up; wait for the next
+    give("t-queue");
+    await userEvent.click(screen.getByRole("button", { name: "Save my spot" }));
+    await waitFor(() => expect(a.joinQueue).toHaveBeenCalledWith({ email: "neha@example.com", name: "Neha", captchaToken: "t-queue" }));
+  });
+
   it("stops waiting if the check cannot run (a blocked script), and explains a refusal in plain words", async () => {
     fake.load.mockRejectedValue(new Error("blocked"));
     const a = api({ signIn: vi.fn().mockRejectedValue(new AuthError("captcha", "captcha verification process failed")) });

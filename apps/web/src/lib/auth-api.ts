@@ -21,6 +21,10 @@ export interface PasswordClient {
   };
   /** Calls a database function (used for the sign-up queue). */
   rpc(fn: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: ServerError }>;
+  /** Calls an Edge Function. A refusal carries the HTTP response as `context`. */
+  functions: {
+    invoke(name: string, options: { body: Record<string, unknown> }): PromiseLike<{ data: unknown; error: { message: string; context?: { status?: number } } | null }>;
+  };
 }
 
 /** Where an email stands in the sign-up queue (see docs/signup-queue.md). */
@@ -94,10 +98,15 @@ export function createAuthApi(client: PasswordClient) {
       return queueAnswer(data, QUEUE_STATUS);
     },
 
-    /** Saves a spot in the queue. Only the email and name are sent, never the password. Safe to repeat. */
-    async joinQueue(args: { email: string; name: string }): Promise<QueueJoin> {
-      const { data, error } = await client.rpc("join_signup_queue", { p_email: args.email, p_name: args.name });
-      if (error) throw toAuthError(error);
+    /**
+     * Saves a spot in the queue. Only the email, name and a bot-check token are sent, never the password. The server
+     * refuses without a good token. Safe to repeat.
+     */
+    async joinQueue(args: { email: string; name: string; captchaToken?: string }): Promise<QueueJoin> {
+      const { data, error } = await client.functions.invoke("join-signup-queue", {
+        body: { email: args.email, name: args.name, ...(args.captchaToken ? { captchaToken: args.captchaToken } : {}) },
+      });
+      if (error) throw new AuthError(error.context?.status === 403 ? "captcha" : "other", error.message);
       return queueAnswer(data, QUEUE_JOIN);
     },
 

@@ -160,10 +160,10 @@ if (doTemplates) {
   run("node", ["scripts/supabase-email.mjs", "templates"]);
 }
 if (doFunctions) {
-  step("Sign-up queue function");
+  step("Sign-up queue functions");
   const cli = spawnSync("supabase", ["--version"], { encoding: "utf8" });
-  if (cli.status !== 0) say("The Supabase command-line tool is not installed, so the function was not deployed. See docs/signup-queue.md.");
-  else run("supabase", ["functions", "deploy", "drain-signup-queue", "--no-verify-jwt", "--project-ref", env.SUPABASE_PROJECT_REF]);
+  if (cli.status !== 0) say("The Supabase command-line tool is not installed, so the functions were not deployed. See docs/signup-queue.md.");
+  else for (const fn of ["drain-signup-queue", "join-signup-queue"]) run("supabase", ["functions", "deploy", fn, "--no-verify-jwt", "--project-ref", env.SUPABASE_PROJECT_REF]);
 }
 
 // ---- 5. website

@@ -20,6 +20,11 @@ async function submitSignUp() {
   await userEvent.click(screen.getByRole("button", { name: "Join the waitlist" }));
 }
 
+async function saveSpot() {
+  expect(await screen.findByText("We're a little busy")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Save my spot" }));
+}
+
 const noErrorWords = () => expect(document.body.textContent ?? "").not.toMatch(/\b(error|failed|invalid|exception)\b/i);
 
 describe("sign-up when the email limit is reached (the overflow queue)", () => {
@@ -32,10 +37,22 @@ describe("sign-up when the email limit is reached (the overflow queue)", () => {
     expect(services.auth.joinQueue).not.toHaveBeenCalled();
   });
 
-  it("over the limit: saves a spot with the email and name only, never the password, and says so calmly", async () => {
+  it("over the limit: offers to save a spot, and nobody is queued until they choose to", async () => {
     const services = await openSignUp();
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "email rate limit exceeded"));
     await submitSignUp();
+    expect(await screen.findByText("We're a little busy")).toBeInTheDocument();
+    expect(screen.getByText("We can't send emails for a little while. Save your spot and we'll send your sign-in link to Rahi@Example.com within the hour.")).toBeInTheDocument();
+    expect(services.auth.joinQueue).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Save my spot", "Back to sign in"]);
+    noErrorWords();
+  });
+
+  it("saving the spot sends the email and name only, never the password, and says so calmly", async () => {
+    const services = await openSignUp();
+    services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "email rate limit exceeded"));
+    await submitSignUp();
+    await saveSpot();
     expect(await screen.findByText("You're in the queue")).toBeInTheDocument();
     expect(services.auth.joinQueue).toHaveBeenCalledTimes(1);
     expect(services.auth.joinQueue).toHaveBeenCalledWith({ email: "Rahi@Example.com", name: "Rahi" });
@@ -82,6 +99,7 @@ describe("sign-up when the email limit is reached (the overflow queue)", () => {
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "x"));
     services.auth.joinQueue.mockResolvedValueOnce("already_queued");
     await submitSignUp();
+    await saveSpot();
     expect(await screen.findByText("You're already in the queue")).toBeInTheDocument();
   });
 
@@ -90,6 +108,7 @@ describe("sign-up when the email limit is reached (the overflow queue)", () => {
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "x"));
     services.auth.joinQueue.mockResolvedValueOnce("full");
     await submitSignUp();
+    await saveSpot();
     expect(await screen.findByText("We're at capacity right now")).toBeInTheDocument();
     expect(screen.getByText(/Please try again tomorrow/)).toBeInTheDocument();
     noErrorWords();
@@ -100,17 +119,19 @@ describe("sign-up when the email limit is reached (the overflow queue)", () => {
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "x"));
     services.auth.joinQueue.mockResolvedValueOnce("registered");
     await submitSignUp();
+    await saveSpot();
     expect(await screen.findByText("You already have an account")).toBeInTheDocument();
   });
 
-  it("if even the queue cannot be reached, the person sees the calm 'a little busy' message, nothing technical", async () => {
+  it("if the queue cannot be reached, the person sees a calm message, nothing technical, and can try again", async () => {
     const services = await openSignUp();
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "x"));
     services.auth.joinQueue.mockRejectedValueOnce(new Error("network down"));
     await submitSignUp();
-    expect(await screen.findByRole("alert")).toHaveTextContent("We're a little busy right now. Nothing is lost. Please try again in about an hour.");
+    await saveSpot();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't add you just now. Please try again in a moment.");
     expect(document.body.textContent).not.toContain("network down");
-    expect(screen.getByRole("button", { name: "Join the waitlist" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save my spot" })).toBeEnabled();
   });
 
   it("if the queue check itself cannot be made, sign-up simply carries on as normal", async () => {
@@ -133,6 +154,7 @@ describe("sign-up when the email limit is reached (the overflow queue)", () => {
     const services = await openSignUp();
     services.auth.signUp.mockRejectedValueOnce(new AuthError("rate-limited", "x"));
     await submitSignUp();
+    await saveSpot();
     await userEvent.click(await screen.findByRole("button", { name: "Back to sign in" }));
     expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });

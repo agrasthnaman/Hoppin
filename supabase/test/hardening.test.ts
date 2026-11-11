@@ -53,7 +53,7 @@ describe("the public API key (not signed in)", () => {
       expect(await asAnon(call), call).toMatch(/permission denied/);
     }
     expect(await asAnon("select signup_queue_status('someone@example.com')")).toBeNull();
-    expect(await asAnon("select join_signup_queue('someone@example.com', 'Someone')")).toBeNull();
+    expect(await asAnon("select join_signup_queue('someone@example.com', 'Someone')")).toMatch(/permission denied/);
   });
 });
 

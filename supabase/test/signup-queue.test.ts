@@ -13,7 +13,7 @@ const as = async <T>(role: Role, sql: string, params: unknown[] = []): Promise<T
     await tx.exec(`set local role ${role}`);
     return (await tx.query<T>(sql, params)).rows;
   });
-const join = async (email: string, name: string | null = "Neha", role: Role = "anon") =>
+const join = async (email: string, name: string | null = "Neha", role: Role = "service_role") =>
   (await as<{ r: { status: string } }>(role, "select join_signup_queue($1, $2) as r", [email, name]))[0]!.r.status;
 const status = async (email: string) => (await as<{ r: { status: string } }>("anon", "select signup_queue_status($1) as r", [email]))[0]!.r.status;
 const rows = async () =>
@@ -66,9 +66,10 @@ describe("joining the queue", () => {
     expect((await rows())[1]!.display_name).toBeNull();
   });
 
-  it("works for signed-out and signed-in visitors", async () => {
-    expect(await join("anon@example.com", "A", "anon")).toBe("queued");
-    expect(await join("user@example.com", "U", "authenticated")).toBe("queued");
+  it("is only for the join-signup-queue function (it checks the bot-check token), never the public key", async () => {
+    await expect(join("anon@example.com", "A", "anon")).rejects.toThrow(/permission denied/);
+    await expect(join("user@example.com", "U", "authenticated")).rejects.toThrow(/permission denied/);
+    expect(await rows()).toEqual([]);
   });
 });
 
