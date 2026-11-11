@@ -165,6 +165,35 @@ describe("adding an expense", () => {
   });
 });
 
+describe("only expenses the app can settle exactly", () => {
+  // Strings, so the numbers reach the database exactly as typed (JavaScript would round them first).
+  const foreign = (amount: string, rate: string) => dinner({ amount: amount as unknown as number, currency: "USD", rate: rate as unknown as number });
+
+  it("refuses an amount JavaScript cannot hold exactly, and settle-up keeps working", async () => {
+    await save(id.organizer, dinner());
+    await expect(save(id.alice, dinner({ amount: "9007199254740992" as unknown as number }))).rejects.toThrow(/expenses_amount_settleable/);
+    expect(await balances()).toMatchObject({ [id.alice]: 200000 });
+  });
+
+  it("accepts the largest exact amount in the trip's own currency", async () => {
+    await save(id.alice, dinner({ amount: "9007199254740991" as unknown as number }));
+    const total = Object.values(await balances()).reduce((a, b) => a + Math.abs(b), 0);
+    expect(total).toBeGreaterThan(0);
+  });
+
+  it.each(["1e400", "Infinity", "NaN"])("refuses an exchange rate of %s", async (rate) => {
+    await save(id.organizer, dinner());
+    await expect(save(id.alice, foreign("1000", rate))).rejects.toThrow(/expenses_amount_settleable/);
+    await expect(balances()).resolves.toBeDefined();
+  });
+
+  it("refuses a bill that would be too large once converted, and keeps an ordinary one", async () => {
+    await expect(save(id.alice, foreign("1000000000000", "94.75"))).rejects.toThrow(/expenses_amount_settleable/);
+    await save(id.alice, foreign("5000", "94.75"));
+    expect(await balances()).toMatchObject({ [id.alice]: 315833 });
+  });
+});
+
 describe("editing an expense", () => {
   it("editing an expense recalculates balances and writes a change entry", async () => {
     const e = dinner();

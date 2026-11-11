@@ -18,7 +18,7 @@ function FailureBanner({ text }: { text: string }) {
 }
 
 type Mode = "signin" | "signup" | "forgot";
-type Sent = { kind: "confirm" | "reset" | "exists" | "queued" | "inqueue" | "full"; email: string } | null;
+type Sent = { kind: "confirm" | "reset" | "exists" | "busy" | "queued" | "inqueue" | "full"; email: string } | null;
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -140,13 +140,7 @@ export function AuthForm({
           if (confirmationNeeded) setSent({ kind: "confirm", email: trimmed });
         } catch (error) {
           if (!(error instanceof AuthError && error.code === "rate-limited")) throw error;
-          // Over the email limit: save a spot (email and name only, never the password) and send the link later.
-          try {
-            const joined = await api.joinQueue({ email: trimmed, name: name.trim() });
-            setSent({ kind: joined === "queued" ? "queued" : joined === "already_queued" ? "inqueue" : joined === "registered" ? "exists" : "full", email: trimmed });
-          } catch {
-            setFailure(explain(error, mode, purpose)); // the calm "we're a little busy" message
-          }
+          setSent({ kind: "busy", email: trimmed }); // over the email limit: offer to save a spot
         }
       } else if (mode === "signin") {
         await api.signIn({ email: trimmed, password, ...(captchaToken ? { captchaToken } : {}) });
@@ -179,6 +173,23 @@ export function AuthForm({
     }
   }
 
+  /** Saves a spot in the queue (email and name only, never the password); the link is sent later. Needs its own bot check. */
+  async function saveSpot() {
+    if (!sent) return;
+    if (checking) return setFailure("One moment, we're checking that you're a person. Try again in a few seconds.");
+    const captchaToken = takeCaptcha();
+    setBusy(true);
+    setFailure(null);
+    try {
+      const joined = await api.joinQueue({ email: sent.email, name: name.trim(), ...(captchaToken ? { captchaToken } : {}) });
+      setSent({ kind: joined === "queued" ? "queued" : joined === "already_queued" ? "inqueue" : joined === "registered" ? "exists" : "full", email: sent.email });
+    } catch (error) {
+      setFailure(explain(error, "signup", purpose));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function resend() {
     if (!sent) return;
     if (checking) return setFailure(CHECKING);
@@ -199,15 +210,17 @@ export function AuthForm({
   const sentTitle = (s: NonNullable<Sent>): string =>
     s.kind === "exists"
       ? "You already have an account"
-      : s.kind === "queued"
-        ? "You're in the queue"
-        : s.kind === "inqueue"
-          ? "You're already in the queue"
-          : s.kind === "full"
-            ? "We're at capacity right now"
-            : s.kind === "confirm" && purpose === "waitlist"
-              ? "You're on the list"
-              : "Check your email";
+      : s.kind === "busy"
+        ? "We're a little busy"
+        : s.kind === "queued"
+          ? "You're in the queue"
+          : s.kind === "inqueue"
+            ? "You're already in the queue"
+            : s.kind === "full"
+              ? "We're at capacity right now"
+              : s.kind === "confirm" && purpose === "waitlist"
+                ? "You're on the list"
+                : "Check your email";
   const headline = sent
     ? sentTitle(sent)
     : mode === "signup"
@@ -228,7 +241,15 @@ export function AuthForm({
   const fields = sent ? (
     <div className="flex flex-col gap-3">
       {!titled && <p className="text-lg font-semibold">{sentTitle(sent)}</p>}
-      {sent.kind === "queued" ? (
+      {sent.kind === "busy" ? (
+        <>
+          <p className="text-muted">We can't send emails for a little while. Save your spot and we'll send your sign-in link to {sent.email} within the hour.</p>
+          {failure && <Banner kind="conflict" text={failure} />}
+          <Button type="button" busy={busy} onClick={saveSpot}>
+            Save my spot
+          </Button>
+        </>
+      ) : sent.kind === "queued" ? (
         <p className="text-muted">
           We're a little busy, so we saved your spot. Your sign-in link will arrive at {sent.email} within the hour. You don't need to do anything else.
         </p>

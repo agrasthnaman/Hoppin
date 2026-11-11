@@ -66,29 +66,45 @@ describe("trips and members", () => {
   });
 
   it("members cannot change their own role or status", async () => {
-    expect(await changed(id.alice, "update members set role = 'organizer' where user_id = $1 returning 1", [id.alice])).toBe(0);
+    await expect(changed(id.alice, "update members set role = 'organizer' where user_id = $1 returning 1", [id.alice])).rejects.toThrow(/permission denied/);
     const row = await db.query<{ role: string }>("select role from members where user_id = $1", [id.alice]);
     expect(row.rows[0]?.role).toBe("member");
   });
 
   it("the organizer can approve a pending member and grant edit rights", async () => {
-    expect(
-      await changed(id.organizer, "update members set status = 'approved' where user_id = $1 returning 1", [id.pending]),
-    ).toBe(1);
+    await asUser(db, id.organizer, (tx) => tx.query("select approve_member($1, $2)", [id.trip, id.pending]));
     expect(
       await changed(id.organizer, "update members set can_edit_all = true where user_id = $1 returning 1", [id.bob]),
     ).toBe(1);
   });
 
+  it("only an organizer of the trip can grant edit rights", async () => {
+    for (const user of [id.alice, id.outsider, id.otherOrganizer]) {
+      expect(await changed(user, "update members set can_edit_all = true where user_id = $1 returning 1", [id.bob]), user).toBe(0);
+    }
+  });
+
+  it("everything else about a membership only changes through the functions that keep the rules", async () => {
+    for (const set of [
+      "role = 'member'", // would leave the trip without an organizer
+      "status = 'removed'",
+      `user_id = '${id.outsider}'`, // would put someone in the trip without asking
+      `trip_id = '${id.otherTrip}'`,
+      "email_digest = false",
+      "push_on = true",
+      "joined_at = now()",
+    ]) {
+      await expect(changed(id.organizer, `update members set ${set} where user_id = $1 returning 1`, [id.alice]), set).rejects.toThrow(/permission denied/);
+    }
+  });
+
   it("a plain member cannot approve anyone", async () => {
-    expect(
-      await changed(id.alice, "update members set status = 'approved' where user_id = $1 returning 1", [id.pending]),
-    ).toBe(0);
+    await expect(asUser(db, id.alice, (tx) => tx.query("select approve_member($1, $2)", [id.trip, id.pending]))).rejects.toThrow(/only the organizer/);
   });
 
   it("removing a member ends their read access at once", async () => {
     expect(await visibleIds(db, id.alice, "items")).not.toEqual([]);
-    await changed(id.organizer, "update members set status = 'removed' where user_id = $1 returning 1", [id.alice]);
+    await asUser(db, id.organizer, (tx) => tx.query("select remove_member($1, $2)", [id.trip, id.alice]));
     expect(await visibleIds(db, id.alice, "items")).toEqual([]);
     expect(await visibleIds(db, id.alice, "trips")).toEqual([]);
   });
@@ -244,8 +260,8 @@ describe("documents", () => {
     await expect(
       asUser(db, id.bob, (tx) =>
         tx.query(
-          "insert into documents (trip_id, owner_id, scope, storage_path, kind) values ($1, $2, 'personal', 'x.pdf', 'visa')",
-          [id.trip, id.alice],
+          "insert into documents (trip_id, owner_id, scope, storage_path, kind) values ($1, $2, 'personal', $3, 'visa')",
+          [id.trip, id.alice, `${id.trip}/${id.alice}/x.pdf`],
         ),
       ),
     ).rejects.toThrow();
@@ -263,8 +279,8 @@ describe("documents", () => {
   it("a document cannot point at an item from another trip", async () => {
     await expect(
       db.query(
-        "insert into documents (trip_id, item_id, owner_id, scope, storage_path, kind) values ($1, $2, $3, 'shared', 'x.pdf', 'ticket')",
-        [id.trip, id.otherTripItem, id.organizer],
+        "insert into documents (trip_id, item_id, owner_id, scope, storage_path, kind) values ($1, $2, $3, 'shared', $4, 'ticket')",
+        [id.trip, id.otherTripItem, id.organizer, `${id.trip}/${id.organizer}/x.pdf`],
       ),
     ).rejects.toThrow();
   });

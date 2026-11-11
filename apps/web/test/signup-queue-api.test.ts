@@ -13,6 +13,7 @@ function client(rpc: PasswordClient["rpc"]): PasswordClient {
       verifyOtp: nothing,
     },
     rpc,
+    functions: { invoke: vi.fn() },
   };
 }
 const answer = (status: string) => vi.fn().mockResolvedValue({ data: { status }, error: null });
@@ -37,19 +38,21 @@ describe("queueStatus", () => {
 });
 
 describe("joinQueue", () => {
-  it("sends only the email and the name", async () => {
-    const rpc = answer("queued");
-    expect(await createAuthApi(client(rpc)).joinQueue({ email: "a@b.co", name: "Aman" })).toBe("queued");
-    expect(rpc).toHaveBeenCalledWith("join_signup_queue", { p_email: "a@b.co", p_name: "Aman" });
-    expect(Object.keys(rpc.mock.calls[0]![1] as object).sort()).toEqual(["p_email", "p_name"]);
+  const invoking = (answer: { data: unknown; error: { message: string; context?: { status?: number } } | null }) => vi.fn().mockResolvedValue(answer);
+  const api = (invoke: ReturnType<typeof invoking>) => createAuthApi({ ...client(answer("none")), functions: { invoke } });
+
+  it("goes through the join-signup-queue function with the email, the name and the bot-check token, never the password", async () => {
+    const invoke = invoking({ data: { status: "queued" }, error: null });
+    expect(await api(invoke).joinQueue({ email: "a@b.co", name: "Aman", captchaToken: "tok" })).toBe("queued");
+    expect(invoke).toHaveBeenCalledWith("join-signup-queue", { body: { email: "a@b.co", name: "Aman", captchaToken: "tok" } });
   });
 
   it.each(["queued", "already_queued", "registered", "full"] as const)("understands %s", async (status) => {
-    expect(await createAuthApi(client(answer(status))).joinQueue({ email: "a@b.co", name: "A" })).toBe(status);
+    expect(await api(invoking({ data: { status }, error: null })).joinQueue({ email: "a@b.co", name: "A", captchaToken: "t" })).toBe(status);
   });
 
-  it("turns a database failure into an AuthError", async () => {
-    const failing = vi.fn().mockResolvedValue({ data: null, error: { message: "boom", status: 500 } });
-    await expect(createAuthApi(client(failing)).joinQueue({ email: "a@b.co", name: "A" })).rejects.toBeInstanceOf(AuthError);
+  it("a refused bot check is a captcha error; any other failure is an AuthError too", async () => {
+    await expect(api(invoking({ data: null, error: { message: "403", context: { status: 403 } } })).joinQueue({ email: "a@b.co", name: "A" })).rejects.toMatchObject({ code: "captcha" });
+    await expect(api(invoking({ data: null, error: { message: "boom", context: { status: 500 } } })).joinQueue({ email: "a@b.co", name: "A" })).rejects.toMatchObject({ code: "other" });
   });
 });

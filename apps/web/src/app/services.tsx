@@ -219,7 +219,6 @@ export function createServices(client: any): Services {
         if (!data || data.length === 0) throw new Error("Could not delete the trip");
       },
       deleteAccount: async () => {
-        const me = await signedInId();
         // Refuse first, before any file is touched, so a refusal leaves nothing broken.
         const { data: blocked, error: blockedError } = await client.rpc("my_account_blockers");
         if (blockedError) throw new Error(blockedError.message);
@@ -227,7 +226,9 @@ export function createServices(client: any): Services {
         if (names.length > 0) {
           throw new Error(`You are the only organizer of ${names.map((n) => `"${n}"`).join(", ")}. Make someone else an organizer or delete the trip first.`);
         }
-        await removeFiles(await filePaths((q) => q.eq("owner_id", me).eq("scope", "personal")));
+        const { data: files, error: filesError } = await client.rpc("my_account_files");
+        if (filesError) throw new Error(filesError.message);
+        await removeFiles((files ?? []) as string[]);
         const { error } = await client.rpc("delete_my_account");
         if (error) throw new Error(error.message);
       },

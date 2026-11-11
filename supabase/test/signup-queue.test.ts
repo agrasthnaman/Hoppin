@@ -13,7 +13,7 @@ const as = async <T>(role: Role, sql: string, params: unknown[] = []): Promise<T
     await tx.exec(`set local role ${role}`);
     return (await tx.query<T>(sql, params)).rows;
   });
-const join = async (email: string, name: string | null = "Neha", role: Role = "anon") =>
+const join = async (email: string, name: string | null = "Neha", role: Role = "service_role") =>
   (await as<{ r: { status: string } }>(role, "select join_signup_queue($1, $2) as r", [email, name]))[0]!.r.status;
 const status = async (email: string) => (await as<{ r: { status: string } }>("anon", "select signup_queue_status($1) as r", [email]))[0]!.r.status;
 const rows = async () =>
@@ -66,9 +66,10 @@ describe("joining the queue", () => {
     expect((await rows())[1]!.display_name).toBeNull();
   });
 
-  it("works for signed-out and signed-in visitors", async () => {
-    expect(await join("anon@example.com", "A", "anon")).toBe("queued");
-    expect(await join("user@example.com", "U", "authenticated")).toBe("queued");
+  it("is only for the join-signup-queue function (it checks the bot-check token), never the public key", async () => {
+    await expect(join("anon@example.com", "A", "anon")).rejects.toThrow(/permission denied/);
+    await expect(join("user@example.com", "U", "authenticated")).rejects.toThrow(/permission denied/);
+    expect(await rows()).toEqual([]);
   });
 });
 
@@ -89,6 +90,36 @@ describe("status", () => {
     const [one] = await claim();
     await mark(one!.id, "skipped");
     expect(await status("s@example.com")).toBe("registered");
+  });
+});
+
+describe("when the account is deleted", () => {
+  async function accountFrom(email: string, outcome: "invited" | "skipped"): Promise<string> {
+    await join(email);
+    const [one] = await claim();
+    await mark(one!.id, outcome);
+    const user = crypto.randomUUID();
+    await db.query("insert into auth.users (id, email) values ($1, $2)", [user, email]);
+    return user;
+  }
+  const deleteAccount = (user: string) =>
+    db.transaction(async (tx) => {
+      await tx.exec("set local role authenticated");
+      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [user]);
+      await tx.query("select delete_my_account()");
+    });
+
+  it.each(["invited", "skipped"] as const)("the %s entry goes with it: nothing says the address had an account, and they can queue again", async (outcome) => {
+    await deleteAccount(await accountFrom("q@example.com", outcome));
+    expect(await rows()).toEqual([]);
+    expect(await status("q@example.com")).toBe("none");
+    expect(await join("Q@example.com")).toBe("queued");
+  });
+
+  it("other people's entries stay", async () => {
+    await join("waiting@example.com");
+    await deleteAccount(await accountFrom("q@example.com", "invited"));
+    expect((await rows()).map((r) => r.email)).toEqual(["waiting@example.com"]);
   });
 });
 

@@ -12,7 +12,11 @@ export function readSupabaseEnv(env: SupabaseEnv): { url: string; anonKey: strin
   return { url: env.VITE_SUPABASE_URL as string, anonKey: env.VITE_SUPABASE_ANON_KEY as string };
 }
 
+/**
+ * The app signs people in only with a password or by verifying an emailed token_hash on /auth/confirm, so a session is
+ * never read from the address bar: otherwise any link carrying someone else's tokens would silently switch accounts.
+ */
 export function createSupabaseClient(env: SupabaseEnv) {
   const { url, anonKey } = readSupabaseEnv(env);
-  return createClient(url, anonKey);
+  return createClient(url, anonKey, { auth: { detectSessionInUrl: false } });
 }

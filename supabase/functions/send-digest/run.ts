@@ -51,6 +51,8 @@ export interface SendDeps {
   claim(): Promise<TripBatch[]>;
   /** False when another run already recorded this batch: nothing may be sent then. */
   record(tripId: string, fromId: number, throughId: number, windowStart: string, rows: { user_id: string; changes: StoredChange[] }[]): Promise<boolean>;
+  /** A trip could not be handled: the database tries it again later, so it does not hold up the other trips. */
+  defer(tripId: string, fromId: number): Promise<void>;
   /** Sends a trip's emails in one call. Throws on failure. */
   sendEmails(emails: Email[]): Promise<void>;
   /** Tokens for members who turned phone updates on. Absent when push is not configured. */
@@ -183,7 +185,8 @@ export async function sendDigests(deps: SendDeps): Promise<SendResult> {
       }
     } catch {
       result.failedTrips += 1;
-      deps.log("a trip could not be processed; it stays waiting for the next run");
+      deps.log("a trip could not be processed; it is tried again later");
+      await deps.defer(batch.trip_id, batch.through_id).catch(() => deps.log("a failed trip could not be put back for later"));
     }
   }
   deps.log(`trips ${result.trips}, notified ${result.notified}, emailed ${result.emailed}, pushed ${result.pushed}, failed ${result.failedTrips}`);

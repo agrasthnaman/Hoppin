@@ -1,6 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
-import { asUser, id, seededDb, visibleIds } from "./helpers";
+import { asUser, id, path, seededDb, visibleIds } from "./helpers";
 
 let db: PGlite;
 beforeEach(async () => {
@@ -153,6 +153,56 @@ describe("delete_my_account", () => {
     await call(id.pending, "select delete_my_account()");
     expect(await userExists(id.removed)).toBe(false);
     expect(await userExists(id.pending)).toBe(false);
+  });
+});
+
+describe("files that go with an account", () => {
+  const files = async (user: string) => (await call(user, "select f from my_account_files() as f")).rows.map((r) => (r as { f: string }).f).sort();
+  const store = (name: string, owner: string) => db.exec(`insert into storage.objects (bucket_id, name, owner) values ('trip-documents', '${name}', '${owner}')`);
+  const removeFile = async (user: string, name: string) => (await call(user, "delete from storage.objects where name = $1 returning 1", [name])).rows.length;
+  const stored = async () => (await one<{ name: string }>("select name from storage.objects order by name")).map((r) => r.name);
+  /** What the app does: remove the listed files, then delete the account. */
+  async function deleteAccount(user: string) {
+    for (const name of await files(user)) await removeFile(user, name);
+    await call(user, "select delete_my_account()");
+  }
+
+  beforeEach(async () => {
+    await store(path.alicePassport, id.alice);
+    await store(path.bobPassport, id.bob);
+    await store(path.ticket, id.organizer);
+  });
+
+  it("include personal documents in a trip the person was removed from, and they can delete them", async () => {
+    await call(id.organizer, "select remove_member($1, $2)", [id.trip, id.alice]);
+    expect(await files(id.alice)).toEqual([path.alicePassport]);
+    await deleteAccount(id.alice);
+    expect(await stored()).toEqual([path.bobPassport, path.ticket].sort());
+  });
+
+  it("include every document of a trip deleted with the account", async () => {
+    const lodge = `${id.otherTrip}/${id.otherOrganizer}/d1-lodge.pdf`;
+    await db.exec(`insert into documents (trip_id, owner_id, scope, storage_path, kind) values ('${id.otherTrip}', '${id.otherOrganizer}', 'shared', '${lodge}', 'ticket')`);
+    await store(lodge, id.otherOrganizer);
+    expect(await files(id.otherOrganizer)).toEqual([lodge]);
+    await deleteAccount(id.otherOrganizer);
+    expect(await stored()).not.toContain(lodge);
+  });
+
+  it("leave other people's files and the documents handed to the group alone", async () => {
+    await makeOrganizer(id.alice);
+    expect(await files(id.organizer)).toEqual([]); // the ticket is shared and the trip carries on
+    expect(await files(id.alice)).toEqual([path.alicePassport]);
+    for (const user of [id.bob, id.outsider]) expect(await files(user), user).not.toContain(path.alicePassport);
+  });
+
+  it("a removed member still cannot delete a shared file they uploaded, or anyone else's", async () => {
+    const shared = `${id.trip}/${id.alice}/d2-tickets.pdf`;
+    await db.exec(`insert into documents (trip_id, owner_id, scope, storage_path, kind) values ('${id.trip}', '${id.alice}', 'shared', '${shared}', 'ticket')`);
+    await store(shared, id.alice);
+    await call(id.organizer, "select remove_member($1, $2)", [id.trip, id.alice]);
+    expect(await removeFile(id.alice, shared)).toBe(0);
+    expect(await removeFile(id.alice, path.bobPassport)).toBe(0);
   });
 });
 

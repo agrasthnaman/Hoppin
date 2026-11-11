@@ -55,6 +55,10 @@ Deno.serve(async (request: Request) => {
         if (error) throw new Error("record failed");
         return data === true;
       },
+      defer: async (tripId, fromId) => {
+        const { error } = await admin.rpc("defer_digest", { p_trip: tripId, p_from_id: fromId });
+        if (error) throw new Error("defer failed");
+      },
       pushTargets: fcmAccount
         ? async (tripId) => {
             const { data, error } = await admin.rpc("push_targets", { p_trip: tripId });

@@ -1,8 +1,7 @@
 import type { RedeemResult } from "@hoppin/core";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AuthForm, type AuthFormApi } from "../components/AuthForm";
 import { Button } from "../components/ui/Button";
-import { Spinner } from "../components/ui/Spinner";
 import { AuthStage } from "./AuthStage";
 
 export interface JoinFlowProps {
@@ -19,44 +18,46 @@ export interface JoinFlowProps {
 }
 
 type JoinState =
-  | { kind: "loading" }
+  | { kind: "ready" }
+  | { kind: "joining" }
   | { kind: "done"; result: RedeemResult }
   | { kind: "invalid" }
   | { kind: "error" };
 
-/** Join a trip from an invite link: create an account or sign in, then request to join and wait for approval. */
+/**
+ * Join a trip from an invite link: create an account or sign in, then request to join and wait for approval.
+ * Nothing is sent until the person presses the button: opening a link alone must never put someone in a trip (any page
+ * can send a signed-in visitor here).
+ */
 export function JoinFlow({ token, signedInUserId, redirectTo, resetRedirectTo, auth, redeem, onContinue }: JoinFlowProps) {
-  const [join, setJoin] = useState<JoinState>({ kind: "loading" });
-  const [attempt, setAttempt] = useState(0);
-  const started = useRef<number | null>(null);
+  const [join, setJoin] = useState<JoinState>({ kind: "ready" });
 
-  useEffect(() => {
-    if (!signedInUserId || started.current === attempt) return; // once per attempt, even in React strict mode
-    started.current = attempt;
-    setJoin({ kind: "loading" });
+  function requestToJoin() {
+    setJoin({ kind: "joining" });
     redeem(token).then(
       (result) => setJoin({ kind: "done", result }),
       (err: unknown) => setJoin(/invalid or expired/.test(String((err as Error)?.message)) ? { kind: "invalid" } : { kind: "error" }),
     );
-  }, [signedInUserId, token, redeem, attempt]);
+  }
 
   let body: React.ReactNode;
   if (signedInUserId) {
-    if (join.kind === "loading") {
+    if (join.kind === "ready" || join.kind === "joining")
       body = (
-        <p role="status" className="flex items-center gap-3">
-          <Spinner className="text-accent" />
-          Joining the trip
-        </p>
+        <div className="flex flex-col items-start gap-3">
+          <p>You've been invited to a trip. Ask to join and the organizer will see your name and can let you in.</p>
+          <Button busy={join.kind === "joining"} onClick={requestToJoin}>
+            Request to join
+          </Button>
+        </div>
       );
-    }
     else if (join.kind === "invalid")
       body = <p>This invite link isn't valid anymore. Ask the organizer for a new one.</p>;
     else if (join.kind === "error")
       body = (
         <div className="flex flex-col items-start gap-3">
           <p>We couldn't finish joining just now. Please try again.</p>
-          <Button onClick={() => setAttempt((n) => n + 1)}>Try again</Button>
+          <Button onClick={requestToJoin}>Try again</Button>
         </div>
       );
     else if (join.result.status === "approved")

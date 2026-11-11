@@ -14,6 +14,7 @@ function client(over: Record<string, unknown> = {}) {
       ...over,
     },
     rpc: vi.fn().mockResolvedValue({ data: { status: "none" }, error: null }),
+    functions: { invoke: vi.fn().mockResolvedValue({ data: { status: "queued" }, error: null }) },
   };
 }
 const fail = (code: string, message = "x", status = 400) => ({ data: { session: null }, error: { code, message, status } });
