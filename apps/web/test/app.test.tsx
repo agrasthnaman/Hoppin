@@ -194,13 +194,15 @@ describe("join route", () => {
     const { services } = fakeServices();
     services.invites.redeemInvite.mockResolvedValue({ tripId: "t1", status: "approved" });
     const { router } = renderApp(`/join/${"ab".repeat(32)}`, services);
+    await userEvent.click(await screen.findByRole("button", { name: "Request to join" }));
     await userEvent.click(await screen.findByRole("button", { name: "Open trip" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/days"));
   });
 
-  it("joins once when signed in, and waits for approval", async () => {
+  it("asks before joining when signed in, joins once, and waits for approval", async () => {
     const { services } = fakeServices();
     renderApp(`/join/${"a1".repeat(32)}`, services);
+    await userEvent.click(await screen.findByRole("button", { name: "Request to join" }));
     expect(await screen.findByText(/Waiting for the organizer to approve you/)).toBeInTheDocument();
     expect(services.invites.redeemInvite).toHaveBeenCalledTimes(1);
     expect(services.invites.redeemInvite).toHaveBeenCalledWith("a1".repeat(32));

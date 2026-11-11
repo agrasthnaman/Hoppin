@@ -84,8 +84,17 @@ describe("JoinFlow: signed out", () => {
 });
 
 describe("JoinFlow: signed in", () => {
-  it("joins once and shows the waiting-for-approval message", async () => {
+  const ask = async () => userEvent.click(await screen.findByRole("button", { name: "Request to join" }));
+
+  it("does nothing until the person asks to join: opening the link alone never puts them in a trip", async () => {
     const { props } = setup({ signedInUserId: "u1" });
+    expect(await screen.findByRole("button", { name: "Request to join" })).toBeEnabled();
+    expect(props.redeem).not.toHaveBeenCalled();
+  });
+
+  it("joins once when asked and shows the waiting-for-approval message", async () => {
+    const { props } = setup({ signedInUserId: "u1" });
+    await ask();
     expect(await screen.findByText(/Waiting for the organizer to approve you/)).toBeInTheDocument();
     expect(props.redeem).toHaveBeenCalledTimes(1);
     expect(props.redeem).toHaveBeenCalledWith(TOKEN);
@@ -93,25 +102,35 @@ describe("JoinFlow: signed in", () => {
 
   it("welcomes an approved member and opens the trip", async () => {
     const { props } = setup({ signedInUserId: "u1", redeem: vi.fn().mockResolvedValue({ tripId: "trip1", status: "approved" }) });
+    await ask();
     await userEvent.click(await screen.findByRole("button", { name: "Open trip" }));
     expect(props.onContinue).toHaveBeenCalledWith("trip1");
   });
 
   it("tells a removed member they cannot join", async () => {
     setup({ signedInUserId: "u1", redeem: vi.fn().mockResolvedValue({ tripId: "trip1", status: "removed" }) });
+    await ask();
     expect(await screen.findByText(/can't join this trip/)).toBeInTheDocument();
   });
 
   it("explains an invalid or expired link", async () => {
     setup({ signedInUserId: "u1", redeem: vi.fn().mockRejectedValue(new Error("invalid or expired invite")) });
+    await ask();
     expect(await screen.findByText(/isn't valid anymore/)).toBeInTheDocument();
   });
 
   it("offers a retry for other errors", async () => {
     const redeem = vi.fn().mockRejectedValueOnce(new Error("network down")).mockResolvedValue({ tripId: "trip1", status: "pending" });
     setup({ signedInUserId: "u1", redeem });
+    await ask();
     await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText(/Waiting for the organizer/)).toBeInTheDocument());
     expect(redeem).toHaveBeenCalledTimes(2);
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = setup({ signedInUserId: "u1" });
+    await screen.findByRole("button", { name: "Request to join" });
+    expect(await axe(container, { rules: { "color-contrast": { enabled: false } } })).toHaveNoViolations();
   });
 });
