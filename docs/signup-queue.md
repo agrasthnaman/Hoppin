@@ -95,4 +95,4 @@ select attempts, last_error from signup_queue where lower(email) = lower('person
 - **Expired invites.** An invite lasts 24 hours. If it goes unused, the person can sign up again, or sign in and ask for a
   fresh link. They stay in the table as `invited` and are not invited again automatically.
 - **Removing a person's data.** `delete from signup_queue where lower(email) = lower('...')`. The table holds nothing else
-  about them.
+  about them. Deleting an account removes its entry automatically (a trigger on `auth.users`).

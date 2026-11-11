@@ -93,6 +93,36 @@ describe("status", () => {
   });
 });
 
+describe("when the account is deleted", () => {
+  async function accountFrom(email: string, outcome: "invited" | "skipped"): Promise<string> {
+    await join(email);
+    const [one] = await claim();
+    await mark(one!.id, outcome);
+    const user = crypto.randomUUID();
+    await db.query("insert into auth.users (id, email) values ($1, $2)", [user, email]);
+    return user;
+  }
+  const deleteAccount = (user: string) =>
+    db.transaction(async (tx) => {
+      await tx.exec("set local role authenticated");
+      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [user]);
+      await tx.query("select delete_my_account()");
+    });
+
+  it.each(["invited", "skipped"] as const)("the %s entry goes with it: nothing says the address had an account, and they can queue again", async (outcome) => {
+    await deleteAccount(await accountFrom("q@example.com", outcome));
+    expect(await rows()).toEqual([]);
+    expect(await status("q@example.com")).toBe("none");
+    expect(await join("Q@example.com")).toBe("queued");
+  });
+
+  it("other people's entries stay", async () => {
+    await join("waiting@example.com");
+    await deleteAccount(await accountFrom("q@example.com", "invited"));
+    expect((await rows()).map((r) => r.email)).toEqual(["waiting@example.com"]);
+  });
+});
+
 describe("nobody reaches the tables directly", () => {
   it.each(["anon", "authenticated"] as const)("%s cannot read, add or change the queue or its settings", async (role) => {
     await join("neha@example.com");
