@@ -29,7 +29,8 @@ export async function expandMapLink(request: Request, fetchImpl?: Parameters<typ
   try {
     const url = await resolveShortMapLink(target, fetchImpl);
     const extra = origin ? cors(origin) : {};
-    return url ? json({ url }, 200, { "cache-control": "public, max-age=86400", ...extra }) : json({ url: null }, 422, extra);
+    // Cached for a day, but the answer depends on who asked: a shared cache must not hand it to a cross-site caller.
+    return url ? json({ url }, 200, { "cache-control": "public, max-age=86400", ...extra, vary: "Origin, Sec-Fetch-Site" }) : json({ url: null }, 422, extra);
   } catch {
     return json({ url: null }, 502);
   }
