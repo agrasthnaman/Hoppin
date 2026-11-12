@@ -108,6 +108,18 @@ export async function wipeTrip(db: OfflineDb, tripId: string): Promise<void> {
   announceChange(tripId);
 }
 
+/**
+ * Makes the data on this device belong to `userId`: whatever another account left here (trips, documents, changes
+ * waiting to be sent, the device key) is removed first. Sign out clears the device, but a session can also end or
+ * change without it (expiry, an emailed link for another account). Data from before owners were recorded is kept.
+ */
+export async function claimLocalData(db: OfflineDb, userId: string): Promise<void> {
+  const owner = (await db.meta.get("owner"))?.value;
+  if (owner === userId) return;
+  if (owner !== undefined) await clearAllLocalData(db);
+  await db.meta.put({ key: "owner", value: userId });
+}
+
 /** Removes everything, including the device key, and leaves an empty database ready to use. Call on sign out. */
 export async function clearAllLocalData(db: OfflineDb): Promise<void> {
   await db.delete();

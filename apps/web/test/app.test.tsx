@@ -183,6 +183,17 @@ describe("sign in and gating", () => {
   });
 });
 
+describe("this device's offline data", () => {
+  it("left by another account is removed before the signed-in screens show anything", async () => {
+    const { services } = fakeServices();
+    await services.db.meta.put({ key: "owner", value: "someone-else" });
+    await services.db.trips.put({ tripId: "theirs", syncedAt: 1, snapshot: snapshot() });
+    renderApp("/trips", services);
+    await waitFor(async () => expect((await services.db.meta.get("owner"))?.value).toBe("me"));
+    expect(await getLocalTrip(services.db, "theirs")).toBeNull();
+  });
+});
+
 describe("join route", () => {
   it("shows the join form to a signed-out person", async () => {
     const { services } = fakeServices({ session: null });
