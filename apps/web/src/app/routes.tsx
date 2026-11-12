@@ -43,7 +43,8 @@ export function createAppRoutes(): RouteObject[] {
     { path: "/auth/confirm", element: <ConfirmEmail /> },
     { path: "/reset-password", element: <ResetPassword /> },
     { path: "/join/:token", element: <JoinRoute /> },
-    { path: "/gallery", lazy: async () => ({ Component: (await import("../Gallery")).Gallery }) }, // design-system preview
+    // Design-system preview, for development only: it renders with stand-in services that must never reach real users.
+    ...(import.meta.env.DEV ? [{ path: "/gallery", lazy: async () => ({ Component: (await import("../Gallery")).Gallery }) }] : []),
     {
       element: <RequireSession />,
       children: [

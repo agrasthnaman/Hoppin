@@ -51,7 +51,7 @@ Paste the file into the project's SQL editor, or send it through the Management 
 - `npm run release -- --dry-run` shows exactly what it would do and changes nothing. Do this first.
 - `npm run release` asks "Go ahead and release?" before changing anything.
 - `npm run release -- --yes` skips the question.
-- `--templates` also applies the email templates, `--functions` also deploys the sign-up queue function (needs the Supabase command-line tool), `--skip-tests`, `--skip-migrations` and `--skip-deploy` leave a step out.
+- `--templates` also applies the email templates, `--functions` also deploys the Edge Functions: the sign-up queue's two, the digest job and the test push (needs the Supabase command-line tool; their secrets are set once, see docs/signup-queue.md and supabase/ops), `--skip-tests`, `--skip-migrations` and `--skip-deploy` leave a step out.
 
 **Migrations:** the database remembers which files it has applied in a small table, `release_migrations`. The first run assumes everything up to `013` was already applied by hand and applies the rest; after that it only applies new files, each together with its record in one transaction, so a failure keeps nothing from that file. It always applies migrations before deploying the site, because new site code can depend on new database functions.
 

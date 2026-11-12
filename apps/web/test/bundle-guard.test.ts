@@ -10,6 +10,12 @@ const files = (dir: string): string[] =>
     return statSync(path).isDirectory() ? files(path) : /\.tsx?$/.test(name) ? [path] : [];
   });
 
+describe("production builds", () => {
+  it("leave out the design-system preview, which runs on stand-in services", () => {
+    expect(readFileSync(join(src, "app/routes.tsx"), "utf8")).toMatch(/import\.meta\.env\.DEV \? \[\{ path: "\/gallery"/);
+  });
+});
+
 describe("main bundle stays small", () => {
   it("only the landing page and the lazy wrapper import the 3D mascot directly (it carries three.js)", () => {
     const direct = files(src).filter((f) => /from ["'][^"']*\/silk-spider-cursor["']/.test(readFileSync(f, "utf8")));

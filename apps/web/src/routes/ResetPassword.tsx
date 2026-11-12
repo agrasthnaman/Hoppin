@@ -26,6 +26,16 @@ export function ResetPassword() {
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // A session older than a day must prove it is still the account's owner: a one-time code is emailed to them.
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState("");
+  const codeId = useId();
+
+  async function sendCode() {
+    await auth.requestCode();
+    setCodeSent(true);
+    setCode("");
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -33,12 +43,28 @@ export function ResetPassword() {
     setError(check.ok ? null : check.reason);
     setFailure(null);
     if (!check.ok) return;
+    if (codeSent && !code.trim()) return setFailure("Enter the code from the email we just sent you.");
     setBusy(true);
     try {
-      await auth.updatePassword(password);
+      await auth.updatePassword(password, codeSent ? code.trim() : undefined);
       setDone(true);
     } catch (e) {
-      setFailure(e instanceof AuthError && e.code === "weak-password" ? e.message : "We couldn't save your password just now. Please try again.");
+      const why = e instanceof AuthError ? e.code : "other";
+      if (why === "reauthentication-needed") await sendCode().catch(() => setFailure("We couldn't send the code just now. Please try again in a few minutes."));
+      else if (why === "invalid-code") setFailure("That code didn't work. Use the code from the latest email, or send a new one.");
+      else setFailure(why === "weak-password" ? (e as Error).message : "We couldn't save your password just now. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendCode() {
+    setFailure(null);
+    setBusy(true);
+    try {
+      await sendCode();
+    } catch {
+      setFailure("We couldn't send the code just now. Please try again in a few minutes.");
     } finally {
       setBusy(false);
     }
@@ -97,10 +123,34 @@ export function ResetPassword() {
             {error ?? `At least ${MIN_PASSWORD_LENGTH} characters. A few words in a row works well.`}
           </span>
         </div>
+        {codeSent && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor={codeId} className="text-sm font-medium">
+              Code from your email
+            </label>
+            <input
+              id={codeId}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              aria-describedby={`${codeId}-help`}
+              className={inputClass}
+            />
+            <span id={`${codeId}-help`} className="text-sm text-muted">
+              To keep your account safe, we emailed you a code. Enter it to confirm it's you.
+            </span>
+          </div>
+        )}
         {failure && <Banner kind="conflict" text={failure} />}
         <Button type="submit" busy={busy}>
           {welcome ? "Create password" : "Save password"}
         </Button>
+        {codeSent && (
+          <Button type="button" variant="ghost" disabled={busy} onClick={resendCode}>
+            Send a new code
+          </Button>
+        )}
       </form>
     );
 

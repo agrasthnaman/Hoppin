@@ -14,6 +14,8 @@ describe("the short map link function", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ url: full });
     expect(response.headers.get("cache-control")).toContain("max-age");
+    // a shared cache keeps separate copies per caller kind, so the same-site check cannot be skipped through it
+    expect(response.headers.get("vary")).toBe("Origin, Sec-Fetch-Site");
   });
 
   it("refuses any address that is not a Google short link, without fetching it", async () => {

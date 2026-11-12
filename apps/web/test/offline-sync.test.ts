@@ -4,6 +4,7 @@ import { getDeviceKey } from "../src/offline/crypto";
 import { openOfflineDb, type OfflineDb } from "../src/offline/db";
 import {
   cacheDocuments,
+  claimLocalData,
   clearAllLocalData,
   getLocalDocument,
   getLocalTrip,
@@ -127,6 +128,13 @@ describe("syncTrip and getLocalTrip", () => {
     expect(await getLocalDocument(db, doc("d1"), await getDeviceKey(db))).toBeNull();
   });
 
+  it("a stored file that claims to be a web page opens only as a plain download", async () => {
+    await syncTrip(deps, "t1");
+    await db.blobs.put({ id: "d1", tripId: "t1", encrypted: false, contentType: "text/html", data: new TextEncoder().encode("<script>x</script>").buffer, cachedAt: NOW });
+    const file = await getLocalDocument(db, doc("d1"), await getDeviceKey(db));
+    expect(file?.type).toBe("application/octet-stream");
+  });
+
   it("wiping one trip leaves other trips alone", async () => {
     await syncTrip(deps, "t1");
     result = { status: "ok", snapshot: snapshot({ trip: { id: "t2", name: "Manali", startDate: null, endDate: null } }) };
@@ -227,5 +235,39 @@ describe("clearAllLocalData", () => {
     expect(await getLocalTrip(reopened, "t1")).toBeNull();
     expect(await reopened.blobs.count()).toBe(0);
     expect(await reopened.meta.count()).toBe(0);
+  });
+});
+
+describe("claimLocalData", () => {
+  async function fillAs(owner: string | null) {
+    result = { status: "ok", snapshot: snapshot({ documents: [doc("d1")] }) };
+    await syncTrip(deps, "t1");
+    await cacheDocuments(deps, "t1");
+    await db.outbox.put({ id: "o1", tripId: "t1" } as never);
+    if (owner) await db.meta.put({ key: "owner", value: owner });
+  }
+
+  it("keeps the data of the account it belongs to", async () => {
+    await fillAs(ME);
+    await claimLocalData(db, ME);
+    expect(await getLocalTrip(db, "t1")).not.toBeNull();
+    expect(await db.outbox.count()).toBe(1);
+  });
+
+  it("removes another account's trips, documents, waiting changes and device key before anyone else sees them", async () => {
+    await fillAs("someone-else");
+    await claimLocalData(db, ME);
+    const reopened = openOfflineDb(db.name);
+    expect(await getLocalTrip(reopened, "t1")).toBeNull();
+    expect(await reopened.blobs.count()).toBe(0);
+    expect(await reopened.outbox.count()).toBe(0);
+    expect(await reopened.meta.toArray()).toEqual([{ key: "owner", value: ME }]);
+  });
+
+  it("adopts data saved before owners were recorded, so nothing waiting to be sent is lost", async () => {
+    await fillAs(null);
+    await claimLocalData(db, ME);
+    expect(await db.outbox.count()).toBe(1);
+    expect((await db.meta.get("owner"))?.value).toBe(ME);
   });
 });

@@ -16,7 +16,10 @@ export interface PasswordClient {
     signInWithPassword(args: { email: string; password: string; options?: { captchaToken?: string } }): PromiseLike<{ data: unknown; error: ServerError }>;
     resend(args: { type: "signup"; email: string; options: { emailRedirectTo: string; captchaToken?: string } }): PromiseLike<{ error: ServerError }>;
     resetPasswordForEmail(email: string, options: { redirectTo: string; captchaToken?: string }): PromiseLike<{ error: ServerError }>;
-    updateUser(attrs: { password: string }): PromiseLike<{ error: ServerError }>;
+    updateUser(attrs: { password: string; nonce?: string }): PromiseLike<{ error: ServerError }>;
+    /** Emails the signed-in person a one-time code that proves it is them (needed to change an older session's password). */
+    reauthenticate(): PromiseLike<{ error: ServerError }>;
+    signOut(options: { scope: "others" }): PromiseLike<{ error: ServerError }>;
     verifyOtp(args: { token_hash: string; type: EmailLinkType }): PromiseLike<{ error: ServerError }>;
   };
   /** Calls a database function (used for the sign-up queue). */
@@ -42,7 +45,17 @@ function queueAnswer<T extends string>(data: unknown, allowed: readonly T[]): T 
   return found;
 }
 
-export type AuthErrorCode = "invalid-credentials" | "email-not-confirmed" | "weak-password" | "rate-limited" | "invalid-link" | "already-registered" | "captcha" | "other";
+export type AuthErrorCode =
+  | "invalid-credentials"
+  | "email-not-confirmed"
+  | "weak-password"
+  | "rate-limited"
+  | "invalid-link"
+  | "already-registered"
+  | "captcha"
+  | "reauthentication-needed"
+  | "invalid-code"
+  | "other";
 
 /** An auth failure the screens can explain in plain words. */
 export class AuthError extends Error {
@@ -60,6 +73,8 @@ function toAuthError(e: NonNullable<ServerError>): AuthError {
   if (e.code === "email_not_confirmed" || /email not confirmed/i.test(e.message)) return new AuthError("email-not-confirmed", e.message);
   if (e.code === "captcha_failed" || /captcha/i.test(e.message)) return new AuthError("captcha", e.message);
   if (e.code === "weak_password") return new AuthError("weak-password", e.message);
+  if (e.code === "reauthentication_needed") return new AuthError("reauthentication-needed", e.message);
+  if (e.code === "reauthentication_not_valid") return new AuthError("invalid-code", e.message);
   if (e.status === 429 || e.code === "over_email_send_rate_limit" || e.code === "over_request_rate_limit") return new AuthError("rate-limited", e.message);
   return new AuthError("other", e.message);
 }
@@ -137,10 +152,22 @@ export function createAuthApi(client: PasswordClient) {
       if (error) throw error.status === 429 ? toAuthError(error) : new AuthError("invalid-link", error.message);
     },
 
-    /** Sets a new password for whoever is signed in (the reset link signs them in first). */
-    async updatePassword(password: string): Promise<void> {
+    /**
+     * Sets a new password for whoever is signed in (the reset link signs them in first). A session older than a day
+     * also needs the code from requestCode, otherwise this throws "reauthentication-needed". Every other session of
+     * the account is then signed out, so a stolen one stops working.
+     */
+    async updatePassword(password: string, code?: string): Promise<void> {
       checkPassword(password);
-      const { error } = await client.auth.updateUser({ password });
+      const { error } = await client.auth.updateUser({ password, ...(code ? { nonce: code } : {}) });
+      if (error) throw toAuthError(error);
+      // The password has changed either way; if this fails, the other sessions still end when their tokens expire.
+      await client.auth.signOut({ scope: "others" });
+    },
+
+    /** Emails the signed-in person a one-time code for updatePassword. */
+    async requestCode(): Promise<void> {
+      const { error } = await client.auth.reauthenticate();
       if (error) throw toAuthError(error);
     },
   };

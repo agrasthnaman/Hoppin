@@ -156,6 +156,35 @@ describe("delete_my_account", () => {
   });
 });
 
+describe("the history of private plans", () => {
+  const history = async (owner: string, visibility: string) =>
+    (await one<{ n: number }>("select count(*)::int as n from change_log where item_owner_id = $1 and item_visibility = $2", [owner, visibility]))[0]!.n;
+  beforeEach(async () => {
+    await call(id.alice, "update items set title = 'ABC place (moved)' where id = $1", [id.alicePrivate]);
+    await call(id.alice, "update items set title = 'Museum (new)' where id = $1", [id.aliceOptional]);
+    await call(id.bob, "insert into items (trip_id, owner_id, kind, visibility, starts_at, tz, title) values ($1, $2, 'plan', 'private', now(), 'UTC', 'Bob only')", [id.trip, id.bob]);
+  });
+
+  it("goes when the person leaves the trip; their shared plans' history and other people's stay", async () => {
+    expect(await history(id.alice, "private")).toBeGreaterThan(0);
+    await call(id.alice, "select leave_trip($1)", [id.trip]);
+    expect(await history(id.alice, "private")).toBe(0);
+    expect(await history(id.alice, "shared")).toBeGreaterThan(0);
+    expect(await history(id.bob, "private")).toBeGreaterThan(0);
+  });
+
+  it("goes when the person deletes their account", async () => {
+    await call(id.alice, "select delete_my_account()");
+    expect(await history(id.alice, "private")).toBe(0);
+    expect(await history(id.bob, "private")).toBeGreaterThan(0);
+  });
+
+  it("stays for someone who was removed (they may be let back in)", async () => {
+    await call(id.organizer, "select remove_member($1, $2)", [id.trip, id.alice]);
+    expect(await history(id.alice, "private")).toBeGreaterThan(0);
+  });
+});
+
 describe("files that go with an account", () => {
   const files = async (user: string) => (await call(user, "select f from my_account_files() as f")).rows.map((r) => (r as { f: string }).f).sort();
   const store = (name: string, owner: string) => db.exec(`insert into storage.objects (bucket_id, name, owner) values ('trip-documents', '${name}', '${owner}')`);

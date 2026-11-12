@@ -11,6 +11,8 @@ function client(rpc: PasswordClient["rpc"]): PasswordClient {
       resetPasswordForEmail: nothing,
       updateUser: nothing,
       verifyOtp: nothing,
+      reauthenticate: nothing,
+      signOut: nothing,
     },
     rpc,
     functions: { invoke: vi.fn() },

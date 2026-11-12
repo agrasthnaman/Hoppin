@@ -1,4 +1,4 @@
-import { visibleDocuments, type DocumentSource, type TripDocument, type TripSnapshot, type TripSource } from "@hoppin/core";
+import { safeDocumentType, visibleDocuments, type DocumentSource, type TripDocument, type TripSnapshot, type TripSource } from "@hoppin/core";
 import { decryptBlob, encryptBlob, getDeviceKey } from "./crypto";
 import type { OfflineDb } from "./db";
 import { announceChange } from "./events";
@@ -92,7 +92,7 @@ export async function getLocalDocument(db: OfflineDb, doc: TripDocument, key: Cr
   const record = await db.blobs.get(doc.id);
   if (!record) return null;
   const data = record.encrypted ? await decryptBlob(key, record.data) : record.data;
-  return new Blob([data], { type: record.contentType });
+  return new Blob([data], { type: safeDocumentType(record.contentType) });
 }
 
 /** Removes one trip, its documents and any changes still waiting from this device. */
@@ -106,6 +106,18 @@ export async function wipeTrip(db: OfflineDb, tripId: string): Promise<void> {
     await db.moneyOutbox.where("tripId").equals(tripId).delete();
   });
   announceChange(tripId);
+}
+
+/**
+ * Makes the data on this device belong to `userId`: whatever another account left here (trips, documents, changes
+ * waiting to be sent, the device key) is removed first. Sign out clears the device, but a session can also end or
+ * change without it (expiry, an emailed link for another account). Data from before owners were recorded is kept.
+ */
+export async function claimLocalData(db: OfflineDb, userId: string): Promise<void> {
+  const owner = (await db.meta.get("owner"))?.value;
+  if (owner === userId) return;
+  if (owner !== undefined) await clearAllLocalData(db);
+  await db.meta.put({ key: "owner", value: userId });
 }
 
 /** Removes everything, including the device key, and leaves an empty database ready to use. Call on sign out. */

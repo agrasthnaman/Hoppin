@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { AuthError } from "../src/lib/auth-api";
 import { fakeServices, renderApp } from "./helpers";
 
 describe("reset password page", () => {
@@ -9,8 +10,37 @@ describe("reset password page", () => {
     renderApp("/reset-password", services);
     await userEvent.type(await screen.findByLabelText("New password"), "brand new password");
     await userEvent.click(screen.getByRole("button", { name: "Save password" }));
-    expect(services.auth.updatePassword).toHaveBeenCalledWith("brand new password");
+    expect(services.auth.updatePassword).toHaveBeenCalledWith("brand new password", undefined);
     expect(await screen.findByText("Password updated")).toBeInTheDocument();
+  });
+
+  it("an older session confirms with an emailed code, then the password is saved", async () => {
+    const { services } = fakeServices();
+    services.auth.updatePassword.mockRejectedValueOnce(new AuthError("reauthentication-needed", "x"));
+    renderApp("/reset-password", services);
+    await userEvent.type(await screen.findByLabelText("New password"), "brand new password");
+    await userEvent.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByLabelText("Code from your email")).toBeInTheDocument();
+    expect(services.auth.requestCode).toHaveBeenCalledTimes(1);
+    await userEvent.type(screen.getByLabelText("Code from your email"), " 123456 ");
+    await userEvent.click(screen.getByRole("button", { name: "Save password" }));
+    expect(services.auth.updatePassword).toHaveBeenLastCalledWith("brand new password", "123456");
+    expect(await screen.findByText("Password updated")).toBeInTheDocument();
+  });
+
+  it("a wrong code is explained, and a new one can be sent", async () => {
+    const { services } = fakeServices();
+    services.auth.updatePassword
+      .mockRejectedValueOnce(new AuthError("reauthentication-needed", "x"))
+      .mockRejectedValueOnce(new AuthError("invalid-code", "x"));
+    renderApp("/reset-password", services);
+    await userEvent.type(await screen.findByLabelText("New password"), "brand new password");
+    await userEvent.click(screen.getByRole("button", { name: "Save password" }));
+    await userEvent.type(await screen.findByLabelText("Code from your email"), "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("That code didn't work");
+    await userEvent.click(screen.getByRole("button", { name: "Send a new code" }));
+    expect(services.auth.requestCode).toHaveBeenCalledTimes(2);
   });
 
   it("rejects a short password without asking the server", async () => {

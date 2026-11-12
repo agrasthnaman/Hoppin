@@ -6,7 +6,7 @@
 //   SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided to every Edge Function by Supabase
 //
 // Deploy with --no-verify-jwt: callers are not signed in, and the bot check is what is verified.
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { joinQueue, verifyTurnstile, type JoinStatus } from "./join.ts";
 
 const CORS = {
