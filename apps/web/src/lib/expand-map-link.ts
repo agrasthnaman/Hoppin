@@ -20,6 +20,10 @@ function allowedHost(hostname: string): boolean {
   return host === "maps.app.goo.gl" || host === "goo.gl" || host === "google.com" || host.endsWith(".google.com") || host.endsWith(".google.co.in");
 }
 
+function isBlockPage(url: URL): boolean {
+  return /^\/(sorry|consent|ServiceLogin)(\/|$)/i.test(url.pathname) || url.hostname.toLowerCase().startsWith("consent.") || url.hostname.toLowerCase().startsWith("accounts.");
+}
+
 type FetchLike = (url: string, init?: RequestInit) => Promise<Pick<Response, "status" | "headers">>;
 
 /** Follow a short map link to the full address. Other addresses are refused. */
@@ -33,6 +37,8 @@ export async function resolveShortMapLink(url: string, fetchImpl: FetchLike = fe
     const next = new URL(location, current);
     if (next.protocol !== "https:" && next.protocol !== "http:") return null;
     if (!allowedHost(next.hostname)) return null;
+    // Google's "unusual traffic" block page is not a place. Saving it would put a useless link on the trip.
+    if (isBlockPage(next)) return null;
     current = next.href;
   }
   return isShortMapLink(current) ? null : current;

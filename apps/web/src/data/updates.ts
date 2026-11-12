@@ -7,8 +7,8 @@ export const UPDATES_SHOWN = 50;
 type NotificationRow = { id: string; created_at: string; read_at: string | null; changes: NotifiedChange[] };
 
 function memberFlags(data: unknown): { emailOn: boolean; pushOn: boolean } {
-  if (typeof data !== "object" || data === null) return { emailOn: true, pushOn: false };
-  const emailOn = "email_digest" in data && typeof data.email_digest === "boolean" ? data.email_digest : true;
+  if (typeof data !== "object" || data === null) return { emailOn: false, pushOn: false };
+  const emailOn = "email_digest" in data && typeof data.email_digest === "boolean" ? data.email_digest : false;
   const pushOn = "push_on" in data && typeof data.push_on === "boolean" ? data.push_on : false;
   return { emailOn, pushOn };
 }

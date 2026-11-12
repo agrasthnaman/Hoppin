@@ -25,4 +25,10 @@ describe("short map links", () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(redirect(302, "https://evil.example/phish"));
     expect(await resolveShortMapLink("https://maps.app.goo.gl/abc", fetchImpl)).toBeNull();
   });
+
+  it("refuses Google's block page instead of saving it as the place", async () => {
+    const sorry = "https://www.google.com/sorry/index?continue=https://www.google.com/maps/place/PinkCoco";
+    const fetchImpl = vi.fn().mockResolvedValueOnce(redirect(302, sorry));
+    expect(await resolveShortMapLink("https://maps.app.goo.gl/abcdefgh", fetchImpl)).toBeNull();
+  });
 });

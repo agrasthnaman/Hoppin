@@ -105,15 +105,15 @@ describe("updates", () => {
     const { services } = fakeServices({ updates: [] });
     renderApp("/trips/t1/updates", services);
     const email = await screen.findByRole("switch", { name: "Email me updates" });
-    expect(email).toBeChecked();
+    expect(email).not.toBeChecked();
     await userEvent.click(email);
-    expect(services.actions.setEmailUpdates).toHaveBeenCalledWith("t1", false);
-    await waitFor(() => expect(email).not.toBeChecked());
+    expect(services.actions.setEmailUpdates).toHaveBeenCalledWith("t1", true);
+    await waitFor(() => expect(email).toBeChecked());
 
     services.actions.setEmailUpdates.mockRejectedValueOnce(new Error("offline"));
     await userEvent.click(email);
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't save. Check your connection and try again.");
-    expect(email).not.toBeChecked();
+    expect(email).toBeChecked();
   });
 
   it("the phone switch starts off and saves the choice", async () => {

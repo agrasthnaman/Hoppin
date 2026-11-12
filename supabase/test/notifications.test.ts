@@ -57,7 +57,7 @@ describe("collecting changes", () => {
   });
 
   it("recipients are the approved members only, with no email for those who turned it off", async () => {
-    await asUser(db, id.bob, (tx) => tx.query("select set_email_digest($1, false)", [id.trip]));
+    await asUser(db, id.alice, (tx) => tx.query("select set_email_digest($1, true)", [id.trip]));
     await editStay("A");
     await age(6);
     const [batch] = await claim();
@@ -203,8 +203,8 @@ describe("reading notifications", () => {
     await expect(asUser(db, id.alice, (tx) => tx.query("update notifications set read_at = now()"))).rejects.toThrow();
   });
 
-  it("the email setting is per person and per trip, and outsiders cannot set one", async () => {
-    await asUser(db, id.alice, (tx) => tx.query("select set_email_digest($1, false)", [id.trip]));
+  it("email is off until a member turns it on, per person and per trip, and outsiders cannot set it", async () => {
+    await asUser(db, id.bob, (tx) => tx.query("select set_email_digest($1, true)", [id.trip]));
     const on = await db.query<{ user_id: string; email_digest: boolean }>("select user_id, email_digest from members where trip_id = $1 and user_id in ($2, $3)", [id.trip, id.alice, id.bob]);
     expect(Object.fromEntries(on.rows.map((r) => [r.user_id, r.email_digest]))).toEqual({ [id.alice]: false, [id.bob]: true });
     await expect(asUser(db, id.outsider, (tx) => tx.query("select set_email_digest($1, false)", [id.trip]))).rejects.toThrow("only members of this trip");

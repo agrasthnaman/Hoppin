@@ -124,7 +124,7 @@ export function fakeServices(opts: { session?: Session; snapshot?: TripSnapshot 
       saveExpense: vi.fn(async (_expense: ExpenseRecord, _guestIds: ReadonlySet<string>) => {}),
       deleteExpense: vi.fn(async (_expenseId: string) => {}),
       addGuest: vi.fn(async (_guest: TripGuest) => {}),
-      listUpdates: vi.fn(async (_tripId: string) => ({ notifications: opts.updates ?? [], emailOn: true, pushOn: false })),
+      listUpdates: vi.fn(async (_tripId: string) => ({ notifications: opts.updates ?? [], emailOn: false, pushOn: false })),
       unreadUpdates: vi.fn(async (_tripId: string) => (opts.updates ?? []).filter((u) => !u.readAt).length),
       markUpdatesRead: vi.fn(async (_tripId: string) => {}),
       setEmailUpdates: vi.fn(async (_tripId: string, _on: boolean) => {}),
