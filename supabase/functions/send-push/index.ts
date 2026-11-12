@@ -7,7 +7,7 @@
 //   SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
 //
 // Deploy with --no-verify-jwt. Body: { "user_id": "<uuid>" }
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { authorized } from "../drain-signup-queue/drain.ts";
 import { fcmAccessToken, postFcm, readServiceAccount } from "./fcm.ts";
 import { sendTestPush } from "./run.ts";

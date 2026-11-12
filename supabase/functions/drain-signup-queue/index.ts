@@ -7,7 +7,7 @@
 //   SITE_URL       optional, defaults to https://hoppinclub.com
 //
 // Deploy with --no-verify-jwt: the caller is the database itself and proves who it is with DRAIN_SECRET.
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 import { authorized, drain, type QueueRow } from "./drain.ts";
 
 Deno.serve(async (request: Request) => {
