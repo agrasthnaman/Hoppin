@@ -1,3 +1,4 @@
+import { tripSettlement } from "@hoppin/core";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ItemFormValues } from "../src/components/ItemForm";
@@ -22,11 +23,29 @@ const stamp = Date.now();
 const password = `Pw-${stamp}-x!`;
 const newClient = () => createClient(url!, anon!, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 
+const serviceKey = process.env.SMOKE_SERVICE_ROLE_KEY;
+/** Throwaway accounts made with the service key, removed again after the run. */
+const madeUsers: string[] = [];
+
 /**
- * Two ways to get a signed-in user: sign in as a pre-made test user (SMOKE_PASSWORD plus SMOKE_EMAIL_ALICE and
- * SMOKE_EMAIL_BOB in the environment), or sign up a new one (needs "Confirm email" off in the dev project).
+ * Three ways to get a signed-in user: with SMOKE_SERVICE_ROLE_KEY, make a confirmed throwaway account and sign in
+ * through a generated sign-in link (works with CAPTCHA and email confirmation on, sends no email); sign in as a
+ * pre-made test user (SMOKE_PASSWORD plus SMOKE_EMAIL_ALICE and SMOKE_EMAIL_BOB); or sign up a new one (needs
+ * "Confirm email" and CAPTCHA off).
  */
 async function signInAs(client: SupabaseClient, label: "alice" | "bob") {
+  if (serviceKey) {
+    const admin = createClient(url!, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const email = `smoke-${stamp}-${label}@example.invalid`;
+    const made = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name: label } });
+    if (made.error || !made.data.user) throw new Error(`createUser failed: ${made.error?.message}`);
+    madeUsers.push(made.data.user.id);
+    const link = await admin.auth.admin.generateLink({ type: "magiclink", email });
+    if (link.error) throw new Error(`generateLink failed: ${link.error.message}`);
+    const { error } = await client.auth.verifyOtp({ token_hash: link.data.properties.hashed_token, type: "magiclink" });
+    if (error) throw new Error(`verifyOtp failed: ${error.message}`);
+    return made.data.user.id;
+  }
   const premade = process.env[`SMOKE_EMAIL_${label.toUpperCase()}`];
   if (premade) {
     const { data, error } = await client.auth.signInWithPassword({ email: premade, password: process.env.SMOKE_PASSWORD ?? "" });
@@ -65,6 +84,19 @@ describe.skipIf(!run)("real Supabase project", () => {
   afterAll(async () => {
     await alice.auth.signOut();
     await bob.auth.signOut();
+    if (!serviceKey) return;
+    // Remove the throwaway accounts and everything they left: their trips (with items and documents) and their files.
+    const admin = createClient(url!, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: trips } = await admin.from("trips").select("id").in("created_by", madeUsers);
+    for (const { id } of trips ?? []) {
+      const { data: files } = await admin.storage.from("trip-documents").list(id, { limit: 1000 });
+      for (const folder of files ?? []) {
+        const { data: inner } = await admin.storage.from("trip-documents").list(`${id}/${folder.name}`, { limit: 1000 });
+        if (inner?.length) await admin.storage.from("trip-documents").remove(inner.map((f) => `${id}/${folder.name}/${f.name}`));
+      }
+      await admin.from("trips").delete().eq("id", id);
+    }
+    for (const user of madeUsers) await admin.auth.admin.deleteUser(user);
   });
 
   it("creates a trip and items as the organizer", async () => {
@@ -275,6 +307,42 @@ describe.skipIf(!run)("real Supabase project", () => {
     await expect(createInviteApi(bob).redeemInvite(invite.token)).rejects.toThrow(/invalid or expired/); // a stopped link no longer works for anyone
   });
 
+  it("money and polls through the real app services: an expense settles, a single-choice vote replaces the last one", async () => {
+    const aliceApp = createServices(alice);
+    const bobApp = createServices(bob);
+    const trip5 = await aliceApp.actions.createTrip({ name: "Smoke Money Trip", startDate: null, endDate: null });
+    const invite = await aliceApp.invites.createInvite(trip5);
+    await bobApp.invites.redeemInvite(invite.token);
+    await aliceApp.invites.approveMember(trip5, bobId);
+
+    const dinner = {
+      id: crypto.randomUUID(), tripId: trip5, kind: "expense" as const, title: "Dinner", category: "food" as const, paidBy: aliceId,
+      amount: 300000, currency: "INR", rate: 1, rateDate: "2026-12-01", baseCurrency: "INR", spentOn: "2026-12-01",
+      split: [{ who: aliceId }, { who: bobId }], createdBy: aliceId, version: 0,
+    };
+    await aliceApp.actions.saveExpense(dinner, new Set());
+    const huge = { ...dinner, id: crypto.randomUUID(), amount: 9007199254740992 };
+    await expect(aliceApp.actions.saveExpense(huge, new Set())).rejects.toThrow(); // settle-up must stay computable (audit 4.10)
+    const money = await createTripSource(bob).fetchSnapshot(trip5);
+    if (money.status !== "ok") throw new Error("expected access");
+    expect(money.snapshot.expenses?.map((e) => e.title)).toEqual(["Dinner"]);
+    expect(tripSettlement(money.snapshot.expenses ?? [], "INR").balances).toEqual({ [aliceId]: 150000, [bobId]: -150000 });
+
+    const pollId = await bobApp.actions.createPoll(trip5, "Where for lunch?", false, ["Beach", "Fort"]);
+    const read = async () => {
+      const s = await createTripSource(alice).fetchSnapshot(trip5);
+      if (s.status !== "ok") throw new Error("expected access");
+      return s.snapshot;
+    };
+    const [beach, fort] = (await read()).polls!.find((p) => p.id === pollId)!.options;
+    await bobApp.actions.castVote(pollId, [beach!.id]);
+    await bobApp.actions.castVote(pollId, [fort!.id]);
+    expect((await read()).votes?.filter((v) => v.pollId === pollId)).toEqual([expect.objectContaining({ optionId: fort!.id, userId: bobId })]);
+    await bobApp.actions.closePoll(pollId);
+    await expect(bobApp.actions.castVote(pollId, [beach!.id])).rejects.toThrow(/closed/);
+    await aliceApp.actions.deleteTrip(trip5);
+  });
+
   it("account basics through the real app services: name, co-organizer, leaving, deleting a trip and an account", async () => {
     const aliceApp = createServices(alice);
     const bobApp = createServices(bob);
@@ -339,8 +407,18 @@ describe.skipIf(!run)("real Supabase project", () => {
 // A weak password is refused by the server itself, before any account exists or any email is sent.
 describe.skipIf(!run)("password rules on the real project", () => {
   it("rejects a password shorter than 10 characters", async () => {
-    const { data, error } = await newClient().auth.signUp({ email: `smoke-${stamp}-weak@example.invalid`, password: "short-pw1" });
+    const email = `smoke-${stamp}-weak@example.invalid`;
+    // With CAPTCHA on, a sign-up without a bot-check token is refused before the password is looked at, so the rule
+    // is checked through the admin API (same password policy) when the service key is given.
+    const { data, error } = serviceKey
+      ? await createClient(url!, serviceKey, { auth: { persistSession: false } }).auth.admin.createUser({ email, password: "short-pw1", email_confirm: true })
+      : await newClient().auth.signUp({ email, password: "short-pw1" });
     expect(error?.code).toBe("weak_password");
     expect(data.user).toBeNull();
+  });
+
+  it.runIf(serviceKey)("refuses a sign-up without a bot-check token (CAPTCHA is on)", async () => {
+    const { error } = await newClient().auth.signUp({ email: `smoke-${stamp}-bot@example.invalid`, password });
+    expect(error?.code).toBe("captcha_failed");
   });
 });
