@@ -83,7 +83,8 @@ The owner still has to, outside this repo:
 1. Create a Firebase project. Add an iOS app (`club.hoppinclub.app`) and an Android app (the same id).
 2. Create an APNs key in the Apple developer portal (Keys, Apple Push Notifications service). Upload that `.p8` to Firebase, with the Key ID and the Team ID. Do not commit the `.p8`.
 3. Download `GoogleService-Info.plist` into `apps/web/ios/App/App/` and add it to the App target in Xcode. Download `google-services.json` into `apps/web/android/app/`. Both paths are gitignored.
-4. In `apps/web/android/build.gradle`, inside `dependencies`, add `classpath 'com.google.gms:google-services:4.4.2'`. In `apps/web/android/app/build.gradle`, at the bottom, add `apply plugin: 'com.google.gms.google-services'`. Do this only after `google-services.json` is in place. Without the file, that plugin line fails the Android build, so it is not committed.
+4. Android needs nothing more: `apps/web/android/build.gradle` already has the `com.google.gms:google-services` classpath, and `apps/web/android/app/build.gradle` applies the plugin only when `google-services.json` is present (so a machine without the file still builds, just without push). The notification permission comes with Firebase Messaging.
+   iOS is not finished. `AppDelegate.swift` does not yet pass the device token on to Capacitor (`capacitorDidRegisterForRemoteNotifications`), so registration never completes; and the plugin then hands over an APNs token, while the digest job sends through FCM, which needs an FCM token. The app needs the Firebase Messaging SDK on iOS to turn one into the other.
 5. Put the Firebase service-account JSON in the Supabase secret `FCM_SERVICE_ACCOUNT`. Never commit it. The same `DIGEST_SECRET` authorises the test send.
 
 Debug builds use `aps-environment` development (`App.entitlements`). The Release archive uses `App.release.entitlements`, which is `production`.
