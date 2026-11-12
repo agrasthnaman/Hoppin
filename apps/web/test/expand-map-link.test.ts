@@ -26,9 +26,17 @@ describe("short map links", () => {
     expect(await resolveShortMapLink("https://maps.app.goo.gl/abc", fetchImpl)).toBeNull();
   });
 
-  it("refuses Google's block page instead of saving it as the place", async () => {
-    const sorry = "https://www.google.com/sorry/index?continue=https://www.google.com/maps/place/PinkCoco";
+  it("reads the place from Google's block page instead of saving the block page", async () => {
+    const place = "https://www.google.com/maps/place/PinkCoco+Gili+Trawangan/@-8.35,116.03,17z";
+    const sorry = `https://www.google.com/sorry/index?continue=${encodeURIComponent(place)}&q=abc`;
     const fetchImpl = vi.fn().mockResolvedValueOnce(redirect(302, sorry));
-    expect(await resolveShortMapLink("https://maps.app.goo.gl/abcdefgh", fetchImpl)).toBeNull();
+    expect(await resolveShortMapLink("https://maps.app.goo.gl/abcdefgh", fetchImpl)).toBe(place);
+  });
+
+  it("refuses a block page that leads nowhere useful", async () => {
+    for (const sorry of ["https://www.google.com/sorry/index", "https://www.google.com/sorry/index?continue=https://evil.example/x", "https://www.google.com/sorry/index?continue=https://www.google.com/sorry/index"]) {
+      const fetchImpl = vi.fn().mockResolvedValueOnce(redirect(302, sorry));
+      expect(await resolveShortMapLink("https://maps.app.goo.gl/abcdefgh", fetchImpl)).toBeNull();
+    }
   });
 });

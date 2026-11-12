@@ -24,6 +24,18 @@ function isBlockPage(url: URL): boolean {
   return /^\/(sorry|consent|ServiceLogin)(\/|$)/i.test(url.pathname) || url.hostname.toLowerCase().startsWith("consent.") || url.hostname.toLowerCase().startsWith("accounts.");
 }
 
+function blockedDestination(blockPage: URL): string | null {
+  const raw = blockPage.searchParams.get("continue");
+  if (!raw) return null;
+  try {
+    const target = new URL(raw);
+    if (target.protocol !== "https:" || !allowedHost(target.hostname) || isBlockPage(target)) return null;
+    return target.href;
+  } catch {
+    return null;
+  }
+}
+
 type FetchLike = (url: string, init?: RequestInit) => Promise<Pick<Response, "status" | "headers">>;
 
 /** Follow a short map link to the full address. Other addresses are refused. */
@@ -38,7 +50,11 @@ export async function resolveShortMapLink(url: string, fetchImpl: FetchLike = fe
     if (next.protocol !== "https:" && next.protocol !== "http:") return null;
     if (!allowedHost(next.hostname)) return null;
     // Google's "unusual traffic" block page is not a place. Saving it would put a useless link on the trip.
-    if (isBlockPage(next)) return null;
+    // The block page carries the address it was meant to show. Use that one, if it is a real Google map address.
+    if (isBlockPage(next)) {
+      const inner = blockedDestination(next);
+      return inner && !isShortMapLink(inner) ? inner : null;
+    }
     current = next.href;
   }
   return isShortMapLink(current) ? null : current;
