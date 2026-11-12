@@ -128,6 +128,13 @@ describe("syncTrip and getLocalTrip", () => {
     expect(await getLocalDocument(db, doc("d1"), await getDeviceKey(db))).toBeNull();
   });
 
+  it("a stored file that claims to be a web page opens only as a plain download", async () => {
+    await syncTrip(deps, "t1");
+    await db.blobs.put({ id: "d1", tripId: "t1", encrypted: false, contentType: "text/html", data: new TextEncoder().encode("<script>x</script>").buffer, cachedAt: NOW });
+    const file = await getLocalDocument(db, doc("d1"), await getDeviceKey(db));
+    expect(file?.type).toBe("application/octet-stream");
+  });
+
   it("wiping one trip leaves other trips alone", async () => {
     await syncTrip(deps, "t1");
     result = { status: "ok", snapshot: snapshot({ trip: { id: "t2", name: "Manali", startDate: null, endDate: null } }) };

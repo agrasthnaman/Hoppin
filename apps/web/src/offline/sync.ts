@@ -1,4 +1,4 @@
-import { visibleDocuments, type DocumentSource, type TripDocument, type TripSnapshot, type TripSource } from "@hoppin/core";
+import { safeDocumentType, visibleDocuments, type DocumentSource, type TripDocument, type TripSnapshot, type TripSource } from "@hoppin/core";
 import { decryptBlob, encryptBlob, getDeviceKey } from "./crypto";
 import type { OfflineDb } from "./db";
 import { announceChange } from "./events";
@@ -92,7 +92,7 @@ export async function getLocalDocument(db: OfflineDb, doc: TripDocument, key: Cr
   const record = await db.blobs.get(doc.id);
   if (!record) return null;
   const data = record.encrypted ? await decryptBlob(key, record.data) : record.data;
-  return new Blob([data], { type: record.contentType });
+  return new Blob([data], { type: safeDocumentType(record.contentType) });
 }
 
 /** Removes one trip, its documents and any changes still waiting from this device. */

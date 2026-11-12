@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentFileKind, documentPath, documentTitle, fileNameFromPath, MAX_DOCUMENT_BYTES, validateDocumentFile } from "../src/documents";
+import { documentContentType, documentFileKind, documentPath, documentTitle, fileNameFromPath, MAX_DOCUMENT_BYTES, safeDocumentType, validateDocumentFile } from "../src/documents";
 
 describe("documentPath", () => {
   it("puts the file under the trip and the uploader", () => {
@@ -55,5 +55,20 @@ describe("document presentation", () => {
 
   it("cleans an older file name when no name was typed", () => {
     expect(documentTitle({ kind: "document", fileName: "riya-visa.pdf" })).toBe("Riya visa");
+  });
+});
+
+describe("document types", () => {
+  it("stores a valid file with its own type, or the one its extension means when the browser gives none or a wrong one", () => {
+    expect(documentContentType({ name: "ticket.pdf", type: "application/pdf" })).toBe("application/pdf");
+    expect(documentContentType({ name: "IMG_0001.HEIC", type: "" })).toBe("image/heic");
+    expect(documentContentType({ name: "ticket.pdf", type: "text/html" })).toBe("application/pdf");
+  });
+
+  it("opens only document types as themselves; a web page or anything else becomes a plain download", () => {
+    expect(safeDocumentType("image/PNG")).toBe("image/png");
+    for (const type of ["text/html", "image/svg+xml", "application/xhtml+xml", "text/javascript", ""]) {
+      expect(safeDocumentType(type), type).toBe("application/octet-stream");
+    }
   });
 });

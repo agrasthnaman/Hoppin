@@ -20,6 +20,13 @@ const pdf = () => new File(["hello"], "Flight ticket.pdf", { type: "application/
 const meta = { tripId: "t1", ownerId: "u1", itemId: "i1", scope: "shared" as const, kind: "ticket" };
 
 describe("uploadDocument", () => {
+  it("uploads a photo the browser gave no type with the type its extension means", async () => {
+    const { client, upload } = fakeClient();
+    await uploadDocument(client, new File(["x"], "IMG_0001.heic", { type: "" }), meta, () => "doc1");
+    expect(upload).toHaveBeenCalledWith("t1/u1/doc1-IMG_0001.heic", expect.any(File), { contentType: "image/heic" });
+  });
+
+
   it("uploads the file into the uploader's folder and saves a document record", async () => {
     const { client, upload, insert } = fakeClient();
     const doc = await uploadDocument(client, pdf(), meta, () => "doc1");

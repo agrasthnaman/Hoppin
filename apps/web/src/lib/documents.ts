@@ -1,4 +1,5 @@
 import {
+  documentContentType,
   documentPath,
   fileNameFromPath,
   validateDocumentFile,
@@ -56,7 +57,7 @@ export async function uploadDocument(
   const storagePath = documentPath({ tripId: meta.tripId, ownerId: meta.ownerId, docId: id, fileName: file.name });
   const bucket = client.storage.from(BUCKET);
 
-  const uploaded = await bucket.upload(storagePath, file, { contentType: file.type });
+  const uploaded = await bucket.upload(storagePath, file, { contentType: documentContentType(file) });
   if (uploaded.error) throw new Error(uploaded.error.message);
 
   const saved = await client

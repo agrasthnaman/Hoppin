@@ -1,26 +1,44 @@
 /** Largest file we accept (tickets and passport scans are far smaller). */
 export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 
-const ALLOWED_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
-const ALLOWED_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png", "webp", "heic", "heif"]);
+const TYPE_BY_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+};
+/** The only types a document may have (the storage bucket allows exactly these). */
+export const DOCUMENT_TYPES: readonly string[] = [...new Set(Object.values(TYPE_BY_EXTENSION))];
+
+const extensionOf = (name: string) => (name.includes(".") ? (name.split(".").pop() ?? "").toLowerCase() : "");
 
 /** Returns a plain-language problem with the file, or null if it can be uploaded. */
 export function validateDocumentFile(file: { name: string; size: number; type: string }): string | null {
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   // Some browsers report no type for HEIC photos, so the extension counts too.
-  if (!ALLOWED_TYPES.has(file.type.toLowerCase()) && !ALLOWED_EXTENSIONS.has(ext)) {
+  if (!DOCUMENT_TYPES.includes(file.type.toLowerCase()) && !(extensionOf(file.name) in TYPE_BY_EXTENSION)) {
     return "Please choose a PDF or an image (JPEG, PNG, WebP or HEIC).";
   }
   if (file.size === 0) return "That file is empty.";
   if (file.size > MAX_DOCUMENT_BYTES) return "That file is larger than 25 MB.";
   return null;
+}
+
+/** The type a valid file is stored with: its own if that is a document type, otherwise the one its extension means. */
+export function documentContentType(file: { name: string; type: string }): string {
+  const own = file.type.toLowerCase();
+  return DOCUMENT_TYPES.includes(own) ? own : (TYPE_BY_EXTENSION[extensionOf(file.name)] ?? "application/octet-stream");
+}
+
+/**
+ * The type to open a stored file with. Anything that is not a document type opens as a plain download, so a file that
+ * claims to be a web page (HTML, SVG) can never run inside the app.
+ */
+export function safeDocumentType(type: string): string {
+  const lower = type.toLowerCase();
+  return DOCUMENT_TYPES.includes(lower) ? lower : "application/octet-stream";
 }
 
 /**
