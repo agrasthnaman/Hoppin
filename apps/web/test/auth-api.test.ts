@@ -11,6 +11,8 @@ function client(over: Record<string, unknown> = {}) {
       resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       updateUser: vi.fn().mockResolvedValue({ error: null }),
       verifyOtp: vi.fn().mockResolvedValue({ error: null }),
+      reauthenticate: vi.fn().mockResolvedValue({ error: null }),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
       ...over,
     },
     rpc: vi.fn().mockResolvedValue({ data: { status: "none" }, error: null }),
@@ -97,10 +99,31 @@ describe("email links", () => {
 });
 
 describe("updatePassword", () => {
-  it("sets a new password for the signed-in person", async () => {
+  it("sets a new password for the signed-in person, then signs out their other sessions", async () => {
     const c = client();
     await createAuthApi(c).updatePassword("brand new password");
     expect(c.auth.updateUser).toHaveBeenCalledWith({ password: "brand new password" });
+    expect(c.auth.signOut).toHaveBeenCalledWith({ scope: "others" });
+  });
+
+  it("sends the emailed code with the new password", async () => {
+    const c = client();
+    await createAuthApi(c).updatePassword("brand new password", "123456");
+    expect(c.auth.updateUser).toHaveBeenCalledWith({ password: "brand new password", nonce: "123456" });
+  });
+
+  it("says when the server wants the code first, or the code was wrong, and signs nobody out", async () => {
+    const needs = client({ updateUser: vi.fn().mockResolvedValue({ error: { code: "reauthentication_needed", message: "x", status: 400 } }) });
+    await expect(createAuthApi(needs).updatePassword("brand new password")).rejects.toMatchObject({ code: "reauthentication-needed" });
+    expect(needs.auth.signOut).not.toHaveBeenCalled();
+    const wrong = client({ updateUser: vi.fn().mockResolvedValue({ error: { code: "reauthentication_not_valid", message: "x", status: 400 } }) });
+    await expect(createAuthApi(wrong).updatePassword("brand new password", "000000")).rejects.toMatchObject({ code: "invalid-code" });
+  });
+
+  it("asks the server to email the code", async () => {
+    const c = client();
+    await createAuthApi(c).requestCode();
+    expect(c.auth.reauthenticate).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a weak one without calling the server", async () => {

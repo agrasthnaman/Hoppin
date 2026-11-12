@@ -290,6 +290,7 @@ export function createDemoServices(options: DemoOptions = {}): Services {
       queueStatus: async () => "none",
       joinQueue: async () => "queued",
       updatePassword: async () => {},
+      requestCode: async () => {},
       verifyEmailLink: async () => setSignedIn(true),
       signOut: async () => setSignedIn(false),
     },

@@ -26,7 +26,7 @@ describe("the invite link (sent from the sign-up queue)", () => {
     expect(screen.getByText("Welcome to Hoppin. One password, and you're in.")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Your password"), "brand new password");
     await userEvent.click(screen.getByRole("button", { name: "Create password" }));
-    expect(services.auth.updatePassword).toHaveBeenCalledWith("brand new password");
+    expect(services.auth.updatePassword).toHaveBeenCalledWith("brand new password", undefined);
     expect(await screen.findByText("You're all set")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
   });
