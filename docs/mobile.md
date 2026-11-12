@@ -78,6 +78,8 @@ The website keeps its own behaviour. These only change the shell.
 - **Haptics.** Play trip and Save picture make a light tap. Nothing is asked for.
 - **Phone notifications.** Off until the person has a trip and taps Turn on notifications (or the Phone notifications switch in Updates). The token is stored in `push_tokens` for that account. Signing out deletes this device's token. Deleting the account deletes every token. Tapping a notification opens the trip. The 5-minute digest job sends the note only when `FCM_SERVICE_ACCOUNT` is set. Without it, in-app updates and email still go out.
 
+Step-by-step guide for building, testing and finishing push on another computer: [docs/push-setup.md](push-setup.md).
+
 The owner still has to, outside this repo:
 
 1. Create a Firebase project. Add an iOS app (`club.hoppinclub.app`) and an Android app (the same id).

@@ -12,6 +12,7 @@ dist/
 .claude/
 skills-lock.json
 .agents/
+supabase/.temp/
 
 # Capacitor native build output. The ios/ and android/ projects themselves are committed.
 apps/web/ios/App/Pods/
