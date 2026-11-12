@@ -5,7 +5,7 @@ import { fakeServices, renderApp } from "./helpers";
 
 describe("the invite link (sent from the sign-up queue)", () => {
   it("signs the person in and takes them to create their first password", async () => {
-    const { services } = fakeServices();
+    const { services } = fakeServices({ session: null });
     const { router } = renderApp("/auth/confirm?token_hash=abc&type=invite", services);
     await waitFor(() => expect(router.state.location.pathname).toBe("/reset-password"));
     expect(router.state.location.search).toBe("?welcome=1");
@@ -13,7 +13,7 @@ describe("the invite link (sent from the sign-up queue)", () => {
   });
 
   it("a reset link still goes to the plain choose-a-new-password page", async () => {
-    const { services } = fakeServices();
+    const { services } = fakeServices({ session: null });
     const { router } = renderApp("/auth/confirm?token_hash=abc&type=recovery", services);
     await waitFor(() => expect(router.state.location.pathname).toBe("/reset-password"));
     expect(router.state.location.search).toBe("");

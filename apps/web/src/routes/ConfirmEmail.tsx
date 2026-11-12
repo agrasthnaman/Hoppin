@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useServices } from "../app/services";
 import { useSession } from "../app/session";
+import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Spinner } from "../components/ui/Spinner";
 import type { EmailLinkType } from "../lib/auth-api";
@@ -22,7 +23,8 @@ function pathOnly(next: string | null): string {
 
 /**
  * Where the links in our emails land (on our own address). The token is confirmed here, in the page, which signs the
- * person in; then they go on to where they were headed, or to choose a password after a reset.
+ * person in; then they go on to where they were headed, or to choose a password after a reset. Someone already signed
+ * in is asked first: the link may belong to another account (anyone can send theirs), and confirming it switches to it.
  */
 export function ConfirmEmail() {
   const { auth, sessionClient } = useServices();
@@ -30,17 +32,25 @@ export function ConfirmEmail() {
   const [params] = useSearchParams();
   const tokenHash = params.get("token_hash");
   const type = TYPES.find((t) => t === params.get("type"));
-  const [state, setState] = useState<"working" | "done" | "invalid">(tokenHash && type ? "working" : "invalid");
+  const [state, setState] = useState<"working" | "ask" | "done" | "invalid">(tokenHash && type ? "working" : "invalid");
   const started = useRef(false);
 
-  useEffect(() => {
+  function confirm() {
     if (!tokenHash || !type || started.current) return; // once, even in React strict mode (the token works once)
     started.current = true;
+    setState("working");
     auth.verifyEmailLink({ tokenHash, type }).then(
       () => setState("done"),
       () => setState("invalid"),
     );
-  }, [auth, tokenHash, type]);
+  }
+
+  useEffect(() => {
+    if (!tokenHash || !type || started.current || session.status === "loading") return;
+    if (session.status === "signedIn") setState("ask");
+    else confirm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- decided once, when the session is known
+  }, [session.status, tokenHash, type]);
 
   // A reset link goes to choose a new password. An invite (from the sign-up queue) goes to create the first password.
   const destination = type === "recovery" ? "/reset-password" : type === "invite" ? "/reset-password?welcome=1" : pathOnly(params.get("next"));
@@ -48,6 +58,25 @@ export function ConfirmEmail() {
   // A link opened a second time (the first time already signed them in) is not a problem: they are in, so carry on.
   if (state === "invalid" && session.status === "signedIn") return <Navigate to={destination} replace />;
   const waiting = state === "working" || (state === "invalid" && session.status === "loading");
+
+  if (state === "ask" && session.status === "signedIn")
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
+        <h1 className="font-display text-4xl font-extrabold">You're already signed in</h1>
+        <Card>
+          <div className="flex flex-col items-start gap-3">
+            <p>
+              You're signed in{session.email ? ` as ${session.email}` : ""}. This link may be for a different account, and opening it signs you in to
+              the account it belongs to.
+            </p>
+            <Button onClick={confirm}>Continue with this link</Button>
+            <Link to="/" className="font-semibold text-link focus-visible:outline-2 focus-visible:outline-accent">
+              Stay signed in
+            </Link>
+          </div>
+        </Card>
+      </main>
+    );
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4">
