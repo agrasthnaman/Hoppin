@@ -160,10 +160,11 @@ if (doTemplates) {
   run("node", ["scripts/supabase-email.mjs", "templates"]);
 }
 if (doFunctions) {
-  step("Sign-up queue functions");
+  step("Edge Functions");
   const cli = spawnSync("supabase", ["--version"], { encoding: "utf8" });
   if (cli.status !== 0) say("The Supabase command-line tool is not installed, so the functions were not deployed. See docs/signup-queue.md.");
-  else for (const fn of ["drain-signup-queue", "join-signup-queue"]) run("supabase", ["functions", "deploy", fn, "--no-verify-jwt", "--project-ref", env.SUPABASE_PROJECT_REF]);
+  // Every one is called without a signed-in user (the database with a shared secret, or the bot-checked queue form).
+  else for (const fn of ["drain-signup-queue", "join-signup-queue", "send-digest", "send-push"]) run("supabase", ["functions", "deploy", fn, "--no-verify-jwt", "--project-ref", env.SUPABASE_PROJECT_REF]);
 }
 
 // ---- 5. website
